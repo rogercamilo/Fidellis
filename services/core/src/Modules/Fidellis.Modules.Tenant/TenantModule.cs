@@ -1,6 +1,8 @@
 using Fidellis.Infrastructure.Catalog;
 using Fidellis.Infrastructure.Persistence;
 using Fidellis.Infrastructure.Provisioning;
+using Fidellis.Infrastructure.TenantData;
+using Fidellis.SharedKernel;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -33,6 +35,8 @@ public static class TenantModule
         group.MapPost("/", async (
             CreateTenantRequest req,
             CatalogDbContext db,
+            TenantDbContext tenantDb,
+            ITenantContext tenantContext,
             ISchemaProvisioner provisioner,
             CancellationToken ct) =>
         {
@@ -49,9 +53,28 @@ public static class TenantModule
             // 2) registra o tenant no catálogo global
             var tenant = Infrastructure.Catalog.Tenant.Create(slug, req.Name);
             db.Tenants.Add(tenant);
-            await db.SaveChangesAsync(ct);
 
-            var dto = new TenantDto(tenant.Id, tenant.Slug, tenant.Name, schema, tenant.Plan, tenant.Status);
+            // 3) opcional: vincula o primeiro usuário (admin) e cria a organização-raiz,
+            //    já associando o admin a ela — evita depender de seed manual.
+            Guid? rootOrganizationId = null;
+            if (req.AdminUserId is { } adminId)
+            {
+                db.Memberships.Add(new Membership { UserId = adminId, TenantId = tenant.Id, Role = "admin" });
+                await db.SaveChangesAsync(ct);
+
+                tenantContext.SetTenant(slug);
+                var rootOrg = new Organization { Name = (req.OrganizationName ?? req.Name).Trim() };
+                tenantDb.Organizations.Add(rootOrg);
+                tenantDb.OrgMembers.Add(new OrgMember { UserId = adminId, OrganizationId = rootOrg.Id, Role = "admin" });
+                await tenantDb.SaveChangesAsync(ct);
+                rootOrganizationId = rootOrg.Id;
+            }
+            else
+            {
+                await db.SaveChangesAsync(ct);
+            }
+
+            var dto = new TenantDto(tenant.Id, tenant.Slug, tenant.Name, schema, tenant.Plan, tenant.Status, rootOrganizationId);
             return Results.Created($"/api/tenants/{tenant.Slug}", dto);
         });
 
@@ -59,6 +82,6 @@ public static class TenantModule
     }
 }
 
-public sealed record CreateTenantRequest(string Slug, string Name);
+public sealed record CreateTenantRequest(string Slug, string Name, Guid? AdminUserId = null, string? OrganizationName = null);
 
-public sealed record TenantDto(Guid Id, string Slug, string Name, string SchemaName, string Plan, string Status);
+public sealed record TenantDto(Guid Id, string Slug, string Name, string SchemaName, string Plan, string Status, Guid? RootOrganizationId = null);

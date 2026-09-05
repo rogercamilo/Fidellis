@@ -22,6 +22,9 @@ export default function HomePage() {
         <Link className="btn" href="/login">
           Entrar
         </Link>
+        <Link className="btn" href="/signup" style={{ background: 'transparent', color: 'var(--accent)', border: '1px solid var(--border)' }}>
+          Criar instituição
+        </Link>
         <a className="btn" style={{ background: 'transparent', color: 'var(--accent)', border: '1px solid var(--border)' }} href="#modulos">
           Conhecer os módulos
         </a>

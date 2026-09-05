@@ -28,6 +28,39 @@ export async function login(email: string, password: string, tenant?: string): P
   return res.json() as Promise<LoginResult>;
 }
 
+// ---- Onboarding (cadastro da instituição + primeiro admin) ----
+
+export interface OnboardingInput {
+  slug: string;
+  tenantName: string;
+  email: string;
+  password: string;
+  displayName?: string;
+  organizationName?: string;
+}
+
+export interface OnboardingResult {
+  user: { id: string; email: string; displayName: string | null };
+  tenant: { id: string; slug: string; name: string; rootOrganizationId: string | null };
+  accessToken: string;
+  refreshToken: string;
+  activeTenant: string | null;
+}
+
+/** Cria tenant + organização-raiz + primeiro admin (já vinculado). Faz auto-login. */
+export async function onboarding(input: OnboardingInput): Promise<OnboardingResult> {
+  const res = await fetch(`${BFF_URL}/onboarding`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { message?: string };
+    throw new Error(body.message ?? `Falha no cadastro (${res.status}).`);
+  }
+  return res.json() as Promise<OnboardingResult>;
+}
+
 // ---- Unidades (organizations) ----
 
 export interface Organization {

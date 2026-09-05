@@ -24,6 +24,10 @@ cobrança pediam a unidade solta.
   `ICurrentUser`. Endpoints: `GET /api/organizations/mine` (subárvore visível),
   `POST /api/organizations/{id}/members`, e `POST /api/organizations` **auto-vincula o criador** como
   `admin`. Os formulários passam a usar "minhas unidades".
+- **Onboarding (primeiro usuário automático):** `POST /onboarding` no BFF cria o admin (hash Argon2 no
+  BFF) e delega ao core `POST /api/tenants` (com `adminUserId` + `organizationName`) a criação de
+  tenant + schema + `membership` + **organização-raiz**, já **vinculando o admin a ela**; faz
+  auto-login. Elimina o seed manual. Página `/signup` no web.
 
 ## Alternativas consideradas
 
