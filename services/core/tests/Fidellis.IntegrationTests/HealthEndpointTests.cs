@@ -11,7 +11,9 @@ namespace Fidellis.IntegrationTests;
 public class HealthEndpointTests(WebApplicationFactory<Program> factory)
     : IClassFixture<WebApplicationFactory<Program>>
 {
-    private readonly WebApplicationFactory<Program> _factory = factory;
+    // Desliga o worker de billing no host de teste (não há Postgres aqui).
+    private readonly WebApplicationFactory<Program> _factory =
+        factory.WithWebHostBuilder(b => b.UseSetting("BILLING_ENABLED", "false"));
 
     [Fact]
     public async Task Liveness_returns_ok()

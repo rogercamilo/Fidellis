@@ -2,6 +2,7 @@ using System.Text;
 using Fidellis.Infrastructure;
 using Fidellis.Infrastructure.Payments;
 using Fidellis.Infrastructure.Persistence;
+using Fidellis.Infrastructure.TenantData;
 using Fidellis.Modules.Finance.Services;
 using Fidellis.SharedKernel;
 using Microsoft.AspNetCore.Builder;
@@ -23,6 +24,8 @@ public static class FinanceModule
         services.AddScoped<DonationCheckoutService>();
         services.AddScoped<WebhookProcessor>();
         services.AddScoped<RecipientService>();
+        services.AddScoped<RecurringBillingService>();
+        services.AddSingleton<Notifications.INotifier, Notifications.LogNotifier>();
         return services;
     }
 
@@ -99,6 +102,53 @@ public static class FinanceModule
             return Results.Created($"/api/finance/recipients/{result.Id}", result);
         });
 
+        // ---- Recorrência (dízimo mensal) + dunning ----
+
+        group.MapPost("/recurring-donations", async (
+            CreateRecurringRequest req,
+            TenantDbContext db,
+            RecurringBillingService billing,
+            ITenantContext tenant,
+            CancellationToken ct) =>
+        {
+            if (!tenant.HasTenant)
+                return Results.BadRequest(new { error = "Nenhum tenant no request." });
+            if (req.Amount <= 0)
+                return Results.BadRequest(new { error = "amount deve ser positivo." });
+            if (req.Donor is null || string.IsNullOrWhiteSpace(req.Donor.Name))
+                return Results.BadRequest(new { error = "donor.name é obrigatório." });
+
+            var donor = await db.Donors.FirstOrDefaultAsync(d => d.Email != null && d.Email == req.Donor.Email, ct);
+            if (donor is null)
+            {
+                donor = new Donor { Name = req.Donor.Name, Email = req.Donor.Email, Document = req.Donor.Document };
+                db.Donors.Add(donor);
+                await db.SaveChangesAsync(ct);
+            }
+
+            var r = await billing.CreatePledgeAsync(
+                req.OrganizationId, donor.Id, req.Amount, req.DayOfMonth, req.ChargeToday ?? true, ct);
+            return Results.Created($"/api/finance/recurring-donations/{r.Id}", ToRecurringDto(r));
+        });
+
+        group.MapGet("/recurring-donations", async (TenantDbContext db, CancellationToken ct) =>
+        {
+            var list = await db.RecurringDonations
+                .OrderByDescending(r => r.CreatedAt)
+                .Select(r => new RecurringDto(r.Id, r.OrganizationId, r.Amount, r.DayOfMonth, r.Status, r.NextChargeAt, r.Attempt))
+                .ToListAsync(ct);
+            return Results.Ok(list);
+        });
+
+        group.MapPost("/recurring-donations/{id:guid}/pause", async (Guid id, RecurringBillingService billing, CancellationToken ct) =>
+            await billing.PauseAsync(id, ct) is { } r ? Results.Ok(ToRecurringDto(r)) : Results.NotFound());
+
+        group.MapPost("/recurring-donations/{id:guid}/resume", async (Guid id, RecurringBillingService billing, CancellationToken ct) =>
+            await billing.ResumeAsync(id, ct) is { } r ? Results.Ok(ToRecurringDto(r)) : Results.NotFound());
+
+        group.MapPost("/recurring-donations/{id:guid}/cancel", async (Guid id, RecurringBillingService billing, CancellationToken ct) =>
+            await billing.CancelAsync(id, ct) is { } r ? Results.Ok(ToRecurringDto(r)) : Results.NotFound());
+
         // Receptor de webhook do Pagar.me — FORA da resolução de tenant por JWT.
         group.MapPost("/webhooks/pagarme", async (
             HttpRequest request,
@@ -136,6 +186,9 @@ public static class FinanceModule
 
         return app;
     }
+
+    private static RecurringDto ToRecurringDto(RecurringDonation r)
+        => new(r.Id, r.OrganizationId, r.Amount, r.DayOfMonth, r.Status, r.NextChargeAt, r.Attempt);
 
     private static bool WebhookAuthOk(HttpRequest request, InfrastructureOptions options)
     {
@@ -177,3 +230,19 @@ public sealed record CreateRecipientHttpRequest(
     string Email,
     string Document,
     string? PixKey = null);
+
+public sealed record CreateRecurringRequest(
+    Guid OrganizationId,
+    decimal Amount,
+    int DayOfMonth,
+    DonorInput Donor,
+    bool? ChargeToday = null);
+
+public sealed record RecurringDto(
+    Guid Id,
+    Guid OrganizationId,
+    decimal Amount,
+    int DayOfMonth,
+    string Status,
+    DateTimeOffset NextChargeAt,
+    int Attempt);

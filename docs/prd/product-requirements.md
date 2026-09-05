@@ -47,7 +47,7 @@ relacionamento com o doador que os concorrentes não priorizam.
 | ------------ | ---------------------------------------------------------------------- | --------------- |
 | **Tenant**   | Registro/provisionamento de instituições (schema `catalog` + `t_<slug>`)| **Funcional** (criar/listar tenant, provisiona schema) |
 | **Donations**| Campanhas, doações, doadores                                           | Skeleton (+ leitura por schema) |
-| **Finance**  | Cobrança PIX (Pagar.me), webhook idempotente, conciliação, split       | **Funcional (PIX)** — checkout, webhook, partida dobrada |
+| **Finance**  | Cobrança PIX (Pagar.me), webhook idempotente, conciliação, split, **recorrência + dunning** | **Funcional (PIX)** — checkout, webhook, partida dobrada, dízimo mensal + dunning |
 | **Accounting**| Razão contábil, recibos, prestação de contas                          | Skeleton        |
 | **Reporting**| Dashboards, exportações, consolidação da rede                          | Skeleton        |
 | **Audit**    | Trilha de auditoria / LGPD                                             | Skeleton        |
@@ -57,8 +57,8 @@ relacionamento com o doador que os concorrentes não priorizam.
 - **RF-01 Identidade global:** login por e-mail resolve o(s) tenant(s) do usuário (memberships/RBAC).
 - **RF-02 Provisionamento de tenant:** criar instituição cria schema isolado + tabelas.
 - **RF-03 Contexto de tenant:** toda operação de dados ocorre no schema do tenant do request.
-- **RF-04 Doações:** receber doação via **PIX** (checkout com QR + conciliação por webhook);
-  campanha/recorrência e cartão/boleto seguem no roadmap.
+- **RF-04 Doações:** receber doação via **PIX** (checkout com QR + conciliação por webhook) e
+  **dízimo recorrente mensal** com dunning; cartão/boleto e PIX Automático (mandato) seguem no roadmap.
 - **RF-05 Repasse/split:** doação vai 100% para a unidade (recebedor Pagar.me por unidade);
   consolidação da rede fica no Reporting.
 - **RF-06 Recibos/prestação de contas (roadmap):** gerar recibo e lançamento contábil por doação.
@@ -80,7 +80,9 @@ relacionamento com o doador que os concorrentes não priorizam.
 1. ✅ **Cobrança real via PIX** (módulo Finance): checkout PIX, webhook idempotente, conciliação e
    split 100% p/ a unidade. **Entregue.** (Boleto/cartão desenhados na abstração Order/Charge.)
    Ver [ADR-0006](../architecture/ADR-0006-payments-pix-pagarme.md).
-2. **PIX Automático recorrente + dunning.**
+2. ✅ **Recorrência (dízimo mensal) + dunning** — motor próprio no core (scheduler multi-tenant),
+   cobrança PIX por ciclo, régua D+1/D+3/D+5 → `past_due`; encaixe pronto p/ PIX Automático (mandato).
+   **Entregue.** Ver [ADR-0007](../architecture/ADR-0007-recurring-donations-dunning.md).
 3. **Razão contábil + recibos** (módulo Accounting).
 4. **CRM do doador + régua de relacionamento (WhatsApp/e-mail).**
 5. **Dashboards + consolidação da rede** (módulo Reporting).

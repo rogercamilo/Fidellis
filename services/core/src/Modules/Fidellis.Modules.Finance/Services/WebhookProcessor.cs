@@ -1,6 +1,7 @@
 using Fidellis.Infrastructure.Payments;
 using Fidellis.Infrastructure.Persistence;
 using Fidellis.Infrastructure.TenantData;
+using Fidellis.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
@@ -15,6 +16,7 @@ namespace Fidellis.Modules.Finance.Services;
 public sealed class WebhookProcessor(
     TenantDbContext db,
     IPaymentGateway gateway,
+    IClock clock,
     ILogger<WebhookProcessor> logger)
 {
     private const string LedgerReceivable = "1.1 PIX a receber";
@@ -97,6 +99,18 @@ public sealed class WebhookProcessor(
         db.AccountingEntries.AddRange(
             new AccountingEntry { TransactionId = transaction.Id, Ledger = LedgerReceivable, Debit = donation.Amount, Credit = 0 },
             new AccountingEntry { TransactionId = transaction.Id, Ledger = LedgerDonations, Debit = 0, Credit = donation.Amount });
+
+        // Ciclo recorrente pago: zera o dunning e agenda a próxima cobrança mensal.
+        if (donation.RecurringDonationId is { } recurringId)
+        {
+            var recurring = await db.RecurringDonations.FirstOrDefaultAsync(r => r.Id == recurringId, ct);
+            if (recurring is not null && recurring.Status is "active" or "past_due")
+            {
+                recurring.Attempt = 0;
+                recurring.Status = "active";
+                recurring.NextChargeAt = RecurringBillingService.NextChargeDate(recurring.DayOfMonth, clock.UtcNow.AddDays(1));
+            }
+        }
 
         logger.LogInformation("Doação {DonationId} conciliada (R$ {Amount}).", donation.Id, donation.Amount);
     }

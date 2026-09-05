@@ -23,6 +23,11 @@ public class FinanceServiceTests
         public Task<CreateRecipientResult> CreateRecipientAsync(CreateRecipientRequest r, CancellationToken ct = default) => Task.FromResult(Recipient);
     }
 
+    private sealed class FixedClock(DateTimeOffset now) : IClock
+    {
+        public DateTimeOffset UtcNow { get; set; } = now;
+    }
+
     private static TenantContext Tenant()
     {
         var t = new TenantContext();
@@ -73,7 +78,7 @@ public class FinanceServiceTests
         });
         await tdb.SaveChangesAsync();
 
-        var processor = new WebhookProcessor(tdb, new FakeGateway(), NullLogger<WebhookProcessor>.Instance);
+        var processor = new WebhookProcessor(tdb, new FakeGateway(), new FixedClock(DateTimeOffset.UtcNow), NullLogger<WebhookProcessor>.Instance);
         var evt = new PagarmeWebhookEvent("hook_1", "charge.paid", "or_1", "ch_1", "paid");
 
         var processed = await processor.ProcessAsync(evt, "{}");
@@ -100,7 +105,7 @@ public class FinanceServiceTests
         });
         await tdb.SaveChangesAsync();
 
-        var processor = new WebhookProcessor(tdb, new FakeGateway(), NullLogger<WebhookProcessor>.Instance);
+        var processor = new WebhookProcessor(tdb, new FakeGateway(), new FixedClock(DateTimeOffset.UtcNow), NullLogger<WebhookProcessor>.Instance);
         var evt = new PagarmeWebhookEvent("hook_1", "charge.paid", "or_1", "ch_1", "paid");
 
         Assert.True(await processor.ProcessAsync(evt, "{}"));

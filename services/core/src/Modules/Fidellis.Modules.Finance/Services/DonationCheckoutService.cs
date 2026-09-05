@@ -10,6 +10,7 @@ namespace Fidellis.Modules.Finance.Services;
 /// <summary>
 /// Cria a doação (pendente) e o pedido PIX no PSP, persistindo os ids do provedor e o índice
 /// global <c>catalog.psp_orders</c> (usado depois pelo webhook para resolver o tenant).
+/// O helper <see cref="CreatePixChargeAsync"/> é reusado pela cobrança recorrente (passo 2).
 /// </summary>
 public sealed class DonationCheckoutService(
     TenantDbContext tenantDb,
@@ -45,19 +46,34 @@ public sealed class DonationCheckoutService(
         };
         tenantDb.Donations.Add(donation);
 
-        // Split 100% para a unidade: usa o recebedor da organization, se cadastrado.
+        var order = await CreatePixChargeAsync(donation, donor, cmd.Description, ct);
+
+        await tenantDb.SaveChangesAsync(ct);
+        await catalogDb.SaveChangesAsync(ct);
+
+        return new CheckoutResult(donation.Id, donation.Status, order.QrCode, order.QrCodeUrl, order.ExpiresAt);
+    }
+
+    /// <summary>
+    /// Gera o pedido PIX para uma doação já criada (avulsa ou de ciclo recorrente): aplica o split
+    /// 100% para a unidade (se houver recebedor), grava os ids do PSP na doação e adiciona o índice
+    /// <c>catalog.psp_orders</c>. Não faz <c>SaveChanges</c> — quem chama persiste.
+    /// </summary>
+    public async Task<PixOrderResult> CreatePixChargeAsync(
+        Donation donation, Donor donor, string? description = null, CancellationToken ct = default)
+    {
         var recipient = await tenantDb.PspRecipients
-            .Where(r => r.OrganizationId == cmd.OrganizationId && r.Status == "active")
+            .Where(r => r.OrganizationId == donation.OrganizationId && r.Status == "active")
             .Select(r => r.ProviderRecipientId)
             .FirstOrDefaultAsync(ct);
 
         var order = await gateway.CreatePixOrderAsync(new CreatePixOrderRequest(
-            Amount: cmd.Amount,
-            DonorName: cmd.DonorName,
-            DonorEmail: cmd.DonorEmail,
-            DonorDocument: cmd.DonorDocument,
+            Amount: donation.Amount,
+            DonorName: donor.Name,
+            DonorEmail: donor.Email ?? "",
+            DonorDocument: donor.Document ?? "",
             RecipientId: recipient,
-            Description: cmd.Description ?? "Doação"), ct);
+            Description: description ?? "Doação"), ct);
 
         donation.PspOrderId = order.OrderId;
         donation.PspChargeId = order.ChargeId;
@@ -66,9 +82,6 @@ public sealed class DonationCheckoutService(
         donation.ExpiresAt = order.ExpiresAt;
         donation.Status = order.Status is { Length: > 0 } s ? s : "pending";
 
-        await tenantDb.SaveChangesAsync(ct);
-
-        // Índice global pedido->tenant (o webhook não carrega nosso JWT).
         if (!string.IsNullOrEmpty(order.OrderId))
         {
             catalogDb.PspOrders.Add(new PspOrder
@@ -77,9 +90,8 @@ public sealed class DonationCheckoutService(
                 TenantSlug = tenant.TenantId!,
                 DonationId = donation.Id,
             });
-            await catalogDb.SaveChangesAsync(ct);
         }
 
-        return new CheckoutResult(donation.Id, donation.Status, order.QrCode, order.QrCodeUrl, order.ExpiresAt);
+        return order;
     }
 }

@@ -26,6 +26,7 @@ public sealed class TenantDbContext(
     public DbSet<Campaign> Campaigns => Set<Campaign>();
     public DbSet<PspRecipient> PspRecipients => Set<PspRecipient>();
     public DbSet<PaymentEvent> PaymentEvents => Set<PaymentEvent>();
+    public DbSet<RecurringDonation> RecurringDonations => Set<RecurringDonation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -97,6 +98,15 @@ public sealed class TenantDbContext(
             b.HasKey(x => x.Id);
             b.HasIndex(x => x.ProviderEventId).IsUnique();
             b.Property(x => x.Payload).HasColumnType("jsonb");
+        });
+
+        modelBuilder.Entity<RecurringDonation>(b =>
+        {
+            b.ToTable("recurring_donations");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => new { x.Status, x.NextChargeAt });
+            b.HasIndex(x => x.OrganizationId);
+            b.Property(x => x.Amount).HasPrecision(18, 2);
         });
     }
 }
