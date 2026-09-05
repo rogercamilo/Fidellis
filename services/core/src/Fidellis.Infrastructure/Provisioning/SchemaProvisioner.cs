@@ -147,6 +147,28 @@ public sealed class SchemaProvisioner(
             ALTER TABLE "{schema}".donations ADD COLUMN IF NOT EXISTS expires_at      timestamptz;
             ALTER TABLE "{schema}".donations ADD COLUMN IF NOT EXISTS paid_at         timestamptz;
 
+            -- Recorrência (passo 2).
+            CREATE TABLE IF NOT EXISTS "{schema}".recurring_donations (
+                id               uuid PRIMARY KEY,
+                organization_id  uuid NOT NULL,
+                donor_id         uuid NOT NULL,
+                amount           numeric(18,2) NOT NULL,
+                frequency        varchar(20) NOT NULL DEFAULT 'monthly',
+                day_of_month     int NOT NULL DEFAULT 1,
+                status           varchar(20) NOT NULL DEFAULT 'active',
+                next_charge_at   timestamptz NOT NULL,
+                attempt          int NOT NULL DEFAULT 0,
+                last_donation_id uuid,
+                canceled_at      timestamptz,
+                created_at       timestamptz NOT NULL DEFAULT now()
+            );
+            CREATE INDEX IF NOT EXISTS ix_recurring_due
+                ON "{schema}".recurring_donations (status, next_charge_at);
+
+            ALTER TABLE "{schema}".donations ADD COLUMN IF NOT EXISTS recurring_donation_id uuid;
+            ALTER TABLE "{schema}".donations ADD COLUMN IF NOT EXISTS due_at                timestamptz;
+            ALTER TABLE "{schema}".donations ADD COLUMN IF NOT EXISTS attempt               int NOT NULL DEFAULT 0;
+
             CREATE TABLE IF NOT EXISTS "{schema}".payment_events (
                 id                 uuid PRIMARY KEY,
                 provider           varchar(30)  NOT NULL DEFAULT 'pagarme',

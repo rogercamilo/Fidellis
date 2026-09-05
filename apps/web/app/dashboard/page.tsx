@@ -31,8 +31,12 @@ export default function DashboardPage() {
         <strong style={{ color: 'var(--fg)' }}>{session.activeTenant ?? '— selecione —'}</strong>
       </p>
 
-      <p>
+      <p style={{ display: 'flex', gap: '0.75rem' }}>
         <Link className="btn" href="/dashboard/cobranca">Nova cobrança (PIX)</Link>
+        <Link className="btn" href="/dashboard/recorrencia"
+          style={{ background: 'transparent', color: 'var(--accent)', border: '1px solid var(--border)' }}>
+          Recorrência (dízimo)
+        </Link>
       </p>
 
       <div className="card">

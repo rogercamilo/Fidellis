@@ -20,4 +20,9 @@ public sealed class Donation : Entity
     public string? PixQrCodeUrl { get; set; }
     public DateTimeOffset? ExpiresAt { get; set; }
     public DateTimeOffset? PaidAt { get; set; }
+
+    // Ciclo de recorrência (passo 2). Nulo em doações avulsas.
+    public Guid? RecurringDonationId { get; set; }
+    public DateTimeOffset? DueAt { get; set; }
+    public int Attempt { get; set; }
 }

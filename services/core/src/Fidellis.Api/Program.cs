@@ -5,6 +5,7 @@ using Fidellis.Modules.Accounting;
 using Fidellis.Modules.Audit;
 using Fidellis.Modules.Donations;
 using Fidellis.Modules.Finance;
+using Fidellis.Modules.Finance.Services;
 using Fidellis.Modules.Reporting;
 using Fidellis.Modules.Tenant;
 using StackExchange.Redis;
@@ -36,6 +37,18 @@ builder.Services
     .AddAccountingModule()
     .AddReportingModule()
     .AddAuditModule();
+
+// Motor de recorrência/dunning: opções do ambiente + worker (desligado em testes/CI via BILLING_ENABLED=false).
+var billingOptions = new BillingOptions
+{
+    Enabled = config["BILLING_ENABLED"] is not "false",
+    IntervalSeconds = int.TryParse(config["BILLING_INTERVAL_SECONDS"], out var iv) ? iv : 300,
+    DunningDays = ParseDunning(config["BILLING_DUNNING_DAYS"]),
+    CycleExpirySeconds = int.TryParse(config["BILLING_CYCLE_EXPIRY_SECONDS"], out var ce) ? ce : 86400,
+};
+builder.Services.AddSingleton(billingOptions);
+if (billingOptions.Enabled)
+    builder.Services.AddHostedService<BillingWorker>();
 
 builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
     .WithOrigins(webOrigin)
@@ -123,6 +136,17 @@ static string? NormalizeRedis(string? url)
     return url.StartsWith("redis://", StringComparison.OrdinalIgnoreCase)
         ? url["redis://".Length..].TrimEnd('/')
         : url;
+}
+
+// Parseia "1,3,5" -> [1,3,5]; vazio/ inválido usa a agenda padrão.
+static int[] ParseDunning(string? csv)
+{
+    if (string.IsNullOrWhiteSpace(csv)) return [1, 3, 5];
+    var days = csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Select(s => int.TryParse(s, out var d) ? d : -1)
+        .Where(d => d > 0)
+        .ToArray();
+    return days.Length > 0 ? days : [1, 3, 5];
 }
 
 // Exposto para o WebApplicationFactory nos testes de integração.

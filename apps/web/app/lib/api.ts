@@ -75,3 +75,56 @@ export async function getDonation(token: string, id: string): Promise<DonationSt
   if (!res.ok) throw new Error(`Falha ao consultar doação (${res.status}).`);
   return res.json() as Promise<DonationStatus>;
 }
+
+// ---- Doações recorrentes (dízimo mensal) ----
+
+export interface CreateRecurringInput {
+  organizationId: string;
+  amount: number;
+  dayOfMonth: number;
+  donor: { name: string; email?: string; document: string };
+}
+
+export interface RecurringDonation {
+  id: string;
+  organizationId: string;
+  amount: number;
+  dayOfMonth: number;
+  status: string;
+  nextChargeAt: string;
+  attempt: number;
+}
+
+export async function createRecurring(token: string, input: CreateRecurringInput): Promise<RecurringDonation> {
+  const res = await fetch(`${BFF_URL}/api/finance/recurring-donations`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? `Falha ao criar recorrência (${res.status}).`);
+  }
+  return res.json() as Promise<RecurringDonation>;
+}
+
+export async function listRecurring(token: string): Promise<RecurringDonation[]> {
+  const res = await fetch(`${BFF_URL}/api/finance/recurring-donations`, {
+    headers: { authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Falha ao listar recorrências (${res.status}).`);
+  return res.json() as Promise<RecurringDonation[]>;
+}
+
+export async function actOnRecurring(
+  token: string,
+  id: string,
+  action: 'pause' | 'resume' | 'cancel',
+): Promise<RecurringDonation> {
+  const res = await fetch(`${BFF_URL}/api/finance/recurring-donations/${id}/${action}`, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Falha ao ${action} recorrência (${res.status}).`);
+  return res.json() as Promise<RecurringDonation>;
+}

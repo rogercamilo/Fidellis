@@ -26,6 +26,9 @@ public static class DependencyInjection
         // Contexto de tenant por request (definido pelo middleware da API).
         services.AddScoped<ITenantContext, TenantContext>();
 
+        // Relógio (fake nos testes).
+        services.AddSingleton<IClock, SystemClock>();
+
         services.AddDbContext<CatalogDbContext>(o => o
             .UseNpgsql(options.ConnectionString)
             .UseSnakeCaseNamingConvention());

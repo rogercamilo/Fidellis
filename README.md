@@ -77,6 +77,14 @@ fluxo completo:
 3. O webhook confirma o pagamento de forma idempotente e concilia (partida dobrada). O webhook fala
    **direto com o core**, não pelo BFF.
 
+### Recorrência (dízimo mensal) + dunning
+
+O gestor cria recorrências em **/dashboard/recorrencia**. Um worker no core (`BillingWorker`) gera a
+cobrança PIX de cada ciclo e aplica a régua de **dunning** (D+1/D+3/D+5 → `past_due`). Configuração no
+`.env` (`BILLING_ENABLED`, `BILLING_INTERVAL_SECONDS`, `BILLING_DUNNING_DAYS`,
+`BILLING_CYCLE_EXPIRY_SECONDS`). Em CI/testes use `BILLING_ENABLED=false`. Ver
+[`ADR-0007`](docs/architecture/ADR-0007-recurring-donations-dunning.md).
+
 ## Status
 
 🚧 Primeiro entregável: **scaffold + arquitetura** (base rodável, sem a lógica de negócio profunda
