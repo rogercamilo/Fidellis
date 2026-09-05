@@ -18,6 +18,7 @@ public sealed class TenantDbContext(
             "Nenhum tenant resolvido para o request; TenantDbContext exige um tenant.");
 
     public DbSet<Organization> Organizations => Set<Organization>();
+    public DbSet<OrgMember> OrgMembers => Set<OrgMember>();
     public DbSet<Account> Accounts => Set<Account>();
     public DbSet<Transaction> Transactions => Set<Transaction>();
     public DbSet<AccountingEntry> AccountingEntries => Set<AccountingEntry>();
@@ -36,6 +37,14 @@ public sealed class TenantDbContext(
         {
             b.ToTable("organizations");
             b.HasKey(x => x.Id);
+        });
+
+        modelBuilder.Entity<OrgMember>(b =>
+        {
+            b.ToTable("org_members");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => new { x.UserId, x.OrganizationId }).IsUnique();
+            b.HasIndex(x => x.OrganizationId);
         });
 
         modelBuilder.Entity<Account>(b =>

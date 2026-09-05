@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
+import { OrganizationPicker } from '../../components/OrganizationPicker';
 import {
   actOnRecurring,
   createRecurring,
@@ -46,6 +47,10 @@ export default function RecorrenciaPage() {
       setError('Sessão não encontrada. Faça login novamente.');
       return;
     }
+    if (!organizationId) {
+      setError('Selecione ou crie uma unidade.');
+      return;
+    }
     setLoading(true);
     try {
       await createRecurring(token, {
@@ -88,9 +93,7 @@ export default function RecorrenciaPage() {
       </p>
 
       <form className="card" onSubmit={onSubmit}>
-        <label htmlFor="org">Organization ID (unidade)</label>
-        <input id="org" value={organizationId} onChange={(e) => setOrganizationId(e.target.value)} required
-          placeholder="uuid da paróquia/unidade" />
+        <OrganizationPicker token={token} value={organizationId} onChange={setOrganizationId} />
 
         <div style={{ display: 'flex', gap: '1rem' }}>
           <div style={{ flex: 1 }}>

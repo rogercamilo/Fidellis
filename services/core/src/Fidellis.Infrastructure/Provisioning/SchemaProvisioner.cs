@@ -74,6 +74,15 @@ public sealed class SchemaProvisioner(
                 created_at timestamptz NOT NULL DEFAULT now()
             );
 
+            CREATE TABLE IF NOT EXISTS "{schema}".org_members (
+                id              uuid PRIMARY KEY,
+                user_id         uuid NOT NULL,
+                organization_id uuid NOT NULL,
+                role            varchar(50) NOT NULL DEFAULT 'member',
+                created_at      timestamptz NOT NULL DEFAULT now(),
+                UNIQUE (user_id, organization_id)
+            );
+
             CREATE TABLE IF NOT EXISTS "{schema}".accounts (
                 id              uuid PRIMARY KEY,
                 organization_id uuid NOT NULL,

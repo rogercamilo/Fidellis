@@ -23,8 +23,9 @@ public static class DependencyInjection
     {
         services.AddSingleton(options);
 
-        // Contexto de tenant por request (definido pelo middleware da API).
+        // Contexto de tenant e de usuário por request (definidos pelo middleware da API).
         services.AddScoped<ITenantContext, TenantContext>();
+        services.AddScoped<ICurrentUser, CurrentUser>();
 
         // Relógio (fake nos testes).
         services.AddSingleton<IClock, SystemClock>();
