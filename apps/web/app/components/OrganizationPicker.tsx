@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { createOrganization, listOrganizations, type Organization } from '../lib/api';
+import { createOrganization, listMyOrganizations, type Organization } from '../lib/api';
 
 /**
  * Seletor de unidade (organization). Lista as unidades do tenant e permite criar uma nova inline —
@@ -24,7 +24,7 @@ export function OrganizationPicker({
   const load = useCallback(
     async (t: string) => {
       try {
-        const list = await listOrganizations(t);
+        const list = await listMyOrganizations(t);
         setOrgs(list);
         if (!value && list[0]) onChange(list[0].id);
       } catch (e) {
@@ -45,7 +45,7 @@ export function OrganizationPicker({
     try {
       const created = await createOrganization(token, newName.trim());
       setNewName('');
-      const list = await listOrganizations(token);
+      const list = await listMyOrganizations(token);
       setOrgs(list);
       onChange(created.id);
     } catch (e) {

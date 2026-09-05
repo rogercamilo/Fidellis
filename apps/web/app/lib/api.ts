@@ -44,6 +44,15 @@ export async function listOrganizations(token: string): Promise<Organization[]> 
   return res.json() as Promise<Organization[]>;
 }
 
+/** Unidades do usuário logado (as suas + filiais). */
+export async function listMyOrganizations(token: string): Promise<Organization[]> {
+  const res = await fetch(`${BFF_URL}/api/organizations/mine`, {
+    headers: { authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Falha ao listar minhas unidades (${res.status}).`);
+  return res.json() as Promise<Organization[]>;
+}
+
 export async function createOrganization(token: string, name: string): Promise<Organization> {
   const res = await fetch(`${BFF_URL}/api/organizations`, {
     method: 'POST',
