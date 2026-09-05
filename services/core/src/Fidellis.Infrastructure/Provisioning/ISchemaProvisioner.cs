@@ -8,4 +8,11 @@ public interface ISchemaProvisioner
 
     /// <summary>Cria o schema do tenant e suas tabelas (idempotente). Retorna o nome do schema.</summary>
     Task<string> ProvisionTenantAsync(string slug, CancellationToken ct = default);
+
+    /// <summary>
+    /// Reaplica o DDL (idempotente) a todos os tenants já registrados em <c>catalog.tenants</c> —
+    /// "migra" schemas existentes quando novas tabelas/colunas são adicionadas. Ponte até
+    /// migrações EF versionadas (ADR-0002).
+    /// </summary>
+    Task EnsureAllTenantsAsync(CancellationToken ct = default);
 }

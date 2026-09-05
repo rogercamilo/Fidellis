@@ -31,6 +31,10 @@ export default function DashboardPage() {
         <strong style={{ color: 'var(--fg)' }}>{session.activeTenant ?? '— selecione —'}</strong>
       </p>
 
+      <p>
+        <Link className="btn" href="/dashboard/cobranca">Nova cobrança (PIX)</Link>
+      </p>
+
       <div className="card">
         <h3 style={{ marginTop: 0 }}>Suas instituições</h3>
         {session.tenants.length === 0 ? (

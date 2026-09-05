@@ -1,21 +1,179 @@
+using System.Text;
+using Fidellis.Infrastructure;
+using Fidellis.Infrastructure.Payments;
+using Fidellis.Infrastructure.Persistence;
+using Fidellis.Modules.Finance.Services;
 using Fidellis.SharedKernel;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Fidellis.Modules.Finance;
 
-/// <summary>Skeleton do módulo Finance — orquestração de pagamento/repasse (PSP no roadmap).</summary>
+/// <summary>
+/// Módulo Finance — cobrança real de doações via PIX (Pagar.me): checkout, consulta de status,
+/// recebedores (split Rede→Unidade) e o receptor de webhook idempotente que faz a conciliação.
+/// </summary>
 public static class FinanceModule
 {
-    public static IServiceCollection AddFinanceModule(this IServiceCollection services) => services;
+    public static IServiceCollection AddFinanceModule(this IServiceCollection services)
+    {
+        services.AddScoped<DonationCheckoutService>();
+        services.AddScoped<WebhookProcessor>();
+        services.AddScoped<RecipientService>();
+        return services;
+    }
 
     public static IEndpointRouteBuilder MapFinanceModule(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/api/finance/ping", (ITenantContext tenant) =>
-            Results.Ok(new { module = "Finance", tenant = tenant.TenantId, schema = tenant.SchemaName }))
-            .WithTags("Finance");
+        var group = app.MapGroup("/api/finance").WithTags("Finance");
+
+        group.MapGet("/ping", (ITenantContext tenant) =>
+            Results.Ok(new { module = "Finance", tenant = tenant.TenantId, schema = tenant.SchemaName }));
+
+        // Cria uma cobrança PIX (gestor autenticado; tenant vem do JWT).
+        group.MapPost("/donations", async (
+            CreateDonationRequest req,
+            DonationCheckoutService checkout,
+            ITenantContext tenant,
+            CancellationToken ct) =>
+        {
+            if (!tenant.HasTenant)
+                return Results.BadRequest(new { error = "Nenhum tenant no request." });
+            if (req.Amount <= 0)
+                return Results.BadRequest(new { error = "amount deve ser positivo." });
+            if (req.Donor is null || string.IsNullOrWhiteSpace(req.Donor.Name) || string.IsNullOrWhiteSpace(req.Donor.Document))
+                return Results.BadRequest(new { error = "donor.name e donor.document são obrigatórios (PIX exige CPF/CNPJ)." });
+
+            var result = await checkout.CreateAsync(new CheckoutCommand(
+                req.OrganizationId, req.Amount, req.Donor.Name, req.Donor.Email ?? "", req.Donor.Document,
+                req.CampaignId, req.Description), ct);
+
+            return Results.Created($"/api/finance/donations/{result.DonationId}", result);
+        });
+
+        // Status de uma doação (reconsulta o PSP p/ exibição quando ainda pendente).
+        group.MapGet("/donations/{id:guid}", async (
+            Guid id,
+            TenantDbContext db,
+            IPaymentGateway gateway,
+            CancellationToken ct) =>
+        {
+            var d = await db.Donations.FirstOrDefaultAsync(x => x.Id == id, ct);
+            if (d is null) return Results.NotFound();
+
+            string? pspStatus = null;
+            if (d.Status == "pending" && d.PspChargeId is { Length: > 0 } chargeId)
+            {
+                try { pspStatus = (await gateway.GetChargeAsync(chargeId, ct)).Status; }
+                catch { /* exibição best-effort; webhook é a fonte de verdade */ }
+            }
+
+            return Results.Ok(new
+            {
+                id = d.Id,
+                status = d.Status,
+                pspStatus,
+                amount = d.Amount,
+                qrCode = d.PixQrCode,
+                qrCodeUrl = d.PixQrCodeUrl,
+                expiresAt = d.ExpiresAt,
+                paidAt = d.PaidAt,
+            });
+        });
+
+        // Cadastra o recebedor (destino do split) de uma unidade.
+        group.MapPost("/recipients", async (
+            CreateRecipientHttpRequest req,
+            RecipientService recipients,
+            ITenantContext tenant,
+            CancellationToken ct) =>
+        {
+            if (!tenant.HasTenant)
+                return Results.BadRequest(new { error = "Nenhum tenant no request." });
+
+            var result = await recipients.CreateAsync(
+                req.OrganizationId, req.Name, req.Email, req.Document, req.PixKey, ct);
+            return Results.Created($"/api/finance/recipients/{result.Id}", result);
+        });
+
+        // Receptor de webhook do Pagar.me — FORA da resolução de tenant por JWT.
+        group.MapPost("/webhooks/pagarme", async (
+            HttpRequest request,
+            CatalogDbContext catalog,
+            ITenantContext tenant,
+            WebhookProcessor processor,
+            InfrastructureOptions options,
+            CancellationToken ct) =>
+        {
+            using var reader = new StreamReader(request.Body, Encoding.UTF8);
+            var raw = await reader.ReadToEndAsync(ct);
+
+            if (!WebhookAuthOk(request, options))
+                return Results.Unauthorized();
+
+            PagarmeWebhookEvent evt;
+            try { evt = PagarmeWebhook.Parse(raw); }
+            catch { return Results.BadRequest(new { error = "payload inválido." }); }
+
+            if (string.IsNullOrEmpty(evt.OrderId))
+                return Results.Ok(new { ignored = "sem order id" });
+
+            var slug = await catalog.PspOrders
+                .Where(o => o.ProviderOrderId == evt.OrderId)
+                .Select(o => o.TenantSlug)
+                .FirstOrDefaultAsync(ct);
+
+            if (slug is null)
+                return Results.Ok(new { ignored = "order desconhecido" });
+
+            tenant.SetTenant(slug);
+            var processed = await processor.ProcessAsync(evt, raw, ct);
+            return Results.Ok(new { processed });
+        });
+
         return app;
     }
+
+    private static bool WebhookAuthOk(HttpRequest request, InfrastructureOptions options)
+    {
+        // Se não houver credenciais configuradas, não exige auth (dev). Se houver, valida o Basic auth.
+        if (string.IsNullOrEmpty(options.PagarmeWebhookUser))
+            return true;
+
+        var header = request.Headers.Authorization.ToString();
+        if (!header.StartsWith("Basic ", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        try
+        {
+            var decoded = Encoding.UTF8.GetString(Convert.FromBase64String(header["Basic ".Length..].Trim()));
+            var sep = decoded.IndexOf(':');
+            if (sep < 0) return false;
+            return decoded[..sep] == options.PagarmeWebhookUser
+                && decoded[(sep + 1)..] == options.PagarmeWebhookPassword;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }
+
+public sealed record DonorInput(string Name, string? Email, string Document);
+
+public sealed record CreateDonationRequest(
+    Guid OrganizationId,
+    decimal Amount,
+    DonorInput Donor,
+    Guid? CampaignId = null,
+    string? Description = null);
+
+public sealed record CreateRecipientHttpRequest(
+    Guid OrganizationId,
+    string Name,
+    string Email,
+    string Document,
+    string? PixKey = null);

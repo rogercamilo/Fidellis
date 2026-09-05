@@ -14,6 +14,7 @@ public sealed class CatalogDbContext(DbContextOptions<CatalogDbContext> options)
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<User> Users => Set<User>();
     public DbSet<Membership> Memberships => Set<Membership>();
+    public DbSet<PspOrder> PspOrders => Set<PspOrder>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -42,6 +43,14 @@ public sealed class CatalogDbContext(DbContextOptions<CatalogDbContext> options)
             b.ToTable("memberships");
             b.HasKey(x => x.Id);
             b.HasIndex(x => new { x.UserId, x.TenantId }).IsUnique();
+        });
+
+        modelBuilder.Entity<PspOrder>(b =>
+        {
+            b.ToTable("psp_orders");
+            b.HasKey(x => x.ProviderOrderId);
+            b.Property(x => x.ProviderOrderId).HasMaxLength(100);
+            b.Property(x => x.TenantSlug).HasMaxLength(63);
         });
     }
 }

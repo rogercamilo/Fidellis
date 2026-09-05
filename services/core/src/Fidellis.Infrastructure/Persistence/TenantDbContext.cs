@@ -22,6 +22,10 @@ public sealed class TenantDbContext(
     public DbSet<Transaction> Transactions => Set<Transaction>();
     public DbSet<AccountingEntry> AccountingEntries => Set<AccountingEntry>();
     public DbSet<Donation> Donations => Set<Donation>();
+    public DbSet<Donor> Donors => Set<Donor>();
+    public DbSet<Campaign> Campaigns => Set<Campaign>();
+    public DbSet<PspRecipient> PspRecipients => Set<PspRecipient>();
+    public DbSet<PaymentEvent> PaymentEvents => Set<PaymentEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -62,7 +66,37 @@ public sealed class TenantDbContext(
             b.ToTable("donations");
             b.HasKey(x => x.Id);
             b.HasIndex(x => x.OrganizationId);
+            b.HasIndex(x => x.PspChargeId);
             b.Property(x => x.Amount).HasPrecision(18, 2);
+        });
+
+        modelBuilder.Entity<Donor>(b =>
+        {
+            b.ToTable("donors");
+            b.HasKey(x => x.Id);
+        });
+
+        modelBuilder.Entity<Campaign>(b =>
+        {
+            b.ToTable("campaigns");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => x.OrganizationId);
+            b.Property(x => x.GoalAmount).HasPrecision(18, 2);
+        });
+
+        modelBuilder.Entity<PspRecipient>(b =>
+        {
+            b.ToTable("psp_recipients");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => x.OrganizationId);
+        });
+
+        modelBuilder.Entity<PaymentEvent>(b =>
+        {
+            b.ToTable("payment_events");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => x.ProviderEventId).IsUnique();
+            b.Property(x => x.Payload).HasColumnType("jsonb");
         });
     }
 }

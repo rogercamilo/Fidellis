@@ -1,3 +1,6 @@
+using System.Net.Http.Headers;
+using System.Text;
+using Fidellis.Infrastructure.Payments;
 using Fidellis.Infrastructure.Persistence;
 using Fidellis.Infrastructure.Provisioning;
 using Fidellis.SharedKernel;
@@ -33,6 +36,14 @@ public static class DependencyInjection
             .ReplaceService<IModelCacheKeyFactory, SchemaModelCacheKeyFactory>());
 
         services.AddSingleton<ISchemaProvisioner, SchemaProvisioner>();
+
+        // Gateway de pagamento (Pagar.me) como HttpClient tipado com Basic auth (sk como usuário).
+        services.AddHttpClient<IPaymentGateway, PagarmePaymentGateway>(client =>
+        {
+            client.BaseAddress = new Uri(options.PagarmeBaseUrl.TrimEnd('/') + "/");
+            var basic = Convert.ToBase64String(Encoding.UTF8.GetBytes($"{options.PagarmeApiKey}:"));
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", basic);
+        });
 
         // Redis registrado de forma preguiçosa: só conecta quando resolvido (readiness),
         // então build/CI não exigem um Redis no ar.
