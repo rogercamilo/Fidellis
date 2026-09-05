@@ -1,0 +1,14 @@
+{
+  // Deploy do web (Next.js) na Cloudflare via OpenNext — configuração inicial (roadmap).
+  // Ver infra/cloudflare/README.md. O adapter é adicionado em entregável futuro:
+  //   pnpm add -D @opennextjs/cloudflare && npx opennextjs-cloudflare build
+  "name": "fidellis-web",
+  "compatibility_date": "2025-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": ".open-next/worker.js",
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  }
+  // Segredos (NEXT_PUBLIC_BFF_URL é público; demais via `wrangler secret put`).
+}

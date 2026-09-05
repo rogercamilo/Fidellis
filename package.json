@@ -1,0 +1,24 @@
+{
+  "name": "fidellis",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Fidellis — SaaS multi-tenant de captação de doações para o terceiro setor religioso",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "infra:up": "docker compose -f infra/docker/docker-compose.yml up -d",
+    "infra:down": "docker compose -f infra/docker/docker-compose.yml down",
+    "core:build": "dotnet build services/core/Fidellis.sln",
+    "core:test": "dotnet test services/core/Fidellis.sln",
+    "core:run": "dotnet run --project services/core/src/Fidellis.Api"
+  },
+  "devDependencies": {
+    "turbo": "^2.1.3"
+  }
+}

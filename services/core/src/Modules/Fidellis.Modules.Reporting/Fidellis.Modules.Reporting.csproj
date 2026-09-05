@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Fidellis.SharedKernel\Fidellis.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\Fidellis.Infrastructure\Fidellis.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

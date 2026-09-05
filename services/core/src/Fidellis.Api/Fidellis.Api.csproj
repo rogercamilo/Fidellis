@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Fidellis.SharedKernel\Fidellis.SharedKernel.csproj" />
+    <ProjectReference Include="..\Fidellis.Infrastructure\Fidellis.Infrastructure.csproj" />
+    <ProjectReference Include="..\Modules\Fidellis.Modules.Tenant\Fidellis.Modules.Tenant.csproj" />
+    <ProjectReference Include="..\Modules\Fidellis.Modules.Donations\Fidellis.Modules.Donations.csproj" />
+    <ProjectReference Include="..\Modules\Fidellis.Modules.Finance\Fidellis.Modules.Finance.csproj" />
+    <ProjectReference Include="..\Modules\Fidellis.Modules.Accounting\Fidellis.Modules.Accounting.csproj" />
+    <ProjectReference Include="..\Modules\Fidellis.Modules.Reporting\Fidellis.Modules.Reporting.csproj" />
+    <ProjectReference Include="..\Modules\Fidellis.Modules.Audit\Fidellis.Modules.Audit.csproj" />
+  </ItemGroup>
+
+</Project>

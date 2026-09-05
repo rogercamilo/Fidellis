@@ -1,0 +1,35 @@
+name: core (.NET)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "services/core/**"
+      - ".github/workflows/core.yml"
+  pull_request:
+    paths:
+      - "services/core/**"
+      - ".github/workflows/core.yml"
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/core
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore
+        run: dotnet restore Fidellis.slnx
+
+      - name: Build
+        run: dotnet build Fidellis.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test Fidellis.slnx --configuration Release --no-build --verbosity normal

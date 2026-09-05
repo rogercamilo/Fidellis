@@ -1,0 +1,41 @@
+# ---------- Node / JS ----------
+node_modules/
+.pnpm-store/
+dist/
+build/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+.turbo/
+
+# ---------- .NET ----------
+bin/
+obj/
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+.vs/
+artifacts/
+TestResults/
+
+# ---------- Env / secrets ----------
+.env
+.env.*
+!.env.example
+*.local
+
+# ---------- Editors / OS ----------
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ---------- Cloudflare ----------
+.wrangler/
+.dev.vars
+
+# ---------- Logs ----------
+*.log
+npm-debug.log*

@@ -1,0 +1,19 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Fidellis.Api/Fidellis.Api.csproj" />
+    <Project Path="src/Fidellis.Infrastructure/Fidellis.Infrastructure.csproj" />
+    <Project Path="src/Fidellis.SharedKernel/Fidellis.SharedKernel.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/">
+    <Project Path="src/Modules/Fidellis.Modules.Accounting/Fidellis.Modules.Accounting.csproj" />
+    <Project Path="src/Modules/Fidellis.Modules.Audit/Fidellis.Modules.Audit.csproj" />
+    <Project Path="src/Modules/Fidellis.Modules.Donations/Fidellis.Modules.Donations.csproj" />
+    <Project Path="src/Modules/Fidellis.Modules.Finance/Fidellis.Modules.Finance.csproj" />
+    <Project Path="src/Modules/Fidellis.Modules.Reporting/Fidellis.Modules.Reporting.csproj" />
+    <Project Path="src/Modules/Fidellis.Modules.Tenant/Fidellis.Modules.Tenant.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Fidellis.IntegrationTests/Fidellis.IntegrationTests.csproj" />
+    <Project Path="tests/Fidellis.UnitTests/Fidellis.UnitTests.csproj" />
+  </Folder>
+</Solution>
