@@ -47,7 +47,7 @@ relacionamento com o doador que os concorrentes não priorizam.
 | ------------ | ---------------------------------------------------------------------- | --------------- |
 | **Tenant**   | Registro/provisionamento de instituições (schema `catalog` + `t_<slug>`)| **Funcional** (criar/listar tenant, provisiona schema) |
 | **Donations**| Campanhas, doações, doadores                                           | Skeleton (+ leitura por schema) |
-| **Finance**  | Orquestração de pagamento/repasse (PSP, split)                         | Skeleton        |
+| **Finance**  | Cobrança PIX (Pagar.me), webhook idempotente, conciliação, split       | **Funcional (PIX)** — checkout, webhook, partida dobrada |
 | **Accounting**| Razão contábil, recibos, prestação de contas                          | Skeleton        |
 | **Reporting**| Dashboards, exportações, consolidação da rede                          | Skeleton        |
 | **Audit**    | Trilha de auditoria / LGPD                                             | Skeleton        |
@@ -57,8 +57,10 @@ relacionamento com o doador que os concorrentes não priorizam.
 - **RF-01 Identidade global:** login por e-mail resolve o(s) tenant(s) do usuário (memberships/RBAC).
 - **RF-02 Provisionamento de tenant:** criar instituição cria schema isolado + tabelas.
 - **RF-03 Contexto de tenant:** toda operação de dados ocorre no schema do tenant do request.
-- **RF-04 Doações (roadmap):** criar campanha, receber doação (PIX/cartão/boleto), recorrência.
-- **RF-05 Repasse/split (roadmap):** dividir valores na hierarquia Rede→Unidade.
+- **RF-04 Doações:** receber doação via **PIX** (checkout com QR + conciliação por webhook);
+  campanha/recorrência e cartão/boleto seguem no roadmap.
+- **RF-05 Repasse/split:** doação vai 100% para a unidade (recebedor Pagar.me por unidade);
+  consolidação da rede fica no Reporting.
 - **RF-06 Recibos/prestação de contas (roadmap):** gerar recibo e lançamento contábil por doação.
 - **RF-07 Relatórios (roadmap):** dashboard por unidade e consolidado da rede; exportações.
 - **RF-08 Auditoria (roadmap):** registrar acessos/alterações sensíveis (LGPD).
@@ -67,14 +69,17 @@ relacionamento com o doador que os concorrentes não priorizam.
 
 - **Isolamento & LGPD:** dados por instituição isolados por schema; export/backup por tenant.
 - **Segurança:** hash Argon2; JWT assinado; segredos fora do versionamento; WAF/rate limiting na borda.
-- **Confiabilidade financeira:** idempotência de cobrança/webhook; conciliação (roadmap).
+- **Confiabilidade financeira:** idempotência de webhook (`payment_events`); reconsulta ao PSP como
+  fonte de verdade; conciliação PIX com partida dobrada. Recorrência/dunning no roadmap.
 - **Observabilidade:** health `live`/`ready` em BFF e core; logs estruturados (roadmap: tracing).
 - **Performance:** cache/fila em Redis; front na borda (Cloudflare).
 - **Portabilidade:** monorepo com CI reprodutível (Node e .NET).
 
 ## 8. Roadmap (pós-scaffold)
 
-1. **Cobrança real** (módulo Finance): checkout PIX/cartão/boleto, webhooks, conciliação.
+1. ✅ **Cobrança real via PIX** (módulo Finance): checkout PIX, webhook idempotente, conciliação e
+   split 100% p/ a unidade. **Entregue.** (Boleto/cartão desenhados na abstração Order/Charge.)
+   Ver [ADR-0006](../architecture/ADR-0006-payments-pix-pagarme.md).
 2. **PIX Automático recorrente + dunning.**
 3. **Razão contábil + recibos** (módulo Accounting).
 4. **CRM do doador + régua de relacionamento (WhatsApp/e-mail).**

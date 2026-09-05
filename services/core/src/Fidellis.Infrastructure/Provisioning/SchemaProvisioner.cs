@@ -46,6 +46,14 @@ public sealed class SchemaProvisioner(
                 created_at timestamptz NOT NULL DEFAULT now(),
                 UNIQUE (user_id, tenant_id)
             );
+
+            -- Índice global pedido->tenant: o webhook do PSP (sem nosso JWT) resolve o tenant por aqui.
+            CREATE TABLE IF NOT EXISTS "{CatalogSchema}".psp_orders (
+                provider_order_id varchar(100) PRIMARY KEY,
+                tenant_slug       varchar(63)  NOT NULL,
+                donation_id       uuid         NOT NULL,
+                created_at        timestamptz  NOT NULL DEFAULT now()
+            );
             """;
 
         await ExecuteAsync(ddl, ct);
@@ -92,6 +100,33 @@ public sealed class SchemaProvisioner(
                 created_at     timestamptz NOT NULL DEFAULT now()
             );
 
+            CREATE TABLE IF NOT EXISTS "{schema}".donors (
+                id         uuid PRIMARY KEY,
+                name       varchar(200) NOT NULL,
+                email      varchar(320),
+                document   varchar(20),
+                phone      varchar(30),
+                created_at timestamptz NOT NULL DEFAULT now()
+            );
+
+            CREATE TABLE IF NOT EXISTS "{schema}".campaigns (
+                id              uuid PRIMARY KEY,
+                organization_id uuid NOT NULL,
+                title           varchar(200) NOT NULL,
+                slug            varchar(120) NOT NULL,
+                goal_amount     numeric(18,2),
+                status          varchar(20) NOT NULL DEFAULT 'active',
+                created_at      timestamptz NOT NULL DEFAULT now()
+            );
+
+            CREATE TABLE IF NOT EXISTS "{schema}".psp_recipients (
+                id                    uuid PRIMARY KEY,
+                organization_id       uuid NOT NULL,
+                provider_recipient_id varchar(100) NOT NULL,
+                status                varchar(20) NOT NULL DEFAULT 'active',
+                created_at            timestamptz NOT NULL DEFAULT now()
+            );
+
             CREATE TABLE IF NOT EXISTS "{schema}".donations (
                 id              uuid PRIMARY KEY,
                 organization_id uuid NOT NULL,
@@ -101,11 +136,51 @@ public sealed class SchemaProvisioner(
                 donor_name      varchar(200),
                 created_at      timestamptz NOT NULL DEFAULT now()
             );
+
+            -- Colunas de pagamento adicionadas ao passo 1 (idempotente p/ tenants já provisionados).
+            ALTER TABLE "{schema}".donations ADD COLUMN IF NOT EXISTS donor_id        uuid;
+            ALTER TABLE "{schema}".donations ADD COLUMN IF NOT EXISTS campaign_id     uuid;
+            ALTER TABLE "{schema}".donations ADD COLUMN IF NOT EXISTS psp_order_id    varchar(100);
+            ALTER TABLE "{schema}".donations ADD COLUMN IF NOT EXISTS psp_charge_id   varchar(100);
+            ALTER TABLE "{schema}".donations ADD COLUMN IF NOT EXISTS pix_qr_code     text;
+            ALTER TABLE "{schema}".donations ADD COLUMN IF NOT EXISTS pix_qr_code_url text;
+            ALTER TABLE "{schema}".donations ADD COLUMN IF NOT EXISTS expires_at      timestamptz;
+            ALTER TABLE "{schema}".donations ADD COLUMN IF NOT EXISTS paid_at         timestamptz;
+
+            CREATE TABLE IF NOT EXISTS "{schema}".payment_events (
+                id                 uuid PRIMARY KEY,
+                provider           varchar(30)  NOT NULL DEFAULT 'pagarme',
+                provider_event_id  varchar(100) NOT NULL UNIQUE,
+                event_type         varchar(60)  NOT NULL,
+                charge_id          varchar(100),
+                payload            jsonb,
+                status             varchar(20)  NOT NULL DEFAULT 'received',
+                received_at        timestamptz  NOT NULL DEFAULT now(),
+                processed_at       timestamptz
+            );
             """;
 
         await ExecuteAsync(ddl, ct);
         logger.LogInformation("Schema do tenant {Schema} provisionado.", schema);
         return schema;
+    }
+
+    public async Task EnsureAllTenantsAsync(CancellationToken ct = default)
+    {
+        var slugs = new List<string>();
+        await using (var conn = new NpgsqlConnection(options.ConnectionString))
+        {
+            await conn.OpenAsync(ct);
+            await using var cmd = new NpgsqlCommand($"SELECT slug FROM \"{CatalogSchema}\".tenants", conn);
+            await using var reader = await cmd.ExecuteReaderAsync(ct);
+            while (await reader.ReadAsync(ct))
+                slugs.Add(reader.GetString(0));
+        }
+
+        foreach (var slug in slugs)
+            await ProvisionTenantAsync(slug, ct);
+
+        logger.LogInformation("DDL reaplicado a {Count} tenant(s).", slugs.Count);
     }
 
     private async Task ExecuteAsync(string sql, CancellationToken ct)

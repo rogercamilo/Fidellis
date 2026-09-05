@@ -29,7 +29,8 @@ Cloudflare (DNS + CDN + WAF)
   `transactions`, `accounting_entries`, `donations`).
 - **Módulos do core:** Tenant, Donations, Finance, Accounting, Reporting, Audit.
 - **Auth:** própria/standalone no BFF (JWT). Login global por e-mail resolve o tenant.
-- **PSP:** Pagar.me / Stone (integração de cobrança fora deste primeiro entregável).
+- **PSP:** Pagar.me / Stone — **cobrança PIX implementada** (checkout, webhook idempotente,
+  conciliação e split 100% p/ a unidade). Ver [`ADR-0006`](docs/architecture/ADR-0006-payments-pix-pagarme.md).
 
 Detalhes em [`docs/architecture`](docs/architecture/overview.md) e requisitos em
 [`docs/prd`](docs/prd/product-requirements.md).
@@ -63,6 +64,18 @@ pnpm dev                             # BFF :4000  |  web :3000
 ```
 
 Copie `.env.example` para `.env` antes de rodar.
+
+### Cobrança PIX (Pagar.me)
+
+O gestor gera cobranças em **/dashboard/cobranca** (o BFF anexa o tenant e encaminha ao core). Para o
+fluxo completo:
+
+1. Defina `PAGARME_API_KEY` (uma `sk_test_...` do sandbox) no `.env`.
+2. Exponha o core (`:5080`) por um **túnel público** (ex.: `cloudflared tunnel --url http://localhost:5080`
+   ou `ngrok http 5080`) e registre `<url-do-túnel>/api/finance/webhooks/pagarme` como webhook no
+   painel do Pagar.me, com o Basic auth de `PAGARME_WEBHOOK_USER`/`PAGARME_WEBHOOK_PASSWORD`.
+3. O webhook confirma o pagamento de forma idempotente e concilia (partida dobrada). O webhook fala
+   **direto com o core**, não pelo BFF.
 
 ## Status
 

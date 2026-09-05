@@ -27,3 +27,51 @@ export async function login(email: string, password: string, tenant?: string): P
   }
   return res.json() as Promise<LoginResult>;
 }
+
+// ---- Cobrança / doações (passa pelo BFF, que anexa o tenant e encaminha ao core) ----
+
+export interface CreateDonationInput {
+  organizationId: string;
+  amount: number;
+  donor: { name: string; email?: string; document: string };
+  description?: string;
+}
+
+export interface DonationCheckout {
+  donationId: string;
+  status: string;
+  qrCode: string;
+  qrCodeUrl?: string | null;
+  expiresAt?: string | null;
+}
+
+export interface DonationStatus {
+  id: string;
+  status: string;
+  pspStatus?: string | null;
+  amount: number;
+  qrCode?: string | null;
+  qrCodeUrl?: string | null;
+  paidAt?: string | null;
+}
+
+export async function createDonation(token: string, input: CreateDonationInput): Promise<DonationCheckout> {
+  const res = await fetch(`${BFF_URL}/api/finance/donations`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? `Falha ao criar cobrança (${res.status}).`);
+  }
+  return res.json() as Promise<DonationCheckout>;
+}
+
+export async function getDonation(token: string, id: string): Promise<DonationStatus> {
+  const res = await fetch(`${BFF_URL}/api/finance/donations/${id}`, {
+    headers: { authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Falha ao consultar doação (${res.status}).`);
+  return res.json() as Promise<DonationStatus>;
+}

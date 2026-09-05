@@ -23,6 +23,10 @@ builder.Services.AddInfrastructure(new InfrastructureOptions
 {
     ConnectionString = connectionString,
     RedisConnection = redisConnection,
+    PagarmeApiKey = config["PAGARME_API_KEY"],
+    PagarmeBaseUrl = config["PAGARME_BASE_URL"] ?? "https://api.pagar.me/core/v5",
+    PagarmeWebhookUser = config["PAGARME_WEBHOOK_USER"],
+    PagarmeWebhookPassword = config["PAGARME_WEBHOOK_PASSWORD"],
 });
 
 builder.Services
@@ -49,6 +53,7 @@ await using (var scope = app.Services.CreateAsyncScope())
     {
         var provisioner = scope.ServiceProvider.GetRequiredService<ISchemaProvisioner>();
         await provisioner.EnsureCatalogAsync();
+        await provisioner.EnsureAllTenantsAsync();
     }
     catch (Exception ex)
     {
