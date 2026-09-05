@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+import { OrganizationPicker } from '../../components/OrganizationPicker';
 import { createDonation, getDonation, type DonationCheckout, type LoginResult } from '../../lib/api';
 
 export default function CobrancaPage() {
@@ -30,6 +31,10 @@ export default function CobrancaPage() {
     setError(null);
     if (!token) {
       setError('Sessão não encontrada. Faça login novamente.');
+      return;
+    }
+    if (!organizationId) {
+      setError('Selecione ou crie uma unidade.');
       return;
     }
     setLoading(true);
@@ -74,9 +79,7 @@ export default function CobrancaPage() {
 
       {!checkout ? (
         <form className="card" onSubmit={onSubmit}>
-          <label htmlFor="org">Organization ID (unidade)</label>
-          <input id="org" value={organizationId} onChange={(e) => setOrganizationId(e.target.value)} required
-            placeholder="uuid da paróquia/unidade" />
+          <OrganizationPicker token={token} value={organizationId} onChange={setOrganizationId} />
 
           <label htmlFor="amount">Valor (R$)</label>
           <input id="amount" type="number" step="0.01" min="0.01" value={amount}

@@ -28,6 +28,35 @@ export async function login(email: string, password: string, tenant?: string): P
   return res.json() as Promise<LoginResult>;
 }
 
+// ---- Unidades (organizations) ----
+
+export interface Organization {
+  id: string;
+  name: string;
+  parentId?: string | null;
+}
+
+export async function listOrganizations(token: string): Promise<Organization[]> {
+  const res = await fetch(`${BFF_URL}/api/organizations`, {
+    headers: { authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Falha ao listar unidades (${res.status}).`);
+  return res.json() as Promise<Organization[]>;
+}
+
+export async function createOrganization(token: string, name: string): Promise<Organization> {
+  const res = await fetch(`${BFF_URL}/api/organizations`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? `Falha ao criar unidade (${res.status}).`);
+  }
+  return res.json() as Promise<Organization>;
+}
+
 // ---- Cobrança / doações (passa pelo BFF, que anexa o tenant e encaminha ao core) ----
 
 export interface CreateDonationInput {
