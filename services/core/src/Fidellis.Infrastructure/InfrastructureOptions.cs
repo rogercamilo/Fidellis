@@ -29,4 +29,10 @@ public sealed class InfrastructureOptions
 
     /// <summary>Dias sem doação para considerar um doador inativo (reativação).</summary>
     public int ReactivationDays { get; init; } = 90;
+
+    /// <summary>Segredo da aplicação (= JWT_SECRET) para assinar o link mágico do doador.</summary>
+    public string AppSecret { get; init; } = "change-me-in-prod-please-use-a-long-random-secret";
+
+    /// <summary>URL base do web para montar links (ex.: link mágico no e-mail).</summary>
+    public string AppBaseUrl { get; init; } = "http://localhost:3000";
 }

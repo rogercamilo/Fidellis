@@ -77,6 +77,14 @@ fluxo completo:
 3. O webhook confirma o pagamento de forma idempotente e concilia (partida dobrada). O webhook fala
    **direto com o core**, não pelo BFF.
 
+### Portal do doador + auditoria/LGPD
+
+Página pública **/doar/&lt;tenant&gt;** (doação PIX anônima por unidade) e **/portal/&lt;tenant&gt;**
+(link mágico por e-mail → recibos/histórico, sem senha). Endpoints públicos em `/api/public/{tenant}/*`
+(tenant pelo path). **Auditoria** em **/dashboard/auditoria** (`audit_log`); **LGPD** na página do
+doador (exportar dados, anonimizar, opt-out — respeitado pela régua). `APP_BASE_URL` no `.env` monta o
+link mágico. Ver [`ADR-0012`](docs/architecture/ADR-0012-donor-portal-audit-lgpd.md).
+
 ### Relatórios + consolidação da rede
 
 **/dashboard/relatorios** traz KPIs (arrecadado, ticket médio, doadores/recorrências ativas), série

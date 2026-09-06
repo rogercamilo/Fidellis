@@ -50,7 +50,7 @@ relacionamento com o doador que os concorrentes não priorizam.
 | **Finance**  | Cobrança PIX (Pagar.me), webhook idempotente, conciliação, split, **recorrência + dunning** | **Funcional (PIX)** — checkout, webhook, partida dobrada, dízimo mensal + dunning |
 | **Accounting**| Plano de contas, razão/balancete, recibos automáticos                 | **Funcional** — plano de contas, partida dobrada, balancete consolidado, recibos |
 | **Reporting**| Dashboards, série temporal, consolidação da rede                      | **Funcional** — overview, série mensal, consolidação por unidade (Recharts) |
-| **Audit**    | Trilha de auditoria / LGPD                                             | Skeleton        |
+| **Audit**    | Trilha de auditoria + LGPD (export/anonimização/opt-out)              | **Funcional** — audit_log + LGPD; portal público do doador |
 
 ## 6. Requisitos funcionais (alto nível)
 
@@ -64,7 +64,8 @@ relacionamento com o doador que os concorrentes não priorizam.
 - **RF-06 Recibos/prestação de contas:** recibo automático por doação (número sequencial, HTML
   imprimível) + lançamento contábil (partida dobrada) contra o plano de contas; balancete/razão.
 - **RF-07 Relatórios (roadmap):** dashboard por unidade e consolidado da rede; exportações.
-- **RF-08 Auditoria (roadmap):** registrar acessos/alterações sensíveis (LGPD).
+- **RF-08 Auditoria/LGPD:** trilha de ações sensíveis (`audit_log`) + direitos do titular
+  (exportação, anonimização/erasure, opt-out de comunicação) + portal público do doador.
 
 ## 7. Requisitos não-funcionais
 
@@ -93,7 +94,13 @@ relacionamento com o doador que os concorrentes não priorizam.
 5. ✅ **Dashboards + consolidação da rede** (módulo Reporting) — overview, série temporal mensal,
    consolidação por unidade e quebra por método (Recharts). **Entregue.**
    Ver [ADR-0011](../architecture/ADR-0011-reporting-dashboards.md).
-6. **Portal do doador** e **auditoria/LGPD** completa.
+6. ✅ **Portal do doador + auditoria/LGPD** — doação pública (`/doar/<tenant>`) + link mágico
+   (`/portal/<tenant>`), trilha de auditoria e LGPD (export/anonimização/opt-out). **Entregue.**
+   Ver [ADR-0012](../architecture/ADR-0012-donor-portal-audit-lgpd.md).
+
+> **Roadmap do PRD concluído (passos 1–6).** Evoluções futuras: WhatsApp real, PDF/R2 de recibos,
+> rate limiting no público, portal com login do doador, migrações EF versionadas (ADR-0002),
+> exportações/agendamento de relatórios.
 
 ## 9. Fora de escopo do primeiro entregável
 

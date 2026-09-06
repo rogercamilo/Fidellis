@@ -24,7 +24,8 @@ public sealed class OutboxNotifier(TenantDbContext db, MessageOutbox outbox) : I
     {
         if (donation.DonorId is not { } donorId) return;
         var donor = await db.Donors.FirstOrDefaultAsync(d => d.Id == donorId, ct);
-        if (donor?.Email is not { Length: > 0 } email) return;
+        if (donor is null || donor.ContactOptOut) return;
+        if (donor.Email is not { Length: > 0 } email) return;
 
         var orgName = await OrgNameAsync(donation.OrganizationId, ct);
         var msg = MessageTemplates.Render(MessageTemplates.ThankYou,
@@ -37,7 +38,8 @@ public sealed class OutboxNotifier(TenantDbContext db, MessageOutbox outbox) : I
     private async Task EnqueueForRecurringAsync(RecurringDonation recurring, string eventType, string dedupeKey, CancellationToken ct)
     {
         var donor = await db.Donors.FirstOrDefaultAsync(d => d.Id == recurring.DonorId, ct);
-        if (donor?.Email is not { Length: > 0 } email) return;
+        if (donor is null || donor.ContactOptOut) return;
+        if (donor.Email is not { Length: > 0 } email) return;
 
         var orgName = await OrgNameAsync(recurring.OrganizationId, ct);
         var msg = MessageTemplates.Render(eventType, new MessageContext(donor.Name, orgName, recurring.Amount));

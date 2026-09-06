@@ -13,6 +13,7 @@ const NAV = [
   { href: '/dashboard/recibos', label: 'Recibos' },
   { href: '/dashboard/contabilidade', label: 'Contabilidade' },
   { href: '/dashboard/relatorios', label: 'Relatórios' },
+  { href: '/dashboard/auditoria', label: 'Auditoria' },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
