@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { use, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Panel } from '../../../components/Panel';
 import {
   anonymizeDonor,
@@ -21,8 +21,8 @@ function badgeFor(status: string): string {
   return 'warn';
 }
 
-export default function DonorDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function DonorDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const [data, setData] = useState<DonorDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);

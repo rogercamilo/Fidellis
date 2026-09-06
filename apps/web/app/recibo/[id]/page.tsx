@@ -1,12 +1,12 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getReceipt, type LoginResult, type ReceiptDetail } from '../../lib/api';
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-export default function ReceiptPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export default function ReceiptPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const [receipt, setReceipt] = useState<ReceiptDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
 
