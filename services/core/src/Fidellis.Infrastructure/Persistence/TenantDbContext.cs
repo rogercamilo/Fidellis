@@ -46,6 +46,7 @@ public sealed class TenantDbContext(
     public DbSet<ApprovalTier> ApprovalTiers => Set<ApprovalTier>();
     public DbSet<PayableApproval> PayableApprovals => Set<PayableApproval>();
     public DbSet<CashSession> CashSessions => Set<CashSession>();
+    public DbSet<AccountingPeriod> AccountingPeriods => Set<AccountingPeriod>();
     public DbSet<OutboxMessage> Messages => Set<OutboxMessage>();
     public DbSet<AuditLogEntry> AuditLog => Set<AuditLogEntry>();
 
@@ -288,6 +289,13 @@ public sealed class TenantDbContext(
             b.HasKey(x => x.Id);
             b.HasIndex(x => new { x.AccountId, x.Status });
             b.Property(x => x.CountedAmount).HasPrecision(18, 2);
+        });
+
+        modelBuilder.Entity<AccountingPeriod>(b =>
+        {
+            b.ToTable("accounting_periods");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => new { x.Year, x.Month }).IsUnique();
         });
     }
 }

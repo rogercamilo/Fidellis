@@ -11,7 +11,7 @@ namespace Fidellis.Modules.Finance.Services;
 /// rateio por dimensão e <b>pagamento</b> de título aprovado (movimento de tesouraria + despesa
 /// contábil). Roda no schema do tenant resolvido.
 /// </summary>
-public sealed class PayablesService(TenantDbContext db, IClock? clock = null, ChartOfAccountsSeeder? chartSeeder = null)
+public sealed class PayablesService(TenantDbContext db, IClock? clock = null, ChartOfAccountsSeeder? chartSeeder = null, PeriodService? periods = null)
 {
     public async Task<Payee> CreatePayeeAsync(string name, string? document, string? pixKey, string kind, CancellationToken ct = default)
     {
@@ -109,6 +109,11 @@ public sealed class PayablesService(TenantDbContext db, IClock? clock = null, Ch
             throw new InvalidOperationException("Conta de tesouraria inexistente.");
 
         var now = clock?.UtcNow ?? DateTimeOffset.UtcNow;
+
+        // Guarda de fechamento (RF-FIN-170): não paga em período fechado.
+        if (periods is not null)
+            await periods.EnsureOpenAsync(DateOnly.FromDateTime(now.UtcDateTime), ct);
+
         payable.Status = "paid";
         payable.PaidAt = now;
         payable.AccountId = treasuryAccountId;
