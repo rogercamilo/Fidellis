@@ -69,6 +69,17 @@ public static class TreasuryEndpoints
             }
         });
 
+        // Fluxo de caixa projetado D+30/60/90 (RF-FIN-124): consolidado das unidades visíveis.
+        g.MapGet("/cashflow", async (
+            Guid? organizationId, CashFlowService cashflow, TenantDbContext db, ICurrentUser user, CancellationToken ct) =>
+        {
+            IReadOnlyCollection<Guid> orgIds = organizationId is { } org
+                ? [org]
+                : await VisibleOrgIdsAsync(db, user, ct);
+            var projection = await cashflow.ProjectAsync(orgIds, ct);
+            return Results.Ok(projection);
+        });
+
         return app;
     }
 
