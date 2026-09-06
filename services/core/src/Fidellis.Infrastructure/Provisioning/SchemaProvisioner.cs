@@ -344,6 +344,32 @@ public sealed class SchemaProvisioner(
             -- Cancelamento de recibo em estorno/chargeback (RF-FIN-022).
             ALTER TABLE "{schema}".receipts ADD COLUMN IF NOT EXISTS canceled_at   timestamptz;
             ALTER TABLE "{schema}".receipts ADD COLUMN IF NOT EXISTS cancel_reason varchar(200);
+
+            -- Tesouraria (Onda 2 inc.2.0): contas (banco/caixa) + movimentos.
+            CREATE TABLE IF NOT EXISTS "{schema}".treasury_accounts (
+                id              uuid PRIMARY KEY,
+                organization_id uuid          NOT NULL,
+                name            varchar(120)  NOT NULL,
+                kind            varchar(10)   NOT NULL DEFAULT 'bank',   -- bank | cash
+                opening_balance numeric(18,2) NOT NULL DEFAULT 0,
+                active          boolean       NOT NULL DEFAULT true,
+                created_at      timestamptz   NOT NULL DEFAULT now()
+            );
+            CREATE INDEX IF NOT EXISTS ix_treasury_accounts_org ON "{schema}".treasury_accounts (organization_id);
+
+            CREATE TABLE IF NOT EXISTS "{schema}".treasury_movements (
+                id             uuid PRIMARY KEY,
+                account_id     uuid          NOT NULL,
+                kind           varchar(12)   NOT NULL,   -- inflow | outflow | transfer_in | transfer_out
+                amount         numeric(18,2) NOT NULL,
+                description    varchar(200),
+                counterpart_id uuid,
+                donation_id    uuid,
+                payable_id     uuid,
+                occurred_at    timestamptz   NOT NULL DEFAULT now(),
+                created_at     timestamptz   NOT NULL DEFAULT now()
+            );
+            CREATE INDEX IF NOT EXISTS ix_treasury_mov_account ON "{schema}".treasury_movements (account_id, occurred_at);
             """;
 
         await ExecuteAsync(ddl, ct);
