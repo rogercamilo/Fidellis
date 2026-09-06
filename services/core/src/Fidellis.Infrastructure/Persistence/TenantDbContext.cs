@@ -30,6 +30,7 @@ public sealed class TenantDbContext(
     public DbSet<RecurringDonation> RecurringDonations => Set<RecurringDonation>();
     public DbSet<LedgerAccount> LedgerAccounts => Set<LedgerAccount>();
     public DbSet<Receipt> Receipts => Set<Receipt>();
+    public DbSet<OutboxMessage> Messages => Set<OutboxMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -88,6 +89,15 @@ public sealed class TenantDbContext(
             b.HasIndex(x => x.DonationId).IsUnique();
             b.HasIndex(x => new { x.OrganizationId, x.Number }).IsUnique();
             b.Property(x => x.Amount).HasPrecision(18, 2);
+        });
+
+        modelBuilder.Entity<OutboxMessage>(b =>
+        {
+            b.ToTable("messages");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => x.DedupeKey).IsUnique();
+            b.HasIndex(x => x.Status);
+            b.HasIndex(x => x.DonorId);
         });
 
         modelBuilder.Entity<Donation>(b =>

@@ -77,6 +77,14 @@ fluxo completo:
 3. O webhook confirma o pagamento de forma idempotente e concilia (partida dobrada). O webhook fala
    **direto com o core**, não pelo BFF.
 
+### CRM do doador + régua de relacionamento
+
+**/dashboard/doadores** traz o CRM 360º (histórico, situação, recorrências e mensagens por doador). A
+régua enfileira mensagens numa **outbox** e o worker despacha: **agradecimento** (doação paga),
+**dunning** (falha), **reconquista** (past_due) e **reativação** de inativos. E-mail via **Resend**
+(`RESEND_API_KEY` + `MAIL_FROM`, domínio verificado); sem chave, o envio cai em log. WhatsApp é um
+adapter stub. Ver [`ADR-0010`](docs/architecture/ADR-0010-crm-relationship-outbox.md).
+
 ### Contabilidade + recibos
 
 Ao confirmar um pagamento, o core lança a **partida dobrada** contra o **plano de contas** do tenant

@@ -1,7 +1,9 @@
 using Fidellis.Infrastructure.Accounting;
+using Fidellis.Infrastructure.Messaging;
 using Fidellis.Infrastructure.Payments;
 using Fidellis.Infrastructure.Persistence;
 using Fidellis.Infrastructure.TenantData;
+using Fidellis.Modules.Finance.Notifications;
 using Fidellis.Modules.Finance.Services;
 using Fidellis.SharedKernel;
 using Microsoft.EntityFrameworkCore;
@@ -35,7 +37,8 @@ public class AccountingTests
     }
 
     private static WebhookProcessor Processor(TenantDbContext tdb, IClock clock) =>
-        new(tdb, new FakeGateway(), new ChartOfAccountsSeeder(tdb), new ReceiptService(tdb, clock), clock, NullLogger<WebhookProcessor>.Instance);
+        new(tdb, new FakeGateway(), new ChartOfAccountsSeeder(tdb), new ReceiptService(tdb, clock),
+            new OutboxNotifier(tdb, new MessageOutbox(tdb)), clock, NullLogger<WebhookProcessor>.Instance);
 
     [Fact]
     public async Task Seeder_is_idempotent()

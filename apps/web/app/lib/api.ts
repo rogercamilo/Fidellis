@@ -256,3 +256,36 @@ export async function trialBalance(token: string): Promise<TrialBalance> {
   if (!res.ok) throw new Error(`Falha ao consultar o balancete (${res.status}).`);
   return res.json() as Promise<TrialBalance>;
 }
+
+// ---- CRM (doadores) ----
+
+export interface DonorSummary {
+  id: string;
+  name: string;
+  email?: string | null;
+  document?: string | null;
+  phone?: string | null;
+  totalPaid: number;
+  donations: number;
+  lastPaidAt?: string | null;
+  situacao: string;
+}
+
+export interface DonorDetail {
+  donor: { id: string; name: string; email?: string | null; document?: string | null; phone?: string | null };
+  donations: { id: string; amount: number; status: string; method: string; createdAt: string; paidAt?: string | null }[];
+  recurring: { id: string; amount: number; dayOfMonth: number; status: string; nextChargeAt: string }[];
+  messages: { id: string; channel: string; eventType: string; status: string; subject?: string | null; createdAt: string; sentAt?: string | null }[];
+}
+
+export async function listDonors(token: string): Promise<DonorSummary[]> {
+  const res = await fetch(`${BFF_URL}/api/crm/donors`, { headers: { authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error(`Falha ao listar doadores (${res.status}).`);
+  return res.json() as Promise<DonorSummary[]>;
+}
+
+export async function getDonor(token: string, id: string): Promise<DonorDetail> {
+  const res = await fetch(`${BFF_URL}/api/crm/donors/${id}`, { headers: { authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error(`Falha ao consultar doador (${res.status}).`);
+  return res.json() as Promise<DonorDetail>;
+}
