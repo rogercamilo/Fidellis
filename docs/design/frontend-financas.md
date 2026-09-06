@@ -131,17 +131,14 @@ Todos com tipos TS espelhando os DTOs do core.
 
 ---
 
-## 7. Decisões pendentes (para a revisão do PO)
+## 7. Decisões resolvidas (propostas aprovadas — 2026-09-06)
 
-1. **Navegação:** sub-nav "Financeiro" (opção A) ou menu suspenso (opção B)? Proposta: **A** (sub-nav),
-   mais escalável conforme as áreas crescem.
-2. **Cartão no checkout:** incluir a **tokenização Pagar.me.js** já no FE-6 (precisa da *public key* e
-   do script do PSP), ou entregar só **PIX + boleto** no front agora e cartão depois? Proposta:
-   **PIX + boleto agora**; cartão quando a integração Pagar.me.js estiver definida.
-3. **RBAC no BFF:** incluir o claim **`role`** no JWT do BFF (para o core enforçar e o front esconder
-   ações)? Proposta: **sim** — pequeno ajuste no `token.service.ts`, feito no FE-0.
-4. **Escopo por unidade:** as telas usam a unidade ativa/visível (Rede→Unidade) como no restante do
-   app? Proposta: **sim**, reaproveitando o `OrganizationPicker` existente onde fizer sentido.
+1. **Navegação:** ✔ **sub-nav "Financeiro"** (opção A) — mais escalável conforme as áreas crescem.
+2. **Cartão no checkout:** ✔ **PIX + boleto agora** no front; cartão quando a integração Pagar.me.js
+   (tokenização + public key) estiver definida.
+3. **RBAC no BFF:** ✔ incluir o claim **`role`** no JWT do BFF — ajuste no `token.service.ts`, no FE-0.
+4. **Escopo por unidade:** ✔ reusar a unidade ativa/visível (Rede→Unidade) e o `OrganizationPicker`
+   onde fizer sentido.
 
 ---
 
