@@ -35,6 +35,7 @@ public static class FinanceModule
         services.AddScoped<RecurringBillingService>();
         services.AddScoped<DonationExpiryService>();
         services.AddScoped<TreasuryService>();
+        services.AddScoped<CashFlowService>();
         services.AddScoped<ReceivablesService>();
         services.AddScoped<PayablesService>();
         services.AddScoped<ApprovalService>();
