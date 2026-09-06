@@ -3,15 +3,17 @@
 import { useEffect, useRef, useState } from 'react';
 import { OrganizationPicker } from '../../components/OrganizationPicker';
 import { Panel } from '../../components/Panel';
-import { createDonation, getDonation, type DonationCheckout, type LoginResult } from '../../lib/api';
+import { createDonation, getDonation, getFinanceSettings, type DonationCheckout, type LoginResult } from '../../lib/api';
 
 export default function CobrancaPage() {
   const [token, setToken] = useState<string | null>(null);
   const [organizationId, setOrganizationId] = useState('');
   const [amount, setAmount] = useState('');
+  const [method, setMethod] = useState('pix');
   const [donorName, setDonorName] = useState('');
   const [donorEmail, setDonorEmail] = useState('');
   const [donorDocument, setDonorDocument] = useState('');
+  const [label, setLabel] = useState('Oferta');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [checkout, setCheckout] = useState<DonationCheckout | null>(null);
@@ -20,7 +22,11 @@ export default function CobrancaPage() {
 
   useEffect(() => {
     const raw = sessionStorage.getItem('fidellis.session');
-    if (raw) setToken((JSON.parse(raw) as LoginResult).accessToken);
+    if (raw) {
+      const t = (JSON.parse(raw) as LoginResult).accessToken;
+      setToken(t);
+      getFinanceSettings(t).then((s) => setLabel(s.onetimeLabel)).catch(() => {});
+    }
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
@@ -36,6 +42,7 @@ export default function CobrancaPage() {
       const result = await createDonation(token, {
         organizationId,
         amount: Number(amount),
+        method,
         donor: { name: donorName, email: donorEmail || undefined, document: donorDocument },
       });
       setCheckout(result);
@@ -70,8 +77,8 @@ export default function CobrancaPage() {
     <>
       <div className="page-head rise">
         <div>
-          <h1>Nova cobrança</h1>
-          <p className="subtitle">Gere um PIX avulso — a confirmação e o recibo são automáticos.</p>
+          <h1>Nova {label.toLowerCase()}</h1>
+          <p className="subtitle">Gere uma cobrança avulsa por PIX ou boleto — confirmação e recibo automáticos.</p>
         </div>
       </div>
 
@@ -82,10 +89,19 @@ export default function CobrancaPage() {
               <div className="field">
                 <OrganizationPicker token={token} value={organizationId} onChange={setOrganizationId} />
               </div>
-              <div className="field">
-                <label htmlFor="amount">Valor (R$)</label>
-                <input id="amount" type="number" step="0.01" min="0.01" value={amount}
-                  onChange={(e) => setAmount(e.target.value)} required />
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <div className="field" style={{ flex: 1 }}>
+                  <label htmlFor="amount">Valor (R$)</label>
+                  <input id="amount" type="number" step="0.01" min="0.01" value={amount}
+                    onChange={(e) => setAmount(e.target.value)} required />
+                </div>
+                <div className="field" style={{ width: 140 }}>
+                  <label htmlFor="method">Método</label>
+                  <select id="method" value={method} onChange={(e) => setMethod(e.target.value)}>
+                    <option value="pix">PIX</option>
+                    <option value="boleto">Boleto</option>
+                  </select>
+                </div>
               </div>
               <div className="field">
                 <label htmlFor="dname">Doador — nome</label>
@@ -103,9 +119,28 @@ export default function CobrancaPage() {
               {error && <p className="error-text">{error}</p>}
 
               <button className="btn btn-primary" type="submit" style={{ width: '100%', marginTop: '0.5rem' }} disabled={loading}>
-                {loading ? 'Gerando…' : 'Gerar cobrança PIX'}
+                {loading ? 'Gerando…' : `Gerar ${method === 'boleto' ? 'boleto' : 'PIX'}`}
               </button>
             </form>
+          </Panel>
+        ) : checkout.method === 'boleto' ? (
+          <Panel title="Boleto" actions={<span className={`badge ${statusBadge}`}>{status}</span>}>
+            <div style={{ display: 'grid', gap: '0.75rem' }}>
+              <div className="field">
+                <label>Linha digitável</label>
+                <textarea readOnly value={checkout.boletoLine ?? ''} rows={2} className="mono" style={{ fontSize: '0.85rem' }} />
+              </div>
+              {checkout.dueDate && <p className="muted">Vencimento: {new Date(checkout.dueDate + 'T00:00:00').toLocaleDateString('pt-BR')}</p>}
+              {checkout.boletoUrl && (
+                <a className="btn btn-ghost" href={checkout.boletoUrl} target="_blank" rel="noreferrer">Abrir PDF do boleto</a>
+              )}
+              <p className="hint">
+                {status === 'paid'
+                  ? 'Pagamento confirmado — doação conciliada e recibo emitido.'
+                  : 'Aguardando pagamento do boleto… a página atualiza sozinha na confirmação.'}
+              </p>
+              <button className="btn btn-ghost" onClick={() => { setCheckout(null); setStatus('pending'); }}>Nova cobrança</button>
+            </div>
           </Panel>
         ) : (
           <Panel title="Cobrança PIX" actions={<span className={`badge ${statusBadge}`}>{status}</span>}>

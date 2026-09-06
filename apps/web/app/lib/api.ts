@@ -106,14 +106,20 @@ export interface CreateDonationInput {
   amount: number;
   donor: { name: string; email?: string; document: string };
   description?: string;
+  /** 'pix' (default) | 'boleto'. Cartão depende da tokenização Pagar.me.js (futuro). */
+  method?: string;
 }
 
 export interface DonationCheckout {
   donationId: string;
   status: string;
+  method?: string;
   qrCode: string;
   qrCodeUrl?: string | null;
   expiresAt?: string | null;
+  boletoLine?: string | null;
+  boletoUrl?: string | null;
+  dueDate?: string | null;
 }
 
 export interface DonationStatus {
