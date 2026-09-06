@@ -7,8 +7,9 @@ import { usePathname } from 'next/navigation';
 const AREAS = [
   { href: '/dashboard/tesouraria', label: 'Tesouraria' },
   { href: '/dashboard/receber', label: 'A Receber' },
+  { href: '/dashboard/pagar', label: 'A Pagar' },
   { href: '/dashboard/configuracoes', label: 'Configurações' },
-  // FE-4..6 acrescentam: Pagar, Caixa, Fechamento.
+  // FE-5..6 acrescentam: Caixa, Fechamento.
 ];
 
 /** Sub-navegação segmentada das telas financeiras (decisão de navegação A). */
