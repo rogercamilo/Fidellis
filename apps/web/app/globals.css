@@ -366,6 +366,25 @@ code,
   border-bottom: 1px dotted var(--border);
 }
 
+/* ---------- List (config/dimensões) ---------- */
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.list li {
+  padding: 0.5rem 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+.list li:first-child {
+  border-top: none;
+}
+.subnav {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.5rem;
+}
+
 /* ---------- Table ---------- */
 .table {
   width: 100%;

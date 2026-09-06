@@ -11,6 +11,7 @@ const NAV = [
   { href: '/dashboard/recorrencia', label: 'Recorrência' },
   { href: '/dashboard/doadores', label: 'Doadores' },
   { href: '/dashboard/recibos', label: 'Recibos' },
+  { href: '/dashboard/configuracoes', label: 'Financeiro' },
   { href: '/dashboard/contabilidade', label: 'Contabilidade' },
   { href: '/dashboard/relatorios', label: 'Relatórios' },
   { href: '/dashboard/auditoria', label: 'Auditoria' },
