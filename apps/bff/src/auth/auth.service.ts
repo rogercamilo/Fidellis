@@ -72,11 +72,14 @@ export class AuthService {
       activeTenant = tenants[0].slug;
     }
 
+    const activeRole = activeTenant ? tenants.find((t) => t.slug === activeTenant)?.role : undefined;
+
     return {
       accessToken: this.tokens.signAccess({
         sub: user.id,
         email: user.email,
         tenant: activeTenant ?? undefined,
+        role: activeRole,
       }),
       refreshToken: this.tokens.signRefresh(user.id),
       user: { id: user.id, email: user.email, displayName: user.display_name },
@@ -104,15 +107,17 @@ export class AuthService {
     if (!user) throw new UnauthorizedException('Usuário não encontrado.');
 
     let activeTenant: string | null = null;
+    let activeRole: string | undefined;
     if (tenantSlug) {
       const tenants = await this.getMemberships(user.id);
       const match = tenants.find((t) => t.slug === tenantSlug.trim().toLowerCase());
       if (!match) throw new UnauthorizedException(`Usuário não pertence ao tenant '${tenantSlug}'.`);
       activeTenant = match.slug;
+      activeRole = match.role;
     }
 
     return {
-      accessToken: this.tokens.signAccess({ sub: user.id, email: user.email, tenant: activeTenant ?? undefined }),
+      accessToken: this.tokens.signAccess({ sub: user.id, email: user.email, tenant: activeTenant ?? undefined, role: activeRole }),
       activeTenant,
     };
   }
