@@ -4,6 +4,7 @@ using Fidellis.Infrastructure.Audit;
 using Fidellis.Infrastructure.Payments;
 using Fidellis.Infrastructure.Persistence;
 using Fidellis.Infrastructure.TenantData;
+using Fidellis.Modules.Finance.Banking;
 using Fidellis.Modules.Finance.CashSessions;
 using Fidellis.Modules.Finance.Configuration;
 using Fidellis.Modules.Finance.Dimensions;
@@ -43,6 +44,7 @@ public static class FinanceModule
         services.AddScoped<ApprovalService>();
         services.AddScoped<CashSessionService>();
         services.AddScoped<PeriodService>();
+        services.AddScoped<StatementImportService>();
         services.AddScoped<Notifications.INotifier, Notifications.OutboxNotifier>();
         return services;
     }
@@ -271,6 +273,9 @@ public static class FinanceModule
 
         // Fechamento de período (bloqueio de lançamentos retroativos).
         app.MapPeriods();
+
+        // Conciliação: import de extrato bancário (OFX).
+        app.MapStatements();
 
         return app;
     }
