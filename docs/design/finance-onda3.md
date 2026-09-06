@@ -133,16 +133,15 @@ RBAC: mutações via `FinanceWriteFilter` (Onda 1). Import e conciliação exige
 
 ---
 
-## 7. Decisões pendentes (para a revisão do PO)
+## 7. Decisões resolvidas (propostas aprovadas — 2026-09-06)
 
-1. **Formato prioritário:** confirmar **OFX primeiro** (3.0) e CNAB depois (3.2)? Proposta: **sim**.
-2. **Casamento:** automático apenas **sugere** (confirmação manual) ou **auto-baixa** quando houver
-   match exato único? Proposta: **sugere + confirma** (auto-baixa só em match exato de valor+data+fit).
-3. **Janela de data** para o casamento (ex.: ± 3 dias)? Proposta: **± 3 dias**, configurável.
-4. **Realizado do orçamento:** por **regime de caixa** (movimentos de tesouraria) ou **competência**
-   (lançamentos contábeis)? Proposta: **competência** (accounting_entries por dimensão).
-5. **Upload de arquivo:** o BFF repassa o binário ao core (multipart) ou o core recebe o conteúdo já
-   lido? Proposta: **multipart via BFF → core** (endpoint dedicado, fora do proxy JSON genérico).
+1. **Formato prioritário:** ✔ **OFX primeiro** (3.0), **CNAB** depois (3.2).
+2. **Casamento:** ✔ **sugere + confirma**; auto-baixa apenas em match **exato** (valor+data+fit).
+3. **Janela de data:** ✔ **± 3 dias**, configurável.
+4. **Realizado do orçamento:** ✔ **competência** (`accounting_entries` por dimensão).
+5. **Upload de arquivo:** ✔ na primeira entrega o core recebe o **conteúdo do arquivo como string**
+   no corpo JSON (o front lê o arquivo no client e envia o texto) — flui pelo **proxy JSON genérico**
+   do BFF sem endpoint dedicado. **Multipart** via BFF fica como evolução, se necessário.
 
 ---
 
