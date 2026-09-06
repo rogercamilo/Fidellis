@@ -8,6 +8,7 @@ using Fidellis.Modules.Finance;
 using Fidellis.Modules.Finance.Services;
 using Fidellis.Modules.Reporting;
 using Fidellis.Modules.Tenant;
+using System.Threading.RateLimiting;
 using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -19,6 +20,8 @@ var connectionString = config["DATABASE_URL"]
 var redisConnection = NormalizeRedis(config["REDIS_URL"]);
 var jwtSecret = config["JWT_SECRET"] ?? "change-me-in-prod-please-use-a-long-random-secret";
 var webOrigin = config["NEXT_PUBLIC_BFF_URL"] ?? "http://localhost:4000";
+var publicRateLimitPermits = int.TryParse(config["PUBLIC_RATE_LIMIT_PERMITS"], out var prp) ? prp : 10;
+var publicRateLimitWindow = int.TryParse(config["PUBLIC_RATE_LIMIT_WINDOW_SECONDS"], out var prw) ? prw : 300;
 
 builder.Services.AddInfrastructure(new InfrastructureOptions
 {
@@ -28,6 +31,7 @@ builder.Services.AddInfrastructure(new InfrastructureOptions
     PagarmeBaseUrl = config["PAGARME_BASE_URL"] ?? "https://api.pagar.me/core/v5",
     PagarmeWebhookUser = config["PAGARME_WEBHOOK_USER"],
     PagarmeWebhookPassword = config["PAGARME_WEBHOOK_PASSWORD"],
+    PagarmeWebhookSignatureSecret = config["PAGARME_WEBHOOK_SIGNATURE_SECRET"],
     ResendApiKey = config["RESEND_API_KEY"],
     MailFrom = config["MAIL_FROM"] ?? "Fidellis <onboarding@resend.dev>",
     ReactivationDays = int.TryParse(config["REACTIVATION_DAYS"], out var rd) ? rd : 90,
@@ -60,6 +64,29 @@ builder.Services.AddCors(o => o.AddDefaultPolicy(p => p
     .AllowAnyHeader()
     .AllowAnyMethod()));
 
+// Rate limiting dos endpoints públicos (RF-FIN-002): janela fixa por IP+tenant.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("public", httpContext =>
+    {
+        var tenantKey = httpContext.Request.RouteValues.TryGetValue("tenant", out var t) ? t?.ToString() : null;
+        var ip = httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter($"{ip}|{tenantKey ?? "?"}", _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = publicRateLimitPermits,
+            Window = TimeSpan.FromSeconds(publicRateLimitWindow),
+            QueueLimit = 0,
+        });
+    });
+    options.OnRejected = (context, _) =>
+    {
+        if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
+            context.HttpContext.Response.Headers.RetryAfter = ((int)retryAfter.TotalSeconds).ToString();
+        return ValueTask.CompletedTask;
+    };
+});
+
 var app = builder.Build();
 
 // Bootstrap do schema catalog (best-effort: se o Postgres não estiver no ar, o app ainda
@@ -80,6 +107,7 @@ await using (var scope = app.Services.CreateAsyncScope())
 }
 
 app.UseCors();
+app.UseRateLimiter();
 app.UseTenantResolution(jwtSecret);
 
 // Liveness: o processo está de pé (não toca dependências externas).

@@ -37,6 +37,16 @@ public sealed class RecurringBillingService(
             NextChargeAt = chargeToday ? now : NextChargeDate(dayOfMonth, now),
         };
         db.RecurringDonations.Add(recurring);
+
+        // Jornada apoiador→recorrente (RF-FIN-182): marca a 1ª conversão e o tipo recorrente-default.
+        var donor = await db.Donors.FirstOrDefaultAsync(d => d.Id == donorId, ct);
+        if (donor is not null)
+        {
+            donor.ConvertedAt ??= now;
+            donor.DonorTypeId ??= await db.DonorTypes
+                .Where(t => t.IsRecurringDefault && t.Active).Select(t => (Guid?)t.Id).FirstOrDefaultAsync(ct);
+        }
+
         await db.SaveChangesAsync(ct);
         return recurring;
     }
