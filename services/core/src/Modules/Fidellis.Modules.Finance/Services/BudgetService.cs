@@ -29,11 +29,39 @@ public sealed class BudgetService(TenantDbContext db)
         return budget;
     }
 
-    public Task<List<Budget>> ListAsync(int? year, CancellationToken ct = default)
+    public Task<List<Budget>> ListAsync(int? year, bool includeInactive = false, CancellationToken ct = default)
     {
-        var q = db.Budgets.Where(b => b.Active);
+        var q = db.Budgets.AsQueryable();
+        if (!includeInactive) q = q.Where(b => b.Active);
         if (year is { } y) q = q.Where(b => b.Year == y);
-        return q.OrderBy(b => b.Year).ThenBy(b => b.Kind).ToListAsync(ct);
+        return q.OrderBy(b => b.Year).ThenBy(b => b.Kind).ThenBy(b => b.Revision).ToListAsync(ct);
+    }
+
+    /// <summary>
+    /// Revisa um orçamento (RF-FIN-152): desativa a versão vigente e cria uma nova com o valor
+    /// revisado e <c>Revision + 1</c>, preservando o histórico. Retorna a nova versão.
+    /// </summary>
+    public async Task<Budget?> ReviseAsync(Guid id, decimal newAmount, CancellationToken ct = default)
+    {
+        if (newAmount <= 0) throw new ArgumentException("O valor revisado deve ser positivo.");
+        var current = await db.Budgets.FirstOrDefaultAsync(b => b.Id == id, ct);
+        if (current is null) return null;
+        if (!current.Active) throw new InvalidOperationException("Só a versão vigente pode ser revisada.");
+
+        current.Active = false;
+        var revised = new Budget
+        {
+            Year = current.Year,
+            Kind = current.Kind,
+            Amount = newAmount,
+            CostCenterId = current.CostCenterId,
+            ProjectId = current.ProjectId,
+            FundId = current.FundId,
+            Revision = current.Revision + 1,
+        };
+        db.Budgets.Add(revised);
+        await db.SaveChangesAsync(ct);
+        return revised;
     }
 
     public async Task<IReadOnlyList<BudgetActual>> ActualAsync(int year, CancellationToken ct = default)
