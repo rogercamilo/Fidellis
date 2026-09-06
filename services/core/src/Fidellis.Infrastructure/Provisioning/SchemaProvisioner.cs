@@ -250,6 +250,47 @@ public sealed class SchemaProvisioner(
                 created_at    timestamptz  NOT NULL DEFAULT now()
             );
             CREATE INDEX IF NOT EXISTS ix_audit_created ON "{schema}".audit_log (created_at DESC);
+
+            -- Dimensões gerenciais (Onda 1): centros de custo, fundos (com/sem restrição) e projetos.
+            CREATE TABLE IF NOT EXISTS "{schema}".cost_centers (
+                id         uuid PRIMARY KEY,
+                code       varchar(20)  NOT NULL UNIQUE,
+                name       varchar(200) NOT NULL,
+                is_default boolean      NOT NULL DEFAULT false,
+                active     boolean      NOT NULL DEFAULT true,
+                created_at timestamptz  NOT NULL DEFAULT now()
+            );
+
+            CREATE TABLE IF NOT EXISTS "{schema}".funds (
+                id          uuid PRIMARY KEY,
+                code        varchar(20)  NOT NULL UNIQUE,
+                name        varchar(200) NOT NULL,
+                restriction varchar(12)  NOT NULL DEFAULT 'free',   -- free | restricted
+                purpose     text,
+                is_default  boolean      NOT NULL DEFAULT false,
+                active      boolean      NOT NULL DEFAULT true,
+                created_at  timestamptz  NOT NULL DEFAULT now()
+            );
+
+            CREATE TABLE IF NOT EXISTS "{schema}".projects (
+                id            uuid PRIMARY KEY,
+                code          varchar(20)  NOT NULL UNIQUE,
+                name          varchar(200) NOT NULL,
+                fund_id       uuid,
+                budget_amount numeric(18,2),
+                starts_at     date,
+                ends_at       date,
+                status        varchar(20)  NOT NULL DEFAULT 'active',
+                created_at    timestamptz  NOT NULL DEFAULT now()
+            );
+
+            -- Dimensões nas transações e doações (default aplicado quando null — RF-FIN-143).
+            ALTER TABLE "{schema}".transactions ADD COLUMN IF NOT EXISTS cost_center_id uuid;
+            ALTER TABLE "{schema}".transactions ADD COLUMN IF NOT EXISTS project_id     uuid;
+            ALTER TABLE "{schema}".transactions ADD COLUMN IF NOT EXISTS fund_id        uuid;
+            ALTER TABLE "{schema}".donations    ADD COLUMN IF NOT EXISTS cost_center_id uuid;
+            ALTER TABLE "{schema}".donations    ADD COLUMN IF NOT EXISTS project_id     uuid;
+            ALTER TABLE "{schema}".donations    ADD COLUMN IF NOT EXISTS fund_id        uuid;
             """;
 
         await ExecuteAsync(ddl, ct);

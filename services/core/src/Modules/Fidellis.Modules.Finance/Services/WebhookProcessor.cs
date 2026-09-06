@@ -96,6 +96,10 @@ public sealed class WebhookProcessor(
             Amount = donation.Amount,
             Kind = "credit",
             Description = $"Doação {donation.Id}",
+            // Propaga as dimensões gerenciais da doação para a movimentação (RF-FIN-143).
+            CostCenterId = donation.CostCenterId,
+            ProjectId = donation.ProjectId,
+            FundId = donation.FundId,
         };
         db.Transactions.Add(transaction);
 

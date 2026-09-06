@@ -46,6 +46,12 @@ public sealed class DonationCheckoutService(
         };
         tenantDb.Donations.Add(donation);
 
+        // Dimensões: aplica os defaults do tenant quando não informadas (RF-FIN-143).
+        donation.CostCenterId ??= await tenantDb.CostCenters
+            .Where(c => c.IsDefault).Select(c => (Guid?)c.Id).FirstOrDefaultAsync(ct);
+        donation.FundId ??= await tenantDb.Funds
+            .Where(f => f.IsDefault).Select(f => (Guid?)f.Id).FirstOrDefaultAsync(ct);
+
         var order = await CreatePixChargeAsync(donation, donor, cmd.Description, ct);
 
         await tenantDb.SaveChangesAsync(ct);

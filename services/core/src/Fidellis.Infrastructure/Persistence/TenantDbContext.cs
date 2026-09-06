@@ -30,6 +30,9 @@ public sealed class TenantDbContext(
     public DbSet<RecurringDonation> RecurringDonations => Set<RecurringDonation>();
     public DbSet<LedgerAccount> LedgerAccounts => Set<LedgerAccount>();
     public DbSet<Receipt> Receipts => Set<Receipt>();
+    public DbSet<CostCenter> CostCenters => Set<CostCenter>();
+    public DbSet<Fund> Funds => Set<Fund>();
+    public DbSet<Project> Projects => Set<Project>();
     public DbSet<OutboxMessage> Messages => Set<OutboxMessage>();
     public DbSet<AuditLogEntry> AuditLog => Set<AuditLogEntry>();
 
@@ -153,6 +156,28 @@ public sealed class TenantDbContext(
             b.HasIndex(x => new { x.Status, x.NextChargeAt });
             b.HasIndex(x => x.OrganizationId);
             b.Property(x => x.Amount).HasPrecision(18, 2);
+        });
+
+        modelBuilder.Entity<CostCenter>(b =>
+        {
+            b.ToTable("cost_centers");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => x.Code).IsUnique();
+        });
+
+        modelBuilder.Entity<Fund>(b =>
+        {
+            b.ToTable("funds");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => x.Code).IsUnique();
+        });
+
+        modelBuilder.Entity<Project>(b =>
+        {
+            b.ToTable("projects");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => x.Code).IsUnique();
+            b.Property(x => x.BudgetAmount).HasPrecision(18, 2);
         });
     }
 }

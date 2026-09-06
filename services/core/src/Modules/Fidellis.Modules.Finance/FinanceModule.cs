@@ -4,6 +4,7 @@ using Fidellis.Infrastructure.Audit;
 using Fidellis.Infrastructure.Payments;
 using Fidellis.Infrastructure.Persistence;
 using Fidellis.Infrastructure.TenantData;
+using Fidellis.Modules.Finance.Dimensions;
 using Fidellis.Modules.Finance.Services;
 using Fidellis.SharedKernel;
 using Microsoft.AspNetCore.Builder;
@@ -218,6 +219,9 @@ public static class FinanceModule
             var processed = await processor.ProcessAsync(evt, raw, ct);
             return Results.Ok(new { processed });
         });
+
+        // Configuração das dimensões gerenciais (centros de custo/fundos/projetos).
+        app.MapDimensions();
 
         return app;
     }
