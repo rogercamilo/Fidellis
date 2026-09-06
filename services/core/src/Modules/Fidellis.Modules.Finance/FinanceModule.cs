@@ -4,6 +4,7 @@ using Fidellis.Infrastructure.Audit;
 using Fidellis.Infrastructure.Payments;
 using Fidellis.Infrastructure.Persistence;
 using Fidellis.Infrastructure.TenantData;
+using Fidellis.Modules.Finance.Configuration;
 using Fidellis.Modules.Finance.Dimensions;
 using Fidellis.Modules.Finance.Services;
 using Fidellis.SharedKernel;
@@ -222,6 +223,9 @@ public static class FinanceModule
 
         // Configuração das dimensões gerenciais (centros de custo/fundos/projetos).
         app.MapDimensions();
+
+        // Configurabilidade financeira (nomenclatura, tipos de doador, rubricas).
+        app.MapFinanceConfig();
 
         return app;
     }

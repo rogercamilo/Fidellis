@@ -50,6 +50,9 @@ public static class DependencyInjection
         // Dimensões gerenciais (centros de custo/fundos/projetos) + seeding dos defaults.
         services.AddScoped<Dimensions.DimensionsSeeder>();
 
+        // Configuração financeira (nomenclaturas + tipos de doador) + seeding dos defaults.
+        services.AddScoped<Configuration.FinanceConfigSeeder>();
+
         // Auditoria (trilha).
         services.AddScoped<IAuditLog, AuditLog>();
 

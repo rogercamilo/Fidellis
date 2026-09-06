@@ -15,4 +15,10 @@ public sealed class Donor : Entity
 
     /// <summary>LGPD: quando os dados pessoais foram anonimizados (erasure).</summary>
     public DateTimeOffset? AnonymizedAt { get; set; }
+
+    // Configurabilidade/CRM (Onda 1). Jornada apoiador→recorrente (RF-FIN-182).
+    public Guid? DonorTypeId { get; set; }
+
+    /// <summary>Quando o doador se tornou recorrente pela primeira vez (nulo = ainda pontual).</summary>
+    public DateTimeOffset? ConvertedAt { get; set; }
 }

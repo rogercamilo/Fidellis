@@ -291,6 +291,36 @@ public sealed class SchemaProvisioner(
             ALTER TABLE "{schema}".donations    ADD COLUMN IF NOT EXISTS cost_center_id uuid;
             ALTER TABLE "{schema}".donations    ADD COLUMN IF NOT EXISTS project_id     uuid;
             ALTER TABLE "{schema}".donations    ADD COLUMN IF NOT EXISTS fund_id        uuid;
+
+            -- Configurabilidade (Onda 1): nomenclatura, tipos de doador e rubricas.
+            CREATE TABLE IF NOT EXISTS "{schema}".finance_settings (
+                id              uuid PRIMARY KEY,
+                recurring_label varchar(60) NOT NULL DEFAULT 'Dízimo',
+                onetime_label   varchar(60) NOT NULL DEFAULT 'Oferta',
+                updated_at      timestamptz NOT NULL DEFAULT now(),
+                created_at      timestamptz NOT NULL DEFAULT now()
+            );
+
+            CREATE TABLE IF NOT EXISTS "{schema}".donor_types (
+                id                   uuid PRIMARY KEY,
+                name                 varchar(60) NOT NULL,
+                is_recurring_default boolean     NOT NULL DEFAULT false,
+                active               boolean     NOT NULL DEFAULT true,
+                created_at           timestamptz NOT NULL DEFAULT now()
+            );
+
+            CREATE TABLE IF NOT EXISTS "{schema}".finance_categories (
+                id                uuid PRIMARY KEY,
+                kind              varchar(10)  NOT NULL,   -- revenue | expense
+                name              varchar(120) NOT NULL,
+                ledger_account_id uuid,
+                active            boolean      NOT NULL DEFAULT true,
+                created_at        timestamptz  NOT NULL DEFAULT now()
+            );
+
+            -- Jornada apoiador→recorrente (RF-FIN-182).
+            ALTER TABLE "{schema}".donors ADD COLUMN IF NOT EXISTS donor_type_id uuid;
+            ALTER TABLE "{schema}".donors ADD COLUMN IF NOT EXISTS converted_at  timestamptz;
             """;
 
         await ExecuteAsync(ddl, ct);
