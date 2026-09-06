@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using System.Text;
+using Fidellis.Infrastructure.Audit;
 using Fidellis.Infrastructure.Messaging;
 using Fidellis.Infrastructure.Payments;
 using Fidellis.Infrastructure.Persistence;
@@ -45,6 +46,9 @@ public static class DependencyInjection
         // Contabilidade: plano de contas + recibos (usados pela conciliação e pelo módulo Accounting).
         services.AddScoped<Accounting.ChartOfAccountsSeeder>();
         services.AddScoped<Accounting.ReceiptService>();
+
+        // Auditoria (trilha).
+        services.AddScoped<IAuditLog, AuditLog>();
 
         // Gateway de pagamento (Pagar.me) como HttpClient tipado com Basic auth (sk como usuário).
         services.AddHttpClient<IPaymentGateway, PagarmePaymentGateway>(client =>

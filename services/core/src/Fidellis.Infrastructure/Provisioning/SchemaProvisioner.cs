@@ -234,6 +234,22 @@ public sealed class SchemaProvisioner(
                 sent_at     timestamptz
             );
             CREATE INDEX IF NOT EXISTS ix_messages_status ON "{schema}".messages (status);
+
+            -- LGPD: opt-out e anonimização do doador.
+            ALTER TABLE "{schema}".donors ADD COLUMN IF NOT EXISTS contact_opt_out boolean NOT NULL DEFAULT false;
+            ALTER TABLE "{schema}".donors ADD COLUMN IF NOT EXISTS anonymized_at   timestamptz;
+
+            -- Trilha de auditoria (passo 6).
+            CREATE TABLE IF NOT EXISTS "{schema}".audit_log (
+                id            uuid PRIMARY KEY,
+                actor_user_id uuid,
+                action        varchar(60)  NOT NULL,
+                entity        varchar(60)  NOT NULL,
+                entity_id     varchar(100),
+                metadata      text,
+                created_at    timestamptz  NOT NULL DEFAULT now()
+            );
+            CREATE INDEX IF NOT EXISTS ix_audit_created ON "{schema}".audit_log (created_at DESC);
             """;
 
         await ExecuteAsync(ddl, ct);

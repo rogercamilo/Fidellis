@@ -1,5 +1,9 @@
+using Fidellis.Infrastructure;
+using Fidellis.Infrastructure.Audit;
+using Fidellis.Infrastructure.Messaging;
 using Fidellis.Infrastructure.Organizations;
 using Fidellis.Infrastructure.Persistence;
+using Fidellis.Infrastructure.Security;
 using Fidellis.Infrastructure.TenantData;
 using Fidellis.SharedKernel;
 using Microsoft.AspNetCore.Builder;
@@ -76,7 +80,7 @@ public static class DonationsModule
         });
 
         // Cria uma unidade; o criador (se autenticado) entra como membro admin.
-        orgs.MapPost("/", async (CreateOrganizationRequest req, ITenantContext tenant, ICurrentUser user, TenantDbContext db, CancellationToken ct) =>
+        orgs.MapPost("/", async (CreateOrganizationRequest req, ITenantContext tenant, ICurrentUser user, TenantDbContext db, IAuditLog audit, CancellationToken ct) =>
         {
             if (!tenant.HasTenant)
                 return Results.BadRequest(new { error = "Nenhum tenant no request." });
@@ -88,6 +92,7 @@ public static class DonationsModule
             if (user.HasUser)
                 db.OrgMembers.Add(new OrgMember { UserId = user.UserId!.Value, OrganizationId = org.Id, Role = "admin" });
             await db.SaveChangesAsync(ct);
+            await audit.RecordAsync("organization.created", "organization", org.Id.ToString(), org.Name);
             return Results.Created($"/api/organizations/{org.Id}", new { id = org.Id, name = org.Name, parentId = org.ParentId });
         });
 
@@ -176,11 +181,123 @@ public static class DonationsModule
 
             return Results.Ok(new
             {
-                donor = new { donor.Id, donor.Name, donor.Email, donor.Document, donor.Phone },
+                donor = new { donor.Id, donor.Name, donor.Email, donor.Document, donor.Phone, donor.ContactOptOut, donor.AnonymizedAt },
                 donations,
                 recurring,
                 messages,
             });
+        });
+
+        // LGPD: exportar dados do doador (JSON).
+        crm.MapGet("/donors/{id:guid}/export", async (Guid id, ITenantContext tenant, TenantDbContext db, IAuditLog audit, CancellationToken ct) =>
+        {
+            if (!tenant.HasTenant) return Results.BadRequest(new { error = "Nenhum tenant no request." });
+            var donor = await db.Donors.FirstOrDefaultAsync(d => d.Id == id, ct);
+            if (donor is null) return Results.NotFound();
+
+            var donations = await db.Donations.Where(d => d.DonorId == id)
+                .Select(d => new { d.Id, d.Amount, d.Status, d.Method, d.CreatedAt, d.PaidAt }).ToListAsync(ct);
+            var recurring = await db.RecurringDonations.Where(r => r.DonorId == id)
+                .Select(r => new { r.Id, r.Amount, r.DayOfMonth, r.Status }).ToListAsync(ct);
+            var messages = await db.Messages.Where(m => m.DonorId == id)
+                .Select(m => new { m.Channel, m.EventType, m.Status, m.CreatedAt }).ToListAsync(ct);
+
+            await audit.RecordAsync("lgpd.export", "donor", id.ToString());
+            return Results.Ok(new
+            {
+                donor = new { donor.Id, donor.Name, donor.Email, donor.Document, donor.Phone },
+                donations, recurring, messages,
+            });
+        });
+
+        // LGPD: anonimização (erasure de PII; mantém registros financeiros).
+        crm.MapPost("/donors/{id:guid}/anonymize", async (Guid id, ITenantContext tenant, TenantDbContext db, IAuditLog audit, CancellationToken ct) =>
+        {
+            if (!tenant.HasTenant) return Results.BadRequest(new { error = "Nenhum tenant no request." });
+            var donor = await db.Donors.FirstOrDefaultAsync(d => d.Id == id, ct);
+            if (donor is null) return Results.NotFound();
+
+            donor.Name = "Doador anonimizado";
+            donor.Email = null;
+            donor.Document = null;
+            donor.Phone = null;
+            donor.AnonymizedAt = DateTimeOffset.UtcNow;
+            foreach (var d in await db.Donations.Where(x => x.DonorId == id).ToListAsync(ct))
+                d.DonorName = "Anonimizado";
+
+            await db.SaveChangesAsync(ct);
+            await audit.RecordAsync("lgpd.anonymize", "donor", id.ToString());
+            return Results.Ok(new { anonymized = true });
+        });
+
+        // LGPD: opt-out de comunicação (a régua passa a pular este doador).
+        crm.MapPost("/donors/{id:guid}/opt-out", async (Guid id, ITenantContext tenant, TenantDbContext db, IAuditLog audit, CancellationToken ct) =>
+        {
+            if (!tenant.HasTenant) return Results.BadRequest(new { error = "Nenhum tenant no request." });
+            var donor = await db.Donors.FirstOrDefaultAsync(d => d.Id == id, ct);
+            if (donor is null) return Results.NotFound();
+
+            donor.ContactOptOut = true;
+            await db.SaveChangesAsync(ct);
+            await audit.RecordAsync("lgpd.opt_out", "donor", id.ToString());
+            return Results.Ok(new { optOut = true });
+        });
+
+        // ---- Público (portal do doador; tenant pelo path) ----
+        var pub = app.MapGroup("/api/public/{tenant}").WithTags("Public");
+
+        pub.MapGet("/organizations", async (string tenant, CatalogDbContext catalog, ITenantContext tc, TenantDbContext db, CancellationToken ct) =>
+        {
+            if (!await PublicTenant.TryResolveAsync(catalog, tc, tenant, ct)) return Results.NotFound();
+            var list = await db.Organizations.OrderBy(o => o.Name)
+                .Select(o => new { id = o.Id, name = o.Name, parentId = o.ParentId }).ToListAsync(ct);
+            return Results.Ok(list);
+        });
+
+        pub.MapPost("/magic-link", async (
+            string tenant, MagicLinkRequest req, CatalogDbContext catalog, ITenantContext tc,
+            TenantDbContext db, MessageOutbox outbox, InfrastructureOptions opt, CancellationToken ct) =>
+        {
+            if (!await PublicTenant.TryResolveAsync(catalog, tc, tenant, ct)) return Results.NotFound();
+            var email = (req.Email ?? "").Trim().ToLowerInvariant();
+            var donor = await db.Donors.FirstOrDefaultAsync(d => d.Email == email, ct);
+            if (donor is not null)
+            {
+                var slug = tenant.Trim().ToLowerInvariant();
+                var token = DonorMagicToken.Sign(donor.Id, slug, DateTimeOffset.UtcNow.AddDays(30), opt.AppSecret);
+                var link = $"{opt.AppBaseUrl}/portal/{slug}?token={token}";
+                await outbox.EnqueueAsync(new EnqueueRequest(
+                    "magic_link", email, "Seu acesso aos recibos — Fidellis",
+                    $"Olá!\n\nAcesse seus recibos e histórico de doações neste link:\n{link}\n\nO link expira em 30 dias.",
+                    DonorId: donor.Id), ct);
+            }
+            return Results.Ok(new { sent = true }); // não vaza existência do e-mail
+        });
+
+        pub.MapGet("/me", async (
+            string tenant, string token, CatalogDbContext catalog, ITenantContext tc,
+            TenantDbContext db, InfrastructureOptions opt, CancellationToken ct) =>
+        {
+            if (!await PublicTenant.TryResolveAsync(catalog, tc, tenant, ct)) return Results.NotFound();
+            var valid = DonorMagicToken.Validate(token ?? "", opt.AppSecret, DateTimeOffset.UtcNow);
+            if (valid is null || valid.Value.Tenant != tenant.Trim().ToLowerInvariant())
+                return Results.Unauthorized();
+
+            var donorId = valid.Value.DonorId;
+            var donor = await db.Donors.Where(d => d.Id == donorId).Select(d => new { d.Name, d.Email }).FirstOrDefaultAsync(ct);
+            if (donor is null) return Results.NotFound();
+
+            var donations = await db.Donations.Where(d => d.DonorId == donorId)
+                .OrderByDescending(d => d.CreatedAt)
+                .Select(d => new { d.Id, d.Amount, d.Status, d.Method, d.CreatedAt, d.PaidAt })
+                .ToListAsync(ct);
+            var donationIds = donations.Select(x => x.Id).ToList();
+            var receipts = await db.Receipts.Where(r => donationIds.Contains(r.DonationId))
+                .OrderByDescending(r => r.IssuedAt)
+                .Select(r => new { r.Id, r.Number, r.Amount, r.IssuedAt })
+                .ToListAsync(ct);
+
+            return Results.Ok(new { donor, donations, receipts });
         });
 
         return app;
@@ -198,3 +315,5 @@ public static class DonationsModule
 public sealed record CreateOrganizationRequest(string Name, Guid? ParentId = null);
 
 public sealed record AddMemberRequest(Guid? UserId = null, string? Role = null);
+
+public sealed record MagicLinkRequest(string Email);

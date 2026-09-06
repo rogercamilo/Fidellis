@@ -3,7 +3,14 @@
 import Link from 'next/link';
 import { use, useEffect, useState } from 'react';
 import { Panel } from '../../../components/Panel';
-import { getDonor, type DonorDetail, type LoginResult } from '../../../lib/api';
+import {
+  anonymizeDonor,
+  exportDonor,
+  getDonor,
+  optOutDonor,
+  type DonorDetail,
+  type LoginResult,
+} from '../../../lib/api';
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -18,15 +25,49 @@ export default function DonorDetailPage({ params }: { params: Promise<{ id: stri
   const { id } = use(params);
   const [data, setData] = useState<DonorDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     const raw = sessionStorage.getItem('fidellis.session');
     if (!raw) return;
-    const token = (JSON.parse(raw) as LoginResult).accessToken;
-    getDonor(token, id)
+    const t = (JSON.parse(raw) as LoginResult).accessToken;
+    setToken(t);
+    getDonor(t, id)
       .then(setData)
       .catch((e) => setError(e instanceof Error ? e.message : 'Erro.'));
   }, [id]);
+
+  async function reload() {
+    if (token) setData(await getDonor(token, id));
+  }
+
+  async function onExport() {
+    if (!token) return;
+    const json = await exportDonor(token, id);
+    const blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `doador-${id}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setNotice('Dados exportados.');
+  }
+
+  async function onAnonymize() {
+    if (!token || !confirm('Anonimizar os dados pessoais deste doador? Esta ação é irreversível.')) return;
+    await anonymizeDonor(token, id);
+    setNotice('Doador anonimizado.');
+    await reload();
+  }
+
+  async function onOptOut() {
+    if (!token) return;
+    await optOutDonor(token, id);
+    setNotice('Doador marcado como opt-out.');
+    await reload();
+  }
 
   if (error) return <Panel title="Doador"><p className="error-text">{error}</p></Panel>;
   if (!data) return <Panel title="Doador"><p className="muted">Carregando…</p></Panel>;
@@ -41,7 +82,13 @@ export default function DonorDetailPage({ params }: { params: Promise<{ id: stri
           <h1>{data.donor.name}</h1>
           <p className="subtitle">{data.donor.email ?? 'sem e-mail'} · {data.donor.document ?? 'sem documento'}</p>
         </div>
+        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <button className="btn btn-ghost btn-sm" onClick={onExport}>Exportar dados</button>
+          <button className="btn btn-ghost btn-sm" onClick={onOptOut}>Opt-out</button>
+          <button className="btn btn-ghost btn-sm" onClick={onAnonymize}>Anonimizar</button>
+        </div>
       </div>
+      {notice && <p className="badge ok" style={{ marginBottom: '1rem' }}>{notice}</p>}
 
       <div className="grid cols-2 rise rise-2" style={{ alignItems: 'start' }}>
         <Panel title="Perfil">

@@ -329,3 +329,84 @@ export const reportingTimeseries = (token: string, months = 12) =>
 
 export const reportingByUnit = (token: string) =>
   authGet<UnitReport[]>(token, '/api/reporting/by-unit', 'consolidação por unidade');
+
+// ---- Auditoria + LGPD ----
+
+export interface AuditEntry {
+  id: string;
+  actorUserId: string | null;
+  action: string;
+  entity: string;
+  entityId: string | null;
+  createdAt: string;
+}
+
+export const listAuditLog = (token: string) => authGet<AuditEntry[]>(token, '/api/audit/log', 'auditoria');
+
+export async function exportDonor(token: string, id: string): Promise<unknown> {
+  return authGet<unknown>(token, `/api/crm/donors/${id}/export`, 'exportação');
+}
+
+async function authPost(token: string, path: string, label: string): Promise<void> {
+  const res = await fetch(`${BFF_URL}${path}`, { method: 'POST', headers: { authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error(`Falha em ${label} (${res.status}).`);
+}
+
+export const anonymizeDonor = (token: string, id: string) => authPost(token, `/api/crm/donors/${id}/anonymize`, 'anonimizar');
+export const optOutDonor = (token: string, id: string) => authPost(token, `/api/crm/donors/${id}/opt-out`, 'opt-out');
+
+// ---- Portal público do doador ----
+
+export interface PublicOrg {
+  id: string;
+  name: string;
+  parentId: string | null;
+}
+
+export interface PortalData {
+  donor: { name: string; email: string | null };
+  donations: { id: string; amount: number; status: string; method: string; createdAt: string; paidAt?: string | null }[];
+  receipts: { id: string; number: string; amount: number; issuedAt: string }[];
+}
+
+export async function publicOrganizations(tenant: string): Promise<PublicOrg[]> {
+  const res = await fetch(`${BFF_URL}/api/public/${tenant}/organizations`);
+  if (!res.ok) throw new Error(`Instituição não encontrada (${res.status}).`);
+  return res.json() as Promise<PublicOrg[]>;
+}
+
+export async function publicCreateDonation(
+  tenant: string,
+  input: { organizationId: string; amount: number; donor: { name: string; email?: string; document: string } },
+): Promise<DonationCheckout> {
+  const res = await fetch(`${BFF_URL}/api/public/${tenant}/donations`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? `Falha ao gerar doação (${res.status}).`);
+  }
+  return res.json() as Promise<DonationCheckout>;
+}
+
+export async function publicGetDonation(tenant: string, id: string): Promise<{ status: string; qrCode?: string | null; qrCodeUrl?: string | null }> {
+  const res = await fetch(`${BFF_URL}/api/public/${tenant}/donations/${id}`);
+  if (!res.ok) throw new Error(`Falha ao consultar (${res.status}).`);
+  return res.json() as Promise<{ status: string; qrCode?: string | null; qrCodeUrl?: string | null }>;
+}
+
+export async function requestMagicLink(tenant: string, email: string): Promise<void> {
+  await fetch(`${BFF_URL}/api/public/${tenant}/magic-link`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function portalMe(tenant: string, token: string): Promise<PortalData> {
+  const res = await fetch(`${BFF_URL}/api/public/${tenant}/me?token=${encodeURIComponent(token)}`);
+  if (!res.ok) throw new Error(`Link inválido ou expirado (${res.status}).`);
+  return res.json() as Promise<PortalData>;
+}

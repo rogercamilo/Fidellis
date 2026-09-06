@@ -31,6 +31,7 @@ public sealed class TenantDbContext(
     public DbSet<LedgerAccount> LedgerAccounts => Set<LedgerAccount>();
     public DbSet<Receipt> Receipts => Set<Receipt>();
     public DbSet<OutboxMessage> Messages => Set<OutboxMessage>();
+    public DbSet<AuditLogEntry> AuditLog => Set<AuditLogEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -98,6 +99,13 @@ public sealed class TenantDbContext(
             b.HasIndex(x => x.DedupeKey).IsUnique();
             b.HasIndex(x => x.Status);
             b.HasIndex(x => x.DonorId);
+        });
+
+        modelBuilder.Entity<AuditLogEntry>(b =>
+        {
+            b.ToTable("audit_log");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => x.CreatedAt);
         });
 
         modelBuilder.Entity<Donation>(b =>

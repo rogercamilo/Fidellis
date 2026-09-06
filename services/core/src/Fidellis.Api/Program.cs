@@ -31,6 +31,8 @@ builder.Services.AddInfrastructure(new InfrastructureOptions
     ResendApiKey = config["RESEND_API_KEY"],
     MailFrom = config["MAIL_FROM"] ?? "Fidellis <onboarding@resend.dev>",
     ReactivationDays = int.TryParse(config["REACTIVATION_DAYS"], out var rd) ? rd : 90,
+    AppSecret = jwtSecret,
+    AppBaseUrl = config["APP_BASE_URL"] ?? "http://localhost:3000",
 });
 
 builder.Services

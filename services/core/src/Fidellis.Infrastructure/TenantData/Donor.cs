@@ -9,4 +9,10 @@ public sealed class Donor : Entity
     public string? Email { get; set; }
     public string? Document { get; set; }
     public string? Phone { get; set; }
+
+    /// <summary>LGPD: doador optou por não receber comunicações (a régua o pula).</summary>
+    public bool ContactOptOut { get; set; }
+
+    /// <summary>LGPD: quando os dados pessoais foram anonimizados (erasure).</summary>
+    public DateTimeOffset? AnonymizedAt { get; set; }
 }

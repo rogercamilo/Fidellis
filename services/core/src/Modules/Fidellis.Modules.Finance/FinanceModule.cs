@@ -1,5 +1,6 @@
 using System.Text;
 using Fidellis.Infrastructure;
+using Fidellis.Infrastructure.Audit;
 using Fidellis.Infrastructure.Payments;
 using Fidellis.Infrastructure.Persistence;
 using Fidellis.Infrastructure.TenantData;
@@ -92,6 +93,7 @@ public static class FinanceModule
             CreateRecipientHttpRequest req,
             RecipientService recipients,
             ITenantContext tenant,
+            IAuditLog audit,
             CancellationToken ct) =>
         {
             if (!tenant.HasTenant)
@@ -99,6 +101,7 @@ public static class FinanceModule
 
             var result = await recipients.CreateAsync(
                 req.OrganizationId, req.Name, req.Email, req.Document, req.PixKey, ct);
+            await audit.RecordAsync("recipient.created", "psp_recipient", result.Id.ToString());
             return Results.Created($"/api/finance/recipients/{result.Id}", result);
         });
 
@@ -148,6 +151,38 @@ public static class FinanceModule
 
         group.MapPost("/recurring-donations/{id:guid}/cancel", async (Guid id, RecurringBillingService billing, CancellationToken ct) =>
             await billing.CancelAsync(id, ct) is { } r ? Results.Ok(ToRecurringDto(r)) : Results.NotFound());
+
+        // ---- Público (doador anônimo; tenant pelo path) ----
+        var pub = app.MapGroup("/api/public/{tenant}").WithTags("Public");
+
+        pub.MapPost("/donations", async (
+            string tenant, CreateDonationRequest req,
+            CatalogDbContext catalog, ITenantContext tc, DonationCheckoutService checkout, IAuditLog audit,
+            CancellationToken ct) =>
+        {
+            if (!await PublicTenant.TryResolveAsync(catalog, tc, tenant, ct))
+                return Results.NotFound(new { error = "Instituição não encontrada." });
+            if (req.Amount <= 0)
+                return Results.BadRequest(new { error = "amount deve ser positivo." });
+            if (req.Donor is null || string.IsNullOrWhiteSpace(req.Donor.Name) || string.IsNullOrWhiteSpace(req.Donor.Document))
+                return Results.BadRequest(new { error = "donor.name e donor.document são obrigatórios." });
+
+            var result = await checkout.CreateAsync(new CheckoutCommand(
+                req.OrganizationId, req.Amount, req.Donor.Name, req.Donor.Email ?? "", req.Donor.Document,
+                req.CampaignId, req.Description), ct);
+            await audit.RecordAsync("donation.public_checkout", "donation", result.DonationId.ToString());
+            return Results.Created($"/api/public/{tenant}/donations/{result.DonationId}", result);
+        });
+
+        pub.MapGet("/donations/{id:guid}", async (
+            string tenant, Guid id, CatalogDbContext catalog, ITenantContext tc, TenantDbContext db, CancellationToken ct) =>
+        {
+            if (!await PublicTenant.TryResolveAsync(catalog, tc, tenant, ct))
+                return Results.NotFound();
+            var d = await db.Donations.FirstOrDefaultAsync(x => x.Id == id, ct);
+            if (d is null) return Results.NotFound();
+            return Results.Ok(new { id = d.Id, status = d.Status, qrCode = d.PixQrCode, qrCodeUrl = d.PixQrCodeUrl, expiresAt = d.ExpiresAt, amount = d.Amount });
+        });
 
         // Receptor de webhook do Pagar.me — FORA da resolução de tenant por JWT.
         group.MapPost("/webhooks/pagarme", async (

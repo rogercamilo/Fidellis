@@ -25,7 +25,7 @@ public sealed class ReactivationScanner(TenantDbContext db, MessageOutbox outbox
         if (inactiveIds.Count == 0) return 0;
 
         var donors = await db.Donors
-            .Where(d => inactiveIds.Contains(d.Id) && d.Email != null)
+            .Where(d => inactiveIds.Contains(d.Id) && d.Email != null && !d.ContactOptOut)
             .ToListAsync(ct);
 
         var enqueued = 0;
