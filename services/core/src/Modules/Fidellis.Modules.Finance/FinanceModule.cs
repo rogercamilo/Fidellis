@@ -8,6 +8,7 @@ using Fidellis.Modules.Finance.CashSessions;
 using Fidellis.Modules.Finance.Configuration;
 using Fidellis.Modules.Finance.Dimensions;
 using Fidellis.Modules.Finance.Payables;
+using Fidellis.Modules.Finance.Periods;
 using Fidellis.Modules.Finance.Receivables;
 using Fidellis.Modules.Finance.Security;
 using Fidellis.Modules.Finance.Services;
@@ -41,6 +42,7 @@ public static class FinanceModule
         services.AddScoped<PayablesService>();
         services.AddScoped<ApprovalService>();
         services.AddScoped<CashSessionService>();
+        services.AddScoped<PeriodService>();
         services.AddScoped<Notifications.INotifier, Notifications.OutboxNotifier>();
         return services;
     }
@@ -266,6 +268,9 @@ public static class FinanceModule
 
         // Caixa físico (sessões de coleta em espécie com dupla conferência).
         app.MapCashSessions();
+
+        // Fechamento de período (bloqueio de lançamentos retroativos).
+        app.MapPeriods();
 
         return app;
     }

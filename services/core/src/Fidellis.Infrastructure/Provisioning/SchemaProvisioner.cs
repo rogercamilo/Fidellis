@@ -472,6 +472,18 @@ public sealed class SchemaProvisioner(
                 created_at            timestamptz   NOT NULL DEFAULT now()
             );
             CREATE INDEX IF NOT EXISTS ix_cash_sessions_acc ON "{schema}".cash_sessions (account_id, status);
+
+            -- Fechamento de período (Onda 2 inc.2.6): bloqueia lançamentos retroativos.
+            CREATE TABLE IF NOT EXISTS "{schema}".accounting_periods (
+                id         uuid PRIMARY KEY,
+                year       int         NOT NULL,
+                month      int         NOT NULL,
+                status     varchar(10) NOT NULL DEFAULT 'open',   -- open | closed
+                closed_by  uuid,
+                closed_at  timestamptz,
+                created_at timestamptz NOT NULL DEFAULT now(),
+                UNIQUE (year, month)
+            );
             """;
 
         await ExecuteAsync(ddl, ct);
