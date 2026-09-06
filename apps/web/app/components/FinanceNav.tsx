@@ -6,8 +6,9 @@ import { usePathname } from 'next/navigation';
 /** Áreas de gestão financeira (sub-nav "Financeiro"). Cresce a cada incremento do front. */
 const AREAS = [
   { href: '/dashboard/tesouraria', label: 'Tesouraria' },
+  { href: '/dashboard/receber', label: 'A Receber' },
   { href: '/dashboard/configuracoes', label: 'Configurações' },
-  // FE-3..6 acrescentam: Receber, Pagar, Caixa, Fechamento.
+  // FE-4..6 acrescentam: Pagar, Caixa, Fechamento.
 ];
 
 /** Sub-navegação segmentada das telas financeiras (decisão de navegação A). */
