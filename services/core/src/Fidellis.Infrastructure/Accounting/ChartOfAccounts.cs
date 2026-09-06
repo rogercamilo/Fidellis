@@ -18,6 +18,12 @@ public static class ChartOfAccounts
     /// <summary>Despesa: despesas gerais (débito no pagamento de Contas a Pagar).</summary>
     public const string Expense = "5.1.1";
 
+    /// <summary>Receita: serviços voluntários recebidos a valor justo (ITG 2002).</summary>
+    public const string VolunteerRevenue = "4.2.1";
+
+    /// <summary>Despesa: serviços voluntários aplicados a valor justo (ITG 2002).</summary>
+    public const string VolunteerExpense = "5.2.1";
+
     public sealed record AccountDef(string Code, string Name, string Type, string NormalBalance, bool Postable, string? ParentCode);
 
     /// <summary>Ordenado do pai para o filho (resolve <c>parent_id</c> na semeadura).</summary>
@@ -33,8 +39,12 @@ public static class ChartOfAccounts
         new("4", "Receitas", "revenue", "credit", false, null),
         new("4.1", "Doações", "revenue", "credit", false, "4"),
         new(Revenue, "Dízimos e ofertas", "revenue", "credit", true, "4.1"),
+        new("4.2", "Trabalho voluntário", "revenue", "credit", false, "4"),
+        new(VolunteerRevenue, "Serviços voluntários recebidos", "revenue", "credit", true, "4.2"),
         new("5", "Despesas", "expense", "debit", false, null),
         new("5.1", "Despesas operacionais", "expense", "debit", false, "5"),
         new(Expense, "Despesas gerais", "expense", "debit", true, "5.1"),
+        new("5.2", "Serviços voluntários", "expense", "debit", false, "5"),
+        new(VolunteerExpense, "Serviços voluntários aplicados", "expense", "debit", true, "5.2"),
     ];
 }
