@@ -484,6 +484,31 @@ public sealed class SchemaProvisioner(
                 created_at timestamptz NOT NULL DEFAULT now(),
                 UNIQUE (year, month)
             );
+
+            -- Conciliação bancária (Onda 3 inc.3.0): extratos importados + linhas.
+            CREATE TABLE IF NOT EXISTS "{schema}".bank_statements (
+                id          uuid PRIMARY KEY,
+                account_id  uuid         NOT NULL,
+                format      varchar(10)  NOT NULL,   -- ofx | cnab
+                reference   varchar(120),
+                imported_at timestamptz  NOT NULL DEFAULT now(),
+                created_at  timestamptz  NOT NULL DEFAULT now()
+            );
+            CREATE INDEX IF NOT EXISTS ix_bank_statements_acc ON "{schema}".bank_statements (account_id);
+
+            CREATE TABLE IF NOT EXISTS "{schema}".bank_statement_lines (
+                id           uuid PRIMARY KEY,
+                statement_id uuid          NOT NULL,
+                fit_id       varchar(120),
+                posted_at    date          NOT NULL,
+                amount       numeric(18,2) NOT NULL,
+                memo         varchar(200),
+                status       varchar(12)   NOT NULL DEFAULT 'unmatched',  -- unmatched | matched | ignored
+                matched_type varchar(12),
+                matched_id   uuid,
+                created_at   timestamptz   NOT NULL DEFAULT now()
+            );
+            CREATE INDEX IF NOT EXISTS ix_bank_lines ON "{schema}".bank_statement_lines (statement_id, status);
             """;
 
         await ExecuteAsync(ddl, ct);
