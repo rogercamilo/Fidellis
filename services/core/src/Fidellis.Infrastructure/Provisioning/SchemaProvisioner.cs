@@ -108,6 +108,32 @@ public sealed class SchemaProvisioner(
                 credit         numeric(18,2) NOT NULL DEFAULT 0,
                 created_at     timestamptz NOT NULL DEFAULT now()
             );
+            ALTER TABLE "{schema}".accounting_entries ADD COLUMN IF NOT EXISTS ledger_account_id uuid;
+
+            -- Plano de contas (chart of accounts) + recibos (passo 3).
+            CREATE TABLE IF NOT EXISTS "{schema}".ledger_accounts (
+                id             uuid PRIMARY KEY,
+                code           varchar(20) NOT NULL UNIQUE,
+                name           varchar(200) NOT NULL,
+                type           varchar(20) NOT NULL,
+                normal_balance varchar(10) NOT NULL,
+                postable       boolean NOT NULL DEFAULT true,
+                parent_id      uuid,
+                created_at     timestamptz NOT NULL DEFAULT now()
+            );
+
+            CREATE TABLE IF NOT EXISTS "{schema}".receipts (
+                id              uuid PRIMARY KEY,
+                number          varchar(30) NOT NULL,
+                organization_id uuid NOT NULL,
+                donation_id     uuid NOT NULL UNIQUE,
+                donor_name      varchar(200) NOT NULL,
+                donor_document  varchar(20),
+                amount          numeric(18,2) NOT NULL,
+                issued_at       timestamptz NOT NULL DEFAULT now(),
+                created_at      timestamptz NOT NULL DEFAULT now(),
+                UNIQUE (organization_id, number)
+            );
 
             CREATE TABLE IF NOT EXISTS "{schema}".donors (
                 id         uuid PRIMARY KEY,

@@ -41,6 +41,10 @@ public static class DependencyInjection
 
         services.AddSingleton<ISchemaProvisioner, SchemaProvisioner>();
 
+        // Contabilidade: plano de contas + recibos (usados pela conciliação e pelo módulo Accounting).
+        services.AddScoped<Accounting.ChartOfAccountsSeeder>();
+        services.AddScoped<Accounting.ReceiptService>();
+
         // Gateway de pagamento (Pagar.me) como HttpClient tipado com Basic auth (sk como usuário).
         services.AddHttpClient<IPaymentGateway, PagarmePaymentGateway>(client =>
         {

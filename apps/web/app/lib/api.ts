@@ -199,3 +199,60 @@ export async function actOnRecurring(
   if (!res.ok) throw new Error(`Falha ao ${action} recorrência (${res.status}).`);
   return res.json() as Promise<RecurringDonation>;
 }
+
+// ---- Contabilidade: recibos + balancete ----
+
+export interface ReceiptSummary {
+  id: string;
+  number: string;
+  organizationId: string;
+  donorName: string;
+  amount: number;
+  issuedAt: string;
+}
+
+export interface ReceiptDetail extends ReceiptSummary {
+  organizationName: string | null;
+  donorDocument: string | null;
+}
+
+export interface TrialBalanceRow {
+  ledgerAccountId: string | null;
+  code: string | null;
+  name: string;
+  debit: number;
+  credit: number;
+  balance: number;
+}
+
+export interface TrialBalance {
+  from: string | null;
+  to: string | null;
+  totalDebit: number;
+  totalCredit: number;
+  accounts: TrialBalanceRow[];
+}
+
+export async function listReceipts(token: string): Promise<ReceiptSummary[]> {
+  const res = await fetch(`${BFF_URL}/api/accounting/receipts`, {
+    headers: { authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Falha ao listar recibos (${res.status}).`);
+  return res.json() as Promise<ReceiptSummary[]>;
+}
+
+export async function getReceipt(token: string, id: string): Promise<ReceiptDetail> {
+  const res = await fetch(`${BFF_URL}/api/accounting/receipts/${id}`, {
+    headers: { authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Falha ao consultar recibo (${res.status}).`);
+  return res.json() as Promise<ReceiptDetail>;
+}
+
+export async function trialBalance(token: string): Promise<TrialBalance> {
+  const res = await fetch(`${BFF_URL}/api/accounting/trial-balance`, {
+    headers: { authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Falha ao consultar o balancete (${res.status}).`);
+  return res.json() as Promise<TrialBalance>;
+}

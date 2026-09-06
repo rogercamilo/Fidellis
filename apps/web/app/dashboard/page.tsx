@@ -31,12 +31,11 @@ export default function DashboardPage() {
         <strong style={{ color: 'var(--fg)' }}>{session.activeTenant ?? '— selecione —'}</strong>
       </p>
 
-      <p style={{ display: 'flex', gap: '0.75rem' }}>
+      <p style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
         <Link className="btn" href="/dashboard/cobranca">Nova cobrança (PIX)</Link>
-        <Link className="btn" href="/dashboard/recorrencia"
-          style={{ background: 'transparent', color: 'var(--accent)', border: '1px solid var(--border)' }}>
-          Recorrência (dízimo)
-        </Link>
+        <Link className="btn" href="/dashboard/recorrencia" style={ghostLink}>Recorrência (dízimo)</Link>
+        <Link className="btn" href="/dashboard/recibos" style={ghostLink}>Recibos</Link>
+        <Link className="btn" href="/dashboard/contabilidade" style={ghostLink}>Balancete</Link>
       </p>
 
       <div className="card">
@@ -61,3 +60,9 @@ export default function DashboardPage() {
     </main>
   );
 }
+
+const ghostLink: React.CSSProperties = {
+  background: 'transparent',
+  color: 'var(--accent)',
+  border: '1px solid var(--border)',
+};

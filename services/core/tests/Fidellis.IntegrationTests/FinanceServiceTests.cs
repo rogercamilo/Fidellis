@@ -1,3 +1,4 @@
+using Fidellis.Infrastructure.Accounting;
 using Fidellis.Infrastructure.Payments;
 using Fidellis.Infrastructure.Persistence;
 using Fidellis.Infrastructure.TenantData;
@@ -41,6 +42,9 @@ public class FinanceServiceTests
     private static CatalogDbContext NewCatalogDb(string db) =>
         new(new DbContextOptionsBuilder<CatalogDbContext>().UseInMemoryDatabase(db).Options);
 
+    private static WebhookProcessor Processor(TenantDbContext tdb, IPaymentGateway gw, IClock clock) =>
+        new(tdb, gw, new ChartOfAccountsSeeder(tdb), new ReceiptService(tdb, clock), clock, NullLogger<WebhookProcessor>.Instance);
+
     [Fact]
     public async Task Checkout_persists_pending_donation_order_and_catalog_index()
     {
@@ -78,7 +82,7 @@ public class FinanceServiceTests
         });
         await tdb.SaveChangesAsync();
 
-        var processor = new WebhookProcessor(tdb, new FakeGateway(), new FixedClock(DateTimeOffset.UtcNow), NullLogger<WebhookProcessor>.Instance);
+        var processor = Processor(tdb, new FakeGateway(), new FixedClock(DateTimeOffset.UtcNow));
         var evt = new PagarmeWebhookEvent("hook_1", "charge.paid", "or_1", "ch_1", "paid");
 
         var processed = await processor.ProcessAsync(evt, "{}");
@@ -105,7 +109,7 @@ public class FinanceServiceTests
         });
         await tdb.SaveChangesAsync();
 
-        var processor = new WebhookProcessor(tdb, new FakeGateway(), new FixedClock(DateTimeOffset.UtcNow), NullLogger<WebhookProcessor>.Instance);
+        var processor = Processor(tdb, new FakeGateway(), new FixedClock(DateTimeOffset.UtcNow));
         var evt = new PagarmeWebhookEvent("hook_1", "charge.paid", "or_1", "ch_1", "paid");
 
         Assert.True(await processor.ProcessAsync(evt, "{}"));

@@ -1,3 +1,4 @@
+using Fidellis.Infrastructure.Accounting;
 using Fidellis.Infrastructure.Payments;
 using Fidellis.Infrastructure.Persistence;
 using Fidellis.Infrastructure.TenantData;
@@ -10,17 +11,18 @@ namespace Fidellis.Modules.Finance.Services;
 /// <summary>
 /// Processa eventos de webhook do PSP de forma <b>idempotente</b> (dedupe por
 /// <c>provider_event_id</c>). Ao confirmar o pagamento, reconsulta o PSP (fonte de verdade),
-/// marca a doação como paga e faz a conciliação: cria a <c>transaction</c> e os lançamentos
-/// contábeis de partida dobrada. Deve rodar com o <c>ITenantContext</c> já resolvido.
+/// marca a doação como paga e faz a conciliação: cria a <c>transaction</c>, os lançamentos de
+/// partida dobrada (contra o plano de contas) e emite o recibo. Roda com o <c>ITenantContext</c>
+/// já resolvido.
 /// </summary>
 public sealed class WebhookProcessor(
     TenantDbContext db,
     IPaymentGateway gateway,
+    ChartOfAccountsSeeder chartSeeder,
+    ReceiptService receipts,
     IClock clock,
     ILogger<WebhookProcessor> logger)
 {
-    private const string LedgerReceivable = "1.1 PIX a receber";
-    private const string LedgerDonations = "3.1 Doações";
 
     /// <summary>Retorna <c>true</c> se processou; <c>false</c> se foi ignorado por duplicidade.</summary>
     public async Task<bool> ProcessAsync(PagarmeWebhookEvent evt, string rawPayload, CancellationToken ct = default)
@@ -95,10 +97,23 @@ public sealed class WebhookProcessor(
         };
         db.Transactions.Add(transaction);
 
-        // Partida dobrada: débito em "PIX a receber", crédito em "Doações" (soma balanceada).
+        // Partida dobrada contra o plano de contas (garante o plano p/ tenants antigos).
+        await chartSeeder.EnsureDefaultAsync(ct);
+        var accounts = await db.LedgerAccounts
+            .Where(a => a.Code == ChartOfAccounts.Receivable || a.Code == ChartOfAccounts.Revenue)
+            .ToDictionaryAsync(a => a.Code, a => a, ct);
+        var receivable = accounts[ChartOfAccounts.Receivable];
+        var revenue = accounts[ChartOfAccounts.Revenue];
+
         db.AccountingEntries.AddRange(
-            new AccountingEntry { TransactionId = transaction.Id, Ledger = LedgerReceivable, Debit = donation.Amount, Credit = 0 },
-            new AccountingEntry { TransactionId = transaction.Id, Ledger = LedgerDonations, Debit = 0, Credit = donation.Amount });
+            new AccountingEntry { TransactionId = transaction.Id, LedgerAccountId = receivable.Id, Ledger = receivable.Name, Debit = donation.Amount, Credit = 0 },
+            new AccountingEntry { TransactionId = transaction.Id, LedgerAccountId = revenue.Id, Ledger = revenue.Name, Debit = 0, Credit = donation.Amount });
+
+        // Recibo automático (idempotente por doação).
+        var donorDocument = donation.DonorId is { } donorId
+            ? await db.Donors.Where(d => d.Id == donorId).Select(d => d.Document).FirstOrDefaultAsync(ct)
+            : null;
+        await receipts.GenerateForDonationAsync(donation, donation.DonorName ?? "Doador", donorDocument, ct);
 
         // Ciclo recorrente pago: zera o dunning e agenda a próxima cobrança mensal.
         if (donation.RecurringDonationId is { } recurringId)

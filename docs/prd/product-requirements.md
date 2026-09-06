@@ -48,7 +48,7 @@ relacionamento com o doador que os concorrentes não priorizam.
 | **Tenant**   | Registro/provisionamento de instituições (schema `catalog` + `t_<slug>`)| **Funcional** (criar/listar tenant, provisiona schema) |
 | **Donations**| Campanhas, doações, doadores                                           | Skeleton (+ leitura por schema) |
 | **Finance**  | Cobrança PIX (Pagar.me), webhook idempotente, conciliação, split, **recorrência + dunning** | **Funcional (PIX)** — checkout, webhook, partida dobrada, dízimo mensal + dunning |
-| **Accounting**| Razão contábil, recibos, prestação de contas                          | Skeleton        |
+| **Accounting**| Plano de contas, razão/balancete, recibos automáticos                 | **Funcional** — plano de contas, partida dobrada, balancete consolidado, recibos |
 | **Reporting**| Dashboards, exportações, consolidação da rede                          | Skeleton        |
 | **Audit**    | Trilha de auditoria / LGPD                                             | Skeleton        |
 
@@ -61,7 +61,8 @@ relacionamento com o doador que os concorrentes não priorizam.
   **dízimo recorrente mensal** com dunning; cartão/boleto e PIX Automático (mandato) seguem no roadmap.
 - **RF-05 Repasse/split:** doação vai 100% para a unidade (recebedor Pagar.me por unidade);
   consolidação da rede fica no Reporting.
-- **RF-06 Recibos/prestação de contas (roadmap):** gerar recibo e lançamento contábil por doação.
+- **RF-06 Recibos/prestação de contas:** recibo automático por doação (número sequencial, HTML
+  imprimível) + lançamento contábil (partida dobrada) contra o plano de contas; balancete/razão.
 - **RF-07 Relatórios (roadmap):** dashboard por unidade e consolidado da rede; exportações.
 - **RF-08 Auditoria (roadmap):** registrar acessos/alterações sensíveis (LGPD).
 
@@ -83,7 +84,9 @@ relacionamento com o doador que os concorrentes não priorizam.
 2. ✅ **Recorrência (dízimo mensal) + dunning** — motor próprio no core (scheduler multi-tenant),
    cobrança PIX por ciclo, régua D+1/D+3/D+5 → `past_due`; encaixe pronto p/ PIX Automático (mandato).
    **Entregue.** Ver [ADR-0007](../architecture/ADR-0007-recurring-donations-dunning.md).
-3. **Razão contábil + recibos** (módulo Accounting).
+3. ✅ **Razão contábil + recibos** (módulo Accounting) — plano de contas configurável, partida dobrada
+   contra o plano, balancete/razão consolidados (Rede→Unidade) e recibo automático (HTML imprimível).
+   **Entregue.** Ver [ADR-0009](../architecture/ADR-0009-accounting-receipts.md).
 4. **CRM do doador + régua de relacionamento (WhatsApp/e-mail).**
 5. **Dashboards + consolidação da rede** (módulo Reporting).
 6. **Portal do doador** e **auditoria/LGPD** completa.

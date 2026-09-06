@@ -1,8 +1,9 @@
-namespace Fidellis.Modules.Donations;
+namespace Fidellis.Infrastructure.Organizations;
 
 /// <summary>
 /// Regra de visibilidade Rede→Unidade: um usuário vinculado a uma organização enxerga essa
-/// organização e todas as suas filiais (descendentes por <c>parent_id</c>). Função pura/testável.
+/// organização e todas as suas filiais (descendentes por <c>parent_id</c>). Função pura/testável,
+/// compartilhada entre os módulos.
 /// </summary>
 public static class OrgVisibility
 {
