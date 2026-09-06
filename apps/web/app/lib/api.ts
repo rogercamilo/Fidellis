@@ -512,3 +512,32 @@ export interface AccountingPeriod { year: number; month: number; status: string;
 export const listPeriods = (t: string) => authGet<AccountingPeriod[]>(t, '/api/finance/periods', 'períodos');
 export const closePeriod = (t: string, year: number, month: number) => authSend<AccountingPeriod>(t, 'POST', `/api/finance/periods/${year}/${month}/close`, {}, 'fechar período');
 export const reopenPeriod = (t: string, year: number, month: number) => authSend<AccountingPeriod>(t, 'POST', `/api/finance/periods/${year}/${month}/reopen`, {}, 'reabrir período');
+
+// ---- Conciliação bancária (Onda 3) ----
+
+export interface BankStatement { id: string; accountId: string; format: string; reference: string | null; importedAt: string }
+export interface StatementLine { id: string; fitId: string | null; postedAt: string; amount: number; memo: string | null; status: string; matchedType: string | null; matchedId: string | null }
+export interface MatchCandidate { type: string; id: string; description: string; amount: number; date: string }
+
+export const importStatement = (t: string, body: { accountId: string; content: string; format?: string; reference?: string }) =>
+  authSend<{ id: string; imported: number; skipped: number }>(t, 'POST', '/api/finance/statements/import', body, 'importar extrato');
+export const listStatements = (t: string) => authGet<BankStatement[]>(t, '/api/finance/statements', 'extratos');
+export const statementLines = (t: string, id: string) => authGet<StatementLine[]>(t, `/api/finance/statements/${id}/lines`, 'linhas do extrato');
+export const lineSuggestions = (t: string, lineId: string) => authGet<MatchCandidate[]>(t, `/api/finance/statement-lines/${lineId}/suggestions`, 'sugestões');
+export const matchLine = (t: string, lineId: string, body: { type: string; id: string }) =>
+  authSend<{ id: string; status: string }>(t, 'POST', `/api/finance/statement-lines/${lineId}/match`, body, 'casar linha');
+export const ignoreLine = (t: string, lineId: string) =>
+  authSend<{ id: string; status: string }>(t, 'POST', `/api/finance/statement-lines/${lineId}/ignore`, {}, 'ignorar linha');
+
+// ---- Orçamento (Onda 3) ----
+
+export interface Budget { id: string; year: number; kind: string; amount: number; costCenterId: string | null; projectId: string | null; fundId: string | null; revision: number; active: boolean }
+export interface BudgetActual { budgetId: string; year: number; kind: string; costCenterId: string | null; projectId: string | null; fundId: string | null; budgeted: number; realized: number; variance: number; overBudget: boolean }
+
+export const listBudgets = (t: string, year?: number, includeInactive?: boolean) =>
+  authGet<Budget[]>(t, `/api/finance/budgets?${year ? `year=${year}&` : ''}${includeInactive ? 'includeInactive=true' : ''}`, 'orçamentos');
+export const budgetActual = (t: string, year: number) => authGet<BudgetActual[]>(t, `/api/finance/budgets/actual?year=${year}`, 'previsto × realizado');
+export const createBudget = (t: string, body: { year: number; kind: string; amount: number; costCenterId?: string; projectId?: string; fundId?: string }) =>
+  authSend<Budget>(t, 'POST', '/api/finance/budgets', body, 'criar orçamento');
+export const reviseBudget = (t: string, id: string, body: { amount: number }) =>
+  authSend<Budget>(t, 'POST', `/api/finance/budgets/${id}/revise`, body, 'revisar orçamento');

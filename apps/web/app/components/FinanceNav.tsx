@@ -9,9 +9,10 @@ const AREAS = [
   { href: '/dashboard/receber', label: 'A Receber' },
   { href: '/dashboard/pagar', label: 'A Pagar' },
   { href: '/dashboard/caixa', label: 'Caixa' },
+  { href: '/dashboard/conciliacao', label: 'Conciliação' },
+  { href: '/dashboard/orcamento', label: 'Orçamento' },
   { href: '/dashboard/fechamento', label: 'Fechamento' },
   { href: '/dashboard/configuracoes', label: 'Configurações' },
-  // FE-6 acrescenta: cobrança multi-método (evolui a tela de Cobrança existente).
 ];
 
 /** Sub-navegação segmentada das telas financeiras (decisão de navegação A). */
