@@ -6,11 +6,11 @@ import { Panel } from '../components/Panel';
 import {
   listMyOrganizations,
   listReceipts,
-  listRecurring,
+  reportingOverview,
   type LoginResult,
   type Organization,
   type ReceiptSummary,
-  type RecurringDonation,
+  type ReportingOverview,
 } from '../lib/api';
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -19,7 +19,7 @@ export default function DashboardPage() {
   const [session, setSession] = useState<LoginResult | null>(null);
   const [orgs, setOrgs] = useState<Organization[]>([]);
   const [receipts, setReceipts] = useState<ReceiptSummary[]>([]);
-  const [recurring, setRecurring] = useState<RecurringDonation[]>([]);
+  const [overview, setOverview] = useState<ReportingOverview | null>(null);
 
   useEffect(() => {
     const raw = sessionStorage.getItem('fidellis.session');
@@ -29,7 +29,7 @@ export default function DashboardPage() {
     const t = s.accessToken;
     listMyOrganizations(t).then(setOrgs).catch(() => {});
     listReceipts(t).then(setReceipts).catch(() => {});
-    listRecurring(t).then(setRecurring).catch(() => {});
+    reportingOverview(t).then(setOverview).catch(() => {});
   }, []);
 
   if (!session) {
@@ -42,8 +42,8 @@ export default function DashboardPage() {
     );
   }
 
-  const activeRecurring = recurring.filter((r) => r.status === 'active').length;
-  const total = receipts.reduce((s, r) => s + r.amount, 0);
+  const activeRecurring = overview?.activeRecurring ?? 0;
+  const total = overview?.totalRaised ?? 0;
 
   return (
     <>
@@ -62,7 +62,7 @@ export default function DashboardPage() {
 
       <div className="kpi-grid rise rise-2">
         <div className="kpi">
-          <div className="kpi-label">Arrecadado (recibos)</div>
+          <div className="kpi-label">Arrecadado</div>
           <div className="kpi-value"><span className="cur">R$</span>{total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
         </div>
         <div className="kpi">

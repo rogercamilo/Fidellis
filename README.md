@@ -77,6 +77,13 @@ fluxo completo:
 3. O webhook confirma o pagamento de forma idempotente e concilia (partida dobrada). O webhook fala
    **direto com o core**, não pelo BFF.
 
+### Relatórios + consolidação da rede
+
+**/dashboard/relatorios** traz KPIs (arrecadado, ticket médio, doadores/recorrências ativas), série
+mensal (12 meses), quebra por método e a **consolidação por unidade** (Rede→Unidade) — tudo com
+escopo nas unidades visíveis. Endpoints em `/api/reporting/*`. Gráficos com Recharts. Ver
+[`ADR-0011`](docs/architecture/ADR-0011-reporting-dashboards.md).
+
 ### CRM do doador + régua de relacionamento
 
 **/dashboard/doadores** traz o CRM 360º (histórico, situação, recorrências e mensagens por doador). A
