@@ -7,6 +7,8 @@ export interface AccessClaims {
   email: string;
   /** Slug do tenant assumido; lido pelo core para resolver o schema t_<slug>. */
   tenant?: string;
+  /** Papel do usuário no tenant ativo; lido pelo core para o RBAC (ex.: admin, treasurer). */
+  role?: string;
 }
 
 /** Emite/valida JWT HS256 com o segredo compartilhado com o core .NET. */
