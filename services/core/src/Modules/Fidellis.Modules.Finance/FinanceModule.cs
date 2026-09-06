@@ -4,6 +4,7 @@ using Fidellis.Infrastructure.Audit;
 using Fidellis.Infrastructure.Payments;
 using Fidellis.Infrastructure.Persistence;
 using Fidellis.Infrastructure.TenantData;
+using Fidellis.Modules.Finance.CashSessions;
 using Fidellis.Modules.Finance.Configuration;
 using Fidellis.Modules.Finance.Dimensions;
 using Fidellis.Modules.Finance.Payables;
@@ -39,6 +40,7 @@ public static class FinanceModule
         services.AddScoped<ReceivablesService>();
         services.AddScoped<PayablesService>();
         services.AddScoped<ApprovalService>();
+        services.AddScoped<CashSessionService>();
         services.AddScoped<Notifications.INotifier, Notifications.OutboxNotifier>();
         return services;
     }
@@ -261,6 +263,9 @@ public static class FinanceModule
 
         // Contas a Pagar (credores, títulos com rateio).
         app.MapPayables();
+
+        // Caixa físico (sessões de coleta em espécie com dupla conferência).
+        app.MapCashSessions();
 
         return app;
     }
