@@ -14,4 +14,8 @@ public sealed class Receipt : Entity
     public string? DonorDocument { get; set; }
     public required decimal Amount { get; set; }
     public DateTimeOffset IssuedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    // Cancelamento em estorno/chargeback (Onda 1 inc.1.4 / RF-FIN-022 / D12).
+    public DateTimeOffset? CanceledAt { get; set; }
+    public string? CancelReason { get; set; }
 }

@@ -335,6 +335,15 @@ public sealed class SchemaProvisioner(
             ALTER TABLE "{schema}".donations ADD COLUMN IF NOT EXISTS boleto_barcode varchar(60);
             ALTER TABLE "{schema}".donations ADD COLUMN IF NOT EXISTS boleto_url     text;
             ALTER TABLE "{schema}".donations ADD COLUMN IF NOT EXISTS due_date       date;
+
+            -- Cartão (Onda 1 inc.1.4): bandeira/4 últimos e motivo de recusa (sem PAN).
+            ALTER TABLE "{schema}".donations ADD COLUMN IF NOT EXISTS card_brand     varchar(20);
+            ALTER TABLE "{schema}".donations ADD COLUMN IF NOT EXISTS card_last4     varchar(4);
+            ALTER TABLE "{schema}".donations ADD COLUMN IF NOT EXISTS decline_reason varchar(120);
+
+            -- Cancelamento de recibo em estorno/chargeback (RF-FIN-022).
+            ALTER TABLE "{schema}".receipts ADD COLUMN IF NOT EXISTS canceled_at   timestamptz;
+            ALTER TABLE "{schema}".receipts ADD COLUMN IF NOT EXISTS cancel_reason varchar(200);
             """;
 
         await ExecuteAsync(ddl, ct);

@@ -23,6 +23,8 @@ public class BoletoTests
             => Task.FromResult(new BoletoOrderResult("or_1", "ch_1", "pending",
                 "34191.79001 01043.510047 91020.150008 5 84410000012345", "34195844100000123451790001010435100479102015",
                 "https://pagar.me/boleto/ch_1.pdf", DateOnly.FromDateTime(new DateTime(2026, 5, 25))));
+        public Task<CardChargeResult> CreateCardOrderAsync(CreateCardOrderRequest r, CancellationToken ct = default)
+            => Task.FromResult(new CardChargeResult("or_1", "ch_1", "paid", null, "visa", "1234"));
         public Task<ChargeStatusResult> GetChargeAsync(string id, CancellationToken ct = default)
             => Task.FromResult(new ChargeStatusResult(id, "paid", DateTimeOffset.UtcNow));
         public Task<CreateRecipientResult> CreateRecipientAsync(CreateRecipientRequest r, CancellationToken ct = default)

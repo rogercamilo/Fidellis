@@ -12,6 +12,12 @@ public interface IPaymentGateway
     /// <summary>Cria um pedido boleto e retorna a linha digitável, o código de barras, a URL do PDF e o vencimento.</summary>
     Task<BoletoOrderResult> CreateBoletoOrderAsync(CreateBoletoOrderRequest request, CancellationToken ct = default);
 
+    /// <summary>
+    /// Cria um pedido cartão de crédito à vista com o <c>card_token</c> tokenizado no front (PAN nunca
+    /// no core). Resposta síncrona: aprovado ou recusado (com motivo).
+    /// </summary>
+    Task<CardChargeResult> CreateCardOrderAsync(CreateCardOrderRequest request, CancellationToken ct = default);
+
     /// <summary>Consulta o status de uma cobrança no PSP (fonte de verdade na conciliação).</summary>
     Task<ChargeStatusResult> GetChargeAsync(string chargeId, CancellationToken ct = default);
 
@@ -53,6 +59,23 @@ public sealed record BoletoOrderResult(
     string? Barcode,
     string? BoletoUrl,
     DateOnly? DueDate);
+
+public sealed record CreateCardOrderRequest(
+    decimal Amount,
+    string DonorName,
+    string DonorEmail,
+    string DonorDocument,
+    string CardToken,
+    string? RecipientId = null,
+    string? Description = null);
+
+public sealed record CardChargeResult(
+    string OrderId,
+    string ChargeId,
+    string Status,
+    string? DeclineReason,
+    string? Brand,
+    string? Last4);
 
 public sealed record ChargeStatusResult(
     string ChargeId,
