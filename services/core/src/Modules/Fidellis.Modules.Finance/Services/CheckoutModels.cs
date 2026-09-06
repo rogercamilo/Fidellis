@@ -11,7 +11,8 @@ public sealed record CheckoutCommand(
     string? Description = null,
     string? IdempotencyKey = null,
     string Method = "pix",
-    string? CardToken = null);
+    string? CardToken = null,
+    Guid? ReceivableId = null);
 
 /// <summary>Resultado do checkout: dados do PIX, do boleto ou do cartão para exibir ao doador.</summary>
 public sealed record CheckoutResult(

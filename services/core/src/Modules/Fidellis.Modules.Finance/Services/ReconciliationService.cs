@@ -63,6 +63,14 @@ public sealed class ReconciliationService(
                 recurring.NextChargeAt = RecurringBillingService.NextChargeDate(recurring.DayOfMonth, clock.UtcNow.AddDays(1));
             }
         }
+
+        // Baixa do título a receber vinculado (Onda 2 — RF-FIN-103, vínculo explícito).
+        if (donation.ReceivableId is { } receivableId)
+        {
+            var linkedReceivable = await db.Receivables.FirstOrDefaultAsync(r => r.Id == receivableId, ct);
+            if (linkedReceivable is not null)
+                ReceivablesService.Apply(linkedReceivable, donation.Amount, donation.Id);
+        }
     }
 
     /// <summary>

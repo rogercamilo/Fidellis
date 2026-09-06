@@ -39,6 +39,7 @@ public sealed class TenantDbContext(
     public DbSet<IdempotencyKey> IdempotencyKeys => Set<IdempotencyKey>();
     public DbSet<TreasuryAccount> TreasuryAccounts => Set<TreasuryAccount>();
     public DbSet<TreasuryMovement> TreasuryMovements => Set<TreasuryMovement>();
+    public DbSet<Receivable> Receivables => Set<Receivable>();
     public DbSet<OutboxMessage> Messages => Set<OutboxMessage>();
     public DbSet<AuditLogEntry> AuditLog => Set<AuditLogEntry>();
 
@@ -225,6 +226,16 @@ public sealed class TenantDbContext(
             b.HasKey(x => x.Id);
             b.HasIndex(x => new { x.AccountId, x.OccurredAt });
             b.Property(x => x.Amount).HasPrecision(18, 2);
+        });
+
+        modelBuilder.Entity<Receivable>(b =>
+        {
+            b.ToTable("receivables");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => new { x.Status, x.DueDate });
+            b.HasIndex(x => x.OrganizationId);
+            b.Property(x => x.Amount).HasPrecision(18, 2);
+            b.Property(x => x.ReceivedAmount).HasPrecision(18, 2);
         });
     }
 }
