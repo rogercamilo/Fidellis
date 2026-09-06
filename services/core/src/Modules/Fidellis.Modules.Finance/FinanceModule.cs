@@ -37,6 +37,7 @@ public static class FinanceModule
         services.AddScoped<TreasuryService>();
         services.AddScoped<ReceivablesService>();
         services.AddScoped<PayablesService>();
+        services.AddScoped<ApprovalService>();
         services.AddScoped<Notifications.INotifier, Notifications.OutboxNotifier>();
         return services;
     }

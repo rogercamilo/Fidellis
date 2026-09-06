@@ -436,6 +436,26 @@ public sealed class SchemaProvisioner(
                 created_at     timestamptz   NOT NULL DEFAULT now()
             );
             CREATE INDEX IF NOT EXISTS ix_payable_alloc ON "{schema}".payable_allocations (payable_id);
+
+            -- Alçadas de aprovação (Onda 2 inc.2.3): faixas + aprovações registradas.
+            CREATE TABLE IF NOT EXISTS "{schema}".approval_tiers (
+                id         uuid PRIMARY KEY,
+                min_amount numeric(18,2) NOT NULL,
+                max_amount numeric(18,2),
+                signatures int          NOT NULL DEFAULT 1,
+                roles_csv  varchar(200) NOT NULL,
+                created_at timestamptz  NOT NULL DEFAULT now()
+            );
+
+            CREATE TABLE IF NOT EXISTS "{schema}".payable_approvals (
+                id          uuid PRIMARY KEY,
+                payable_id  uuid        NOT NULL,
+                approver_id uuid        NOT NULL,
+                role        varchar(40) NOT NULL,
+                decision    varchar(10) NOT NULL,   -- approved | rejected
+                created_at  timestamptz NOT NULL DEFAULT now(),
+                UNIQUE (payable_id, approver_id)
+            );
             """;
 
         await ExecuteAsync(ddl, ct);

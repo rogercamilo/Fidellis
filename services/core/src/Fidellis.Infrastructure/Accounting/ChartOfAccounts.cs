@@ -12,6 +12,12 @@ public static class ChartOfAccounts
     /// <summary>Receita: dízimos e ofertas (crédito).</summary>
     public const string Revenue = "4.1.1";
 
+    /// <summary>Banco (crédito no pagamento de despesas).</summary>
+    public const string Bank = "1.1.2";
+
+    /// <summary>Despesa: despesas gerais (débito no pagamento de Contas a Pagar).</summary>
+    public const string Expense = "5.1.1";
+
     public sealed record AccountDef(string Code, string Name, string Type, string NormalBalance, bool Postable, string? ParentCode);
 
     /// <summary>Ordenado do pai para o filho (resolve <c>parent_id</c> na semeadura).</summary>
@@ -28,5 +34,7 @@ public static class ChartOfAccounts
         new("4.1", "Doações", "revenue", "credit", false, "4"),
         new(Revenue, "Dízimos e ofertas", "revenue", "credit", true, "4.1"),
         new("5", "Despesas", "expense", "debit", false, null),
+        new("5.1", "Despesas operacionais", "expense", "debit", false, "5"),
+        new(Expense, "Despesas gerais", "expense", "debit", true, "5.1"),
     ];
 }
