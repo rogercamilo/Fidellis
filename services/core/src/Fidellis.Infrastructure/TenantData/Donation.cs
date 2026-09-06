@@ -43,4 +43,7 @@ public sealed class Donation : Entity
 
     /// <summary>Motivo da recusa do PSP quando <c>Status = "declined"</c>.</summary>
     public string? DeclineReason { get; set; }
+
+    /// <summary>Título a receber que esta doação quita (Onda 2 — baixa por vínculo explícito).</summary>
+    public Guid? ReceivableId { get; set; }
 }

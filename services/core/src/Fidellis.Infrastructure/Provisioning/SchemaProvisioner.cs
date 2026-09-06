@@ -370,6 +370,29 @@ public sealed class SchemaProvisioner(
                 created_at     timestamptz   NOT NULL DEFAULT now()
             );
             CREATE INDEX IF NOT EXISTS ix_treasury_mov_account ON "{schema}".treasury_movements (account_id, occurred_at);
+
+            -- Contas a Receber (Onda 2 inc.2.1): promessas/recebíveis.
+            CREATE TABLE IF NOT EXISTS "{schema}".receivables (
+                id              uuid PRIMARY KEY,
+                organization_id uuid          NOT NULL,
+                donor_id        uuid,
+                source          varchar(20)   NOT NULL DEFAULT 'pledge',   -- pledge | grant | agreement
+                description     varchar(200),
+                amount          numeric(18,2) NOT NULL,
+                due_date        date          NOT NULL,
+                status          varchar(20)   NOT NULL DEFAULT 'open',      -- open | partial | received | canceled
+                received_amount numeric(18,2) NOT NULL DEFAULT 0,
+                cost_center_id  uuid,
+                project_id      uuid,
+                fund_id         uuid,
+                donation_id     uuid,
+                created_at      timestamptz   NOT NULL DEFAULT now()
+            );
+            CREATE INDEX IF NOT EXISTS ix_receivables_due ON "{schema}".receivables (status, due_date);
+            CREATE INDEX IF NOT EXISTS ix_receivables_org ON "{schema}".receivables (organization_id);
+
+            -- Vínculo doação→recebível (baixa por vínculo explícito).
+            ALTER TABLE "{schema}".donations ADD COLUMN IF NOT EXISTS receivable_id uuid;
             """;
 
         await ExecuteAsync(ddl, ct);
