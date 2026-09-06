@@ -6,6 +6,7 @@ using Fidellis.Infrastructure.Persistence;
 using Fidellis.Infrastructure.TenantData;
 using Fidellis.Modules.Finance.Configuration;
 using Fidellis.Modules.Finance.Dimensions;
+using Fidellis.Modules.Finance.Payables;
 using Fidellis.Modules.Finance.Receivables;
 using Fidellis.Modules.Finance.Security;
 using Fidellis.Modules.Finance.Services;
@@ -35,6 +36,7 @@ public static class FinanceModule
         services.AddScoped<DonationExpiryService>();
         services.AddScoped<TreasuryService>();
         services.AddScoped<ReceivablesService>();
+        services.AddScoped<PayablesService>();
         services.AddScoped<Notifications.INotifier, Notifications.OutboxNotifier>();
         return services;
     }
@@ -254,6 +256,9 @@ public static class FinanceModule
 
         // Contas a Receber (promessas/recebíveis, aging, baixa).
         app.MapReceivables();
+
+        // Contas a Pagar (credores, títulos com rateio).
+        app.MapPayables();
 
         return app;
     }

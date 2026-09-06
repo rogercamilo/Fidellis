@@ -393,6 +393,49 @@ public sealed class SchemaProvisioner(
 
             -- Vínculo doação→recebível (baixa por vínculo explícito).
             ALTER TABLE "{schema}".donations ADD COLUMN IF NOT EXISTS receivable_id uuid;
+
+            -- Contas a Pagar (Onda 2 inc.2.2): credores, títulos e rateio.
+            CREATE TABLE IF NOT EXISTS "{schema}".payees (
+                id         uuid PRIMARY KEY,
+                name       varchar(200) NOT NULL,
+                document   varchar(20),
+                pix_key    varchar(140),
+                kind       varchar(20)  NOT NULL DEFAULT 'supplier',  -- supplier | volunteer | staff
+                active     boolean      NOT NULL DEFAULT true,
+                created_at timestamptz  NOT NULL DEFAULT now()
+            );
+
+            CREATE TABLE IF NOT EXISTS "{schema}".payables (
+                id             uuid PRIMARY KEY,
+                payee_id       uuid          NOT NULL,
+                category_id    uuid,
+                description    varchar(200)  NOT NULL,
+                amount         numeric(18,2) NOT NULL,
+                due_date       date          NOT NULL,
+                status         varchar(20)   NOT NULL DEFAULT 'awaiting_approval',
+                document_url   text,
+                cost_center_id uuid,
+                project_id     uuid,
+                fund_id        uuid,
+                approved_at    timestamptz,
+                paid_at        timestamptz,
+                account_id     uuid,
+                created_by     uuid,
+                created_at     timestamptz   NOT NULL DEFAULT now()
+            );
+            CREATE INDEX IF NOT EXISTS ix_payables_status_due ON "{schema}".payables (status, due_date);
+            CREATE INDEX IF NOT EXISTS ix_payables_payee ON "{schema}".payables (payee_id);
+
+            CREATE TABLE IF NOT EXISTS "{schema}".payable_allocations (
+                id             uuid PRIMARY KEY,
+                payable_id     uuid          NOT NULL,
+                cost_center_id uuid,
+                project_id     uuid,
+                fund_id        uuid,
+                amount         numeric(18,2) NOT NULL,
+                created_at     timestamptz   NOT NULL DEFAULT now()
+            );
+            CREATE INDEX IF NOT EXISTS ix_payable_alloc ON "{schema}".payable_allocations (payable_id);
             """;
 
         await ExecuteAsync(ddl, ct);
