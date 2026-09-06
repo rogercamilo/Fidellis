@@ -45,6 +45,7 @@ public static class FinanceModule
         services.AddScoped<CashSessionService>();
         services.AddScoped<PeriodService>();
         services.AddScoped<StatementImportService>();
+        services.AddScoped<ReconciliationMatchService>();
         services.AddScoped<Notifications.INotifier, Notifications.OutboxNotifier>();
         return services;
     }

@@ -42,9 +42,37 @@ public static class StatementEndpoints
             catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
         });
 
+        // ---- Casamento/baixa de linhas (inc.3.1) ----
+        var lines = app.MapGroup("/api/finance/statement-lines").WithTags("Finance/Statements").AddEndpointFilter<FinanceWriteFilter>();
+
+        lines.MapGet("/{id:guid}/suggestions", async (Guid id, ReconciliationMatchService match, CancellationToken ct) =>
+            Results.Ok(await match.SuggestAsync(id, ct)));
+
+        lines.MapPost("/{id:guid}/match", async (Guid id, MatchLineRequest req, ReconciliationMatchService match, CancellationToken ct) =>
+        {
+            try
+            {
+                var line = await match.MatchAsync(id, req.Type, req.Id, ct);
+                return Results.Ok(new { id = line.Id, status = line.Status, matchedType = line.MatchedType, matchedId = line.MatchedId });
+            }
+            catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
+        });
+
+        lines.MapPost("/{id:guid}/ignore", async (Guid id, ReconciliationMatchService match, CancellationToken ct) =>
+        {
+            try
+            {
+                var line = await match.IgnoreAsync(id, ct);
+                return line is null ? Results.NotFound() : Results.Ok(new { id = line.Id, status = line.Status });
+            }
+            catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
+        });
+
         return app;
     }
 }
+
+public sealed record MatchLineRequest(string Type, Guid Id);
 
 public sealed record StatementDto(Guid Id, Guid AccountId, string Format, string? Reference, DateTimeOffset ImportedAt);
 public sealed record StatementLineDto(Guid Id, string? FitId, DateOnly PostedAt, decimal Amount, string? Memo, string Status, string? MatchedType, Guid? MatchedId);
