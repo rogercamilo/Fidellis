@@ -42,6 +42,7 @@ public static class FinanceModule
         // Cria uma cobrança PIX (gestor autenticado; tenant vem do JWT).
         group.MapPost("/donations", async (
             CreateDonationRequest req,
+            HttpRequest request,
             DonationCheckoutService checkout,
             ITenantContext tenant,
             CancellationToken ct) =>
@@ -55,7 +56,7 @@ public static class FinanceModule
 
             var result = await checkout.CreateAsync(new CheckoutCommand(
                 req.OrganizationId, req.Amount, req.Donor.Name, req.Donor.Email ?? "", req.Donor.Document,
-                req.CampaignId, req.Description), ct);
+                req.CampaignId, req.Description, IdempotencyKey: request.Headers["Idempotency-Key"].FirstOrDefault()), ct);
 
             return Results.Created($"/api/finance/donations/{result.DonationId}", result);
         });
@@ -155,10 +156,11 @@ public static class FinanceModule
             await billing.CancelAsync(id, ct) is { } r ? Results.Ok(ToRecurringDto(r)) : Results.NotFound());
 
         // ---- Público (doador anônimo; tenant pelo path) ----
-        var pub = app.MapGroup("/api/public/{tenant}").WithTags("Public");
+        // Rate limiting por IP+tenant (RF-FIN-002) aplicado a todo o grupo público.
+        var pub = app.MapGroup("/api/public/{tenant}").WithTags("Public").RequireRateLimiting("public");
 
         pub.MapPost("/donations", async (
-            string tenant, CreateDonationRequest req,
+            string tenant, CreateDonationRequest req, HttpRequest request,
             CatalogDbContext catalog, ITenantContext tc, DonationCheckoutService checkout, IAuditLog audit,
             CancellationToken ct) =>
         {
@@ -171,7 +173,7 @@ public static class FinanceModule
 
             var result = await checkout.CreateAsync(new CheckoutCommand(
                 req.OrganizationId, req.Amount, req.Donor.Name, req.Donor.Email ?? "", req.Donor.Document,
-                req.CampaignId, req.Description), ct);
+                req.CampaignId, req.Description, IdempotencyKey: request.Headers["Idempotency-Key"].FirstOrDefault()), ct);
             await audit.RecordAsync("donation.public_checkout", "donation", result.DonationId.ToString());
             return Results.Created($"/api/public/{tenant}/donations/{result.DonationId}", result);
         });
@@ -198,7 +200,7 @@ public static class FinanceModule
             using var reader = new StreamReader(request.Body, Encoding.UTF8);
             var raw = await reader.ReadToEndAsync(ct);
 
-            if (!WebhookAuthOk(request, options))
+            if (!WebhookAuthOk(request, raw, options))
                 return Results.Unauthorized();
 
             PagarmeWebhookEvent evt;
@@ -233,9 +235,18 @@ public static class FinanceModule
     private static RecurringDto ToRecurringDto(RecurringDonation r)
         => new(r.Id, r.OrganizationId, r.Amount, r.DayOfMonth, r.Status, r.NextChargeAt, r.Attempt);
 
-    private static bool WebhookAuthOk(HttpRequest request, InfrastructureOptions options)
+    private static bool WebhookAuthOk(HttpRequest request, string raw, InfrastructureOptions options)
     {
-        // Se não houver credenciais configuradas, não exige auth (dev). Se houver, valida o Basic auth.
+        // 1) Assinatura HMAC-SHA256 sobre o corpo bruto (RF-FIN-001): precede o Basic auth.
+        if (!string.IsNullOrEmpty(options.PagarmeWebhookSignatureSecret))
+        {
+            var sig = request.Headers["X-Hub-Signature-256"].FirstOrDefault();
+            if (string.IsNullOrEmpty(sig))
+                sig = request.Headers["X-Hub-Signature"].FirstOrDefault();
+            return WebhookSignature.IsValid(options.PagarmeWebhookSignatureSecret, raw, sig);
+        }
+
+        // 2) Basic auth (dev/legado): sem credenciais configuradas, não exige auth.
         if (string.IsNullOrEmpty(options.PagarmeWebhookUser))
             return true;
 

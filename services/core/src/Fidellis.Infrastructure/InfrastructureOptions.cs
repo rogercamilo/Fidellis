@@ -21,6 +21,12 @@ public sealed class InfrastructureOptions
     /// <summary>Senha do Basic auth configurado na URL de webhook do Pagar.me.</summary>
     public string? PagarmeWebhookPassword { get; init; }
 
+    /// <summary>
+    /// Segredo p/ validar a assinatura HMAC-SHA256 do webhook do Pagar.me sobre o corpo bruto
+    /// (RF-FIN-001). Quando definido, tem precedência sobre o Basic auth; vazio → cai no Basic auth.
+    /// </summary>
+    public string? PagarmeWebhookSignatureSecret { get; init; }
+
     /// <summary>API key do Resend p/ envio de e-mail. Vazia → envio é ignorado (log).</summary>
     public string? ResendApiKey { get; init; }
 

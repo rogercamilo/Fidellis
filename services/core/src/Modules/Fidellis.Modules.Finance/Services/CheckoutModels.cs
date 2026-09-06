@@ -8,7 +8,8 @@ public sealed record CheckoutCommand(
     string DonorEmail,
     string DonorDocument,
     Guid? CampaignId = null,
-    string? Description = null);
+    string? Description = null,
+    string? IdempotencyKey = null);
 
 /// <summary>Resultado do checkout: dados do PIX para exibir ao doador.</summary>
 public sealed record CheckoutResult(
