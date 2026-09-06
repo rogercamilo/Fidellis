@@ -3,18 +3,15 @@ using System.Text.RegularExpressions;
 
 namespace Fidellis.Infrastructure.Banking;
 
-/// <summary>Transação normalizada de um extrato OFX.</summary>
-public sealed record OfxTransaction(string? FitId, DateOnly PostedAt, decimal Amount, string? Memo);
-
 /// <summary>
 /// Parser (puro/testável) de extrato OFX. Tolerante ao SGML do OFX 1.x (tags nem sempre fechadas):
 /// extrai cada bloco <c>STMTTRN</c> e seus campos por regex. Não faz I/O.
 /// </summary>
 public static partial class OfxParser
 {
-    public static IReadOnlyList<OfxTransaction> Parse(string content)
+    public static IReadOnlyList<StatementTransaction> Parse(string content)
     {
-        var result = new List<OfxTransaction>();
+        var result = new List<StatementTransaction>();
         if (string.IsNullOrWhiteSpace(content)) return result;
 
         foreach (Match block in StmtTrnRegex().Matches(content))
@@ -29,7 +26,7 @@ public static partial class OfxParser
             if (!TryParseOfxDate(dateRaw, out var posted))
                 continue;
 
-            result.Add(new OfxTransaction(
+            result.Add(new StatementTransaction(
                 Field(body, "FITID"),
                 posted,
                 amount,
