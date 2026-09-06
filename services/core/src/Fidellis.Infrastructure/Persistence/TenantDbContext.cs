@@ -40,6 +40,9 @@ public sealed class TenantDbContext(
     public DbSet<TreasuryAccount> TreasuryAccounts => Set<TreasuryAccount>();
     public DbSet<TreasuryMovement> TreasuryMovements => Set<TreasuryMovement>();
     public DbSet<Receivable> Receivables => Set<Receivable>();
+    public DbSet<Payee> Payees => Set<Payee>();
+    public DbSet<Payable> Payables => Set<Payable>();
+    public DbSet<PayableAllocation> PayableAllocations => Set<PayableAllocation>();
     public DbSet<OutboxMessage> Messages => Set<OutboxMessage>();
     public DbSet<AuditLogEntry> AuditLog => Set<AuditLogEntry>();
 
@@ -236,6 +239,29 @@ public sealed class TenantDbContext(
             b.HasIndex(x => x.OrganizationId);
             b.Property(x => x.Amount).HasPrecision(18, 2);
             b.Property(x => x.ReceivedAmount).HasPrecision(18, 2);
+        });
+
+        modelBuilder.Entity<Payee>(b =>
+        {
+            b.ToTable("payees");
+            b.HasKey(x => x.Id);
+        });
+
+        modelBuilder.Entity<Payable>(b =>
+        {
+            b.ToTable("payables");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => new { x.Status, x.DueDate });
+            b.HasIndex(x => x.PayeeId);
+            b.Property(x => x.Amount).HasPrecision(18, 2);
+        });
+
+        modelBuilder.Entity<PayableAllocation>(b =>
+        {
+            b.ToTable("payable_allocations");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => x.PayableId);
+            b.Property(x => x.Amount).HasPrecision(18, 2);
         });
     }
 }
