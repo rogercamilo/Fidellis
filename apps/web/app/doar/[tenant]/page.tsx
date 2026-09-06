@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   publicCreateDonation,
   publicGetDonation,
@@ -9,8 +9,8 @@ import {
   type PublicOrg,
 } from '../../lib/api';
 
-export default function DoarPage({ params }: { params: Promise<{ tenant: string }> }) {
-  const { tenant } = use(params);
+export default function DoarPage({ params }: { params: { tenant: string } }) {
+  const { tenant } = params;
   const [orgs, setOrgs] = useState<PublicOrg[]>([]);
   const [organizationId, setOrganizationId] = useState('');
   const [amount, setAmount] = useState('');

@@ -1,12 +1,12 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { portalMe, requestMagicLink, type PortalData } from '../../lib/api';
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-export default function PortalPage({ params }: { params: Promise<{ tenant: string }> }) {
-  const { tenant } = use(params);
+export default function PortalPage({ params }: { params: { tenant: string } }) {
+  const { tenant } = params;
   const [token, setToken] = useState<string | null>(null);
   const [data, setData] = useState<PortalData | null>(null);
   const [email, setEmail] = useState('');
