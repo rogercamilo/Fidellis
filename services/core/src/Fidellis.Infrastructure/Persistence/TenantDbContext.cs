@@ -49,6 +49,7 @@ public sealed class TenantDbContext(
     public DbSet<AccountingPeriod> AccountingPeriods => Set<AccountingPeriod>();
     public DbSet<BankStatement> BankStatements => Set<BankStatement>();
     public DbSet<BankStatementLine> BankStatementLines => Set<BankStatementLine>();
+    public DbSet<Budget> Budgets => Set<Budget>();
     public DbSet<OutboxMessage> Messages => Set<OutboxMessage>();
     public DbSet<AuditLogEntry> AuditLog => Set<AuditLogEntry>();
 
@@ -312,6 +313,14 @@ public sealed class TenantDbContext(
             b.ToTable("bank_statement_lines");
             b.HasKey(x => x.Id);
             b.HasIndex(x => new { x.StatementId, x.Status });
+            b.Property(x => x.Amount).HasPrecision(18, 2);
+        });
+
+        modelBuilder.Entity<Budget>(b =>
+        {
+            b.ToTable("budgets");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => new { x.Year, x.Kind });
             b.Property(x => x.Amount).HasPrecision(18, 2);
         });
     }
