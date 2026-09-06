@@ -79,4 +79,34 @@ public class BudgetTests
         var svc = new BudgetService(tdb);
         await Assert.ThrowsAsync<ArgumentException>(() => svc.CreateAsync(2026, "outro", 100m, null, null, null));
     }
+
+    [Fact]
+    public async Task Revise_deactivates_current_and_creates_next_revision()
+    {
+        var tdb = TDb($"bud_{Guid.NewGuid()}");
+        var svc = new BudgetService(tdb);
+        var v1 = await svc.CreateAsync(2026, "expense", 1000m, null, null, null);
+
+        var v2 = await svc.ReviseAsync(v1.Id, 1500m);
+
+        Assert.Equal(2, v2!.Revision);
+        Assert.Equal(1500m, v2.Amount);
+        Assert.True(v2.Active);
+        Assert.False((await tdb.Budgets.FirstAsync(b => b.Id == v1.Id)).Active); // versão anterior preservada, inativa
+
+        // Vigente = só a v2; histórico = as duas.
+        Assert.Single(await svc.ListAsync(2026));
+        Assert.Equal(2, (await svc.ListAsync(2026, includeInactive: true)).Count);
+    }
+
+    [Fact]
+    public async Task Cannot_revise_an_inactive_version()
+    {
+        var tdb = TDb($"bud_{Guid.NewGuid()}");
+        var svc = new BudgetService(tdb);
+        var v1 = await svc.CreateAsync(2026, "expense", 1000m, null, null, null);
+        await svc.ReviseAsync(v1.Id, 1500m);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.ReviseAsync(v1.Id, 2000m)); // v1 já inativa
+    }
 }
