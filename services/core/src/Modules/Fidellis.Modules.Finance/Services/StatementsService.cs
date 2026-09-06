@@ -14,6 +14,16 @@ public sealed record BalanceSheet(int Year, decimal Assets, decimal Liabilities,
     decimal Surplus, decimal TotalLiabilitiesAndEquity, bool Balanced,
     IReadOnlyList<LedgerLine> AssetLines, IReadOnlyList<LedgerLine> LiabilityLines, IReadOnlyList<LedgerLine> EquityLines);
 
+/// <summary>Bloco de resultado (receitas/despesas/superávit) de um recorte de restrição.</summary>
+public sealed record ResultBlock(decimal Revenues, decimal Expenses, decimal Surplus);
+
+/// <summary>DRP segregada por recurso livre × restrito (ITG 2002).</summary>
+public sealed record SegregatedIncome(int Year, ResultBlock Free, ResultBlock Restricted, ResultBlock Total);
+
+/// <summary>Demonstração das Mutações do Patrimônio Líquido.</summary>
+public sealed record Dmpl(int Year, decimal OpeningEquity, decimal Surplus, decimal ClosingEquity,
+    decimal FreeSurplus, decimal RestrictedSurplus);
+
 /// <summary>
 /// Demonstrações contábeis ITG 2002 (Onda 4 inc.4.0): balancete, DRP e Balanço Patrimonial, agregados
 /// do razão (<c>accounting_entries</c> + <c>ledger_accounts</c>) do ano. Gera o <b>rascunho</b> — o
@@ -55,6 +65,71 @@ public sealed class StatementsService(TenantDbContext db)
         var revenues = revenueLines.Sum(l => l.Balance);
         var expenses = expenseLines.Sum(l => l.Balance);
         return new IncomeStatement(year, revenues, expenses, revenues - expenses, revenueLines, expenseLines);
+    }
+
+    /// <summary>DRP segregada por recurso livre × restrito (RF-FIN-161).</summary>
+    public async Task<SegregatedIncome> IncomeSegregatedAsync(int year, CancellationToken ct = default)
+    {
+        var agg = await AggregateByTypeRestrictionAsync(year, ct);
+        ResultBlock Block(string r)
+        {
+            var rev = agg.GetValueOrDefault(("revenue", r), 0m);
+            var exp = agg.GetValueOrDefault(("expense", r), 0m);
+            return new ResultBlock(rev, exp, rev - exp);
+        }
+        var free = Block("free");
+        var restricted = Block("restricted");
+        var total = new ResultBlock(free.Revenues + restricted.Revenues, free.Expenses + restricted.Expenses, free.Surplus + restricted.Surplus);
+        return new SegregatedIncome(year, free, restricted, total);
+    }
+
+    /// <summary>DMPL: PL inicial + superávit/déficit do período = PL final (RF-FIN-160).</summary>
+    public async Task<Dmpl> DmplAsync(int year, CancellationToken ct = default)
+    {
+        var start = new DateTimeOffset(year, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
+        // PL inicial = saldo das contas de PL a partir dos lançamentos anteriores ao ano.
+        var prior = await db.AccountingEntries
+            .Where(e => e.CreatedAt < start && e.LedgerAccountId != null)
+            .Select(e => new { e.LedgerAccountId, e.Debit, e.Credit })
+            .ToListAsync(ct);
+        var accounts = await db.LedgerAccounts.ToDictionaryAsync(a => a.Id, a => a, ct);
+        var opening = prior
+            .Where(e => accounts.TryGetValue(e.LedgerAccountId!.Value, out var a) && a.Type == "equity")
+            .Sum(e => accounts[e.LedgerAccountId!.Value].NormalBalance == "debit" ? e.Debit - e.Credit : e.Credit - e.Debit);
+
+        var seg = await IncomeSegregatedAsync(year, ct);
+        return new Dmpl(year, opening, seg.Total.Surplus, opening + seg.Total.Surplus, seg.Free.Surplus, seg.Restricted.Surplus);
+    }
+
+    private async Task<Dictionary<(string Type, string Restriction), decimal>> AggregateByTypeRestrictionAsync(int year, CancellationToken ct)
+    {
+        var start = new DateTimeOffset(year, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var end = start.AddYears(1);
+
+        var entries = await db.AccountingEntries
+            .Where(e => e.CreatedAt >= start && e.CreatedAt < end && e.LedgerAccountId != null)
+            .Select(e => new { e.LedgerAccountId, e.Debit, e.Credit, e.TransactionId })
+            .ToListAsync(ct);
+        var accounts = await db.LedgerAccounts.ToDictionaryAsync(a => a.Id, a => a, ct);
+        var txFund = await db.Transactions.Select(t => new { t.Id, t.FundId }).ToDictionaryAsync(t => t.Id, t => t.FundId, ct);
+        var fundRestriction = await db.Funds.ToDictionaryAsync(f => f.Id, f => f.Restriction, ct);
+
+        var result = new Dictionary<(string, string), decimal>();
+        foreach (var e in entries)
+        {
+            if (!accounts.TryGetValue(e.LedgerAccountId!.Value, out var a)) continue;
+            var balance = a.NormalBalance == "debit" ? e.Debit - e.Credit : e.Credit - e.Debit;
+
+            var restriction = "free";
+            if (txFund.TryGetValue(e.TransactionId, out var fid) && fid is { } f
+                && fundRestriction.TryGetValue(f, out var r))
+                restriction = r;
+
+            var key = (a.Type, restriction);
+            result[key] = result.GetValueOrDefault(key) + balance;
+        }
+        return result;
     }
 
     public async Task<BalanceSheet> BalanceSheetAsync(int year, CancellationToken ct = default)

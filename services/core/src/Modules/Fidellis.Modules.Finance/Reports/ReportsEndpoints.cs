@@ -27,6 +27,13 @@ public static class ReportsEndpoints
         g.MapGet("/balance-sheet", async (int year, StatementsService s, CancellationToken ct) =>
             Results.Ok(await s.BalanceSheetAsync(year, ct)));
 
+        // Segregação com/sem restrição (RF-FIN-161) + DMPL.
+        g.MapGet("/income-segregated", async (int year, StatementsService s, CancellationToken ct) =>
+            Results.Ok(await s.IncomeSegregatedAsync(year, ct)));
+
+        g.MapGet("/dmpl", async (int year, StatementsService s, CancellationToken ct) =>
+            Results.Ok(await s.DmplAsync(year, ct)));
+
         return app;
     }
 }
