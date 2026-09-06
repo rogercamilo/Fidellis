@@ -82,6 +82,79 @@ public static class PagarmePayloads
         return new PixOrderResult(orderId, chargeId, status, qrCode, qrCodeUrl, expiresAt);
     }
 
+    /// <summary>Monta o corpo de <c>POST /orders</c> para um pagamento boleto (com split opcional 100% p/ a unidade).</summary>
+    public static string BuildBoletoOrder(CreateBoletoOrderRequest req)
+    {
+        var cents = ToCents(req.Amount);
+        var dueAt = DateTime.UtcNow.Date.AddDays(Math.Max(1, req.DueInDays)).ToString("yyyy-MM-dd");
+
+        object payment = req.RecipientId is { Length: > 0 } rid
+            ? new
+            {
+                payment_method = "boleto",
+                boleto = new { due_at = dueAt, instructions = "Pagável em qualquer banco até o vencimento." },
+                split = new[]
+                {
+                    new
+                    {
+                        amount = 100,
+                        recipient_id = rid,
+                        type = "percentage",
+                        options = new { charge_processing_fee = true, liable = true, charge_remainder_fee = true },
+                    },
+                },
+            }
+            : new
+            {
+                payment_method = "boleto",
+                boleto = new { due_at = dueAt, instructions = "Pagável em qualquer banco até o vencimento." },
+            };
+
+        var order = new
+        {
+            items = new[]
+            {
+                new { amount = cents, description = req.Description ?? "Doação", quantity = 1 },
+            },
+            customer = new
+            {
+                name = req.DonorName,
+                email = req.DonorEmail,
+                type = "individual",
+                document = req.DonorDocument,
+            },
+            payments = new[] { payment },
+        };
+
+        return JsonSerializer.Serialize(order);
+    }
+
+    public static BoletoOrderResult ParseBoletoOrderResponse(string json)
+    {
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        var orderId = GetString(root, "id") ?? "";
+        var charge = root.TryGetProperty("charges", out var charges) && charges.ValueKind == JsonValueKind.Array && charges.GetArrayLength() > 0
+            ? charges[0]
+            : default;
+
+        var chargeId = charge.ValueKind == JsonValueKind.Object ? GetString(charge, "id") ?? "" : "";
+        var status = charge.ValueKind == JsonValueKind.Object ? GetString(charge, "status") ?? "pending" : "pending";
+
+        string? line = null, barcode = null, url = null;
+        DateOnly? dueDate = null;
+        if (charge.ValueKind == JsonValueKind.Object && charge.TryGetProperty("last_transaction", out var tx) && tx.ValueKind == JsonValueKind.Object)
+        {
+            line = GetString(tx, "line");
+            barcode = GetString(tx, "barcode");
+            url = GetString(tx, "pdf") ?? GetString(tx, "url");
+            if (GetDate(tx, "due_at") is { } d) dueDate = DateOnly.FromDateTime(d.UtcDateTime);
+        }
+
+        return new BoletoOrderResult(orderId, chargeId, status, line, barcode, url, dueDate);
+    }
+
     public static ChargeStatusResult ParseChargeResponse(string json)
     {
         using var doc = JsonDocument.Parse(json);

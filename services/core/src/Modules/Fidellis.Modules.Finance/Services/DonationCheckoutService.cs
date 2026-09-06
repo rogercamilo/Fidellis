@@ -33,7 +33,7 @@ public sealed class DonationCheckoutService(
             if (existingKey is not null)
             {
                 var prior = await tenantDb.Donations.FirstAsync(d => d.Id == existingKey.DonationId, ct);
-                return new CheckoutResult(prior.Id, prior.Status, prior.PixQrCode ?? "", prior.PixQrCodeUrl, prior.ExpiresAt);
+                return ToResult(prior);
             }
         }
 
@@ -46,11 +46,13 @@ public sealed class DonationCheckoutService(
             tenantDb.Donors.Add(donor);
         }
 
+        var method = string.IsNullOrWhiteSpace(cmd.Method) ? "pix" : cmd.Method.Trim().ToLowerInvariant();
+
         var donation = new Donation
         {
             OrganizationId = cmd.OrganizationId,
             Amount = cmd.Amount,
-            Method = "pix",
+            Method = method,
             Status = "pending",
             DonorName = cmd.DonorName,
             DonorId = donor.Id,
@@ -64,7 +66,10 @@ public sealed class DonationCheckoutService(
         donation.FundId ??= await tenantDb.Funds
             .Where(f => f.IsDefault).Select(f => (Guid?)f.Id).FirstOrDefaultAsync(ct);
 
-        var order = await CreatePixChargeAsync(donation, donor, cmd.Description, ct);
+        if (method == "boleto")
+            await CreateBoletoChargeAsync(donation, donor, cmd.Description, ct);
+        else
+            await CreatePixChargeAsync(donation, donor, cmd.Description, ct);
 
         // Registra a chave de idempotência (validade 24h) apontando para a nova doação.
         if (!string.IsNullOrWhiteSpace(cmd.IdempotencyKey))
@@ -78,8 +83,13 @@ public sealed class DonationCheckoutService(
         await tenantDb.SaveChangesAsync(ct);
         await catalogDb.SaveChangesAsync(ct);
 
-        return new CheckoutResult(donation.Id, donation.Status, order.QrCode, order.QrCodeUrl, order.ExpiresAt);
+        return ToResult(donation);
     }
+
+    private static CheckoutResult ToResult(Donation d) => new(
+        d.Id, d.Status, d.Method,
+        QrCode: d.PixQrCode, QrCodeUrl: d.PixQrCodeUrl, ExpiresAt: d.ExpiresAt,
+        BoletoLine: d.BoletoLine, BoletoUrl: d.BoletoUrl, DueDate: d.DueDate);
 
     /// <summary>
     /// Gera o pedido PIX para uma doação já criada (avulsa ou de ciclo recorrente): aplica o split
@@ -107,6 +117,52 @@ public sealed class DonationCheckoutService(
         donation.PixQrCode = order.QrCode;
         donation.PixQrCodeUrl = order.QrCodeUrl;
         donation.ExpiresAt = order.ExpiresAt;
+        donation.Status = order.Status is { Length: > 0 } s ? s : "pending";
+
+        if (!string.IsNullOrEmpty(order.OrderId))
+        {
+            catalogDb.PspOrders.Add(new PspOrder
+            {
+                ProviderOrderId = order.OrderId,
+                TenantSlug = tenant.TenantId!,
+                DonationId = donation.Id,
+            });
+        }
+
+        return order;
+    }
+
+    /// <summary>
+    /// Gera o pedido boleto para uma doação já criada: aplica o split (se houver recebedor), grava os
+    /// ids do PSP e os dados do boleto (linha/código/PDF/vencimento) na doação e adiciona o índice
+    /// <c>catalog.psp_orders</c>. Deriva também <c>ExpiresAt</c> do vencimento (p/ a varredura de
+    /// expiração). Não faz <c>SaveChanges</c> — quem chama persiste.
+    /// </summary>
+    public async Task<BoletoOrderResult> CreateBoletoChargeAsync(
+        Donation donation, Donor donor, string? description = null, CancellationToken ct = default)
+    {
+        var recipient = await tenantDb.PspRecipients
+            .Where(r => r.OrganizationId == donation.OrganizationId && r.Status == "active")
+            .Select(r => r.ProviderRecipientId)
+            .FirstOrDefaultAsync(ct);
+
+        var order = await gateway.CreateBoletoOrderAsync(new CreateBoletoOrderRequest(
+            Amount: donation.Amount,
+            DonorName: donor.Name,
+            DonorEmail: donor.Email ?? "",
+            DonorDocument: donor.Document ?? "",
+            RecipientId: recipient,
+            Description: description ?? "Doação"), ct);
+
+        donation.PspOrderId = order.OrderId;
+        donation.PspChargeId = order.ChargeId;
+        donation.BoletoLine = order.Line;
+        donation.BoletoBarcode = order.Barcode;
+        donation.BoletoUrl = order.BoletoUrl;
+        donation.DueDate = order.DueDate;
+        donation.ExpiresAt = order.DueDate is { } due
+            ? new DateTimeOffset(due.ToDateTime(TimeOnly.MaxValue), TimeSpan.Zero)
+            : null;
         donation.Status = order.Status is { Length: > 0 } s ? s : "pending";
 
         if (!string.IsNullOrEmpty(order.OrderId))

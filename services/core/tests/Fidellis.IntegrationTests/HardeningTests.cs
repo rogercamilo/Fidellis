@@ -21,6 +21,8 @@ public class HardeningTests
             PixCalls++;
             return Task.FromResult(new PixOrderResult($"or_{PixCalls}", $"ch_{PixCalls}", "pending", "qr", null, null));
         }
+        public Task<BoletoOrderResult> CreateBoletoOrderAsync(CreateBoletoOrderRequest r, CancellationToken ct = default)
+            => Task.FromResult(new BoletoOrderResult("or_b", "ch_b", "pending", "34191", "barcode", "http://pdf", DateOnly.FromDateTime(DateTime.UtcNow.AddDays(3))));
         public Task<ChargeStatusResult> GetChargeAsync(string id, CancellationToken ct = default)
             => Task.FromResult(new ChargeStatusResult(id, "paid", DateTimeOffset.UtcNow));
         public Task<CreateRecipientResult> CreateRecipientAsync(CreateRecipientRequest r, CancellationToken ct = default)

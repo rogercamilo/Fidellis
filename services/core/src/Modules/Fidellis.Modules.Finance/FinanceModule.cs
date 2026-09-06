@@ -28,6 +28,7 @@ public static class FinanceModule
         services.AddScoped<WebhookProcessor>();
         services.AddScoped<RecipientService>();
         services.AddScoped<RecurringBillingService>();
+        services.AddScoped<DonationExpiryService>();
         services.AddScoped<Notifications.INotifier, Notifications.OutboxNotifier>();
         return services;
     }
@@ -52,11 +53,15 @@ public static class FinanceModule
             if (req.Amount <= 0)
                 return Results.BadRequest(new { error = "amount deve ser positivo." });
             if (req.Donor is null || string.IsNullOrWhiteSpace(req.Donor.Name) || string.IsNullOrWhiteSpace(req.Donor.Document))
-                return Results.BadRequest(new { error = "donor.name e donor.document são obrigatórios (PIX exige CPF/CNPJ)." });
+                return Results.BadRequest(new { error = "donor.name e donor.document são obrigatórios (PIX/boleto exigem CPF/CNPJ)." });
+            var method = (req.Method ?? "pix").Trim().ToLowerInvariant();
+            if (method is not ("pix" or "boleto"))
+                return Results.BadRequest(new { error = "method deve ser 'pix' ou 'boleto'." });
 
             var result = await checkout.CreateAsync(new CheckoutCommand(
                 req.OrganizationId, req.Amount, req.Donor.Name, req.Donor.Email ?? "", req.Donor.Document,
-                req.CampaignId, req.Description, IdempotencyKey: request.Headers["Idempotency-Key"].FirstOrDefault()), ct);
+                req.CampaignId, req.Description, IdempotencyKey: request.Headers["Idempotency-Key"].FirstOrDefault(),
+                Method: method), ct);
 
             return Results.Created($"/api/finance/donations/{result.DonationId}", result);
         });
@@ -170,10 +175,14 @@ public static class FinanceModule
                 return Results.BadRequest(new { error = "amount deve ser positivo." });
             if (req.Donor is null || string.IsNullOrWhiteSpace(req.Donor.Name) || string.IsNullOrWhiteSpace(req.Donor.Document))
                 return Results.BadRequest(new { error = "donor.name e donor.document são obrigatórios." });
+            var method = (req.Method ?? "pix").Trim().ToLowerInvariant();
+            if (method is not ("pix" or "boleto"))
+                return Results.BadRequest(new { error = "method deve ser 'pix' ou 'boleto'." });
 
             var result = await checkout.CreateAsync(new CheckoutCommand(
                 req.OrganizationId, req.Amount, req.Donor.Name, req.Donor.Email ?? "", req.Donor.Document,
-                req.CampaignId, req.Description, IdempotencyKey: request.Headers["Idempotency-Key"].FirstOrDefault()), ct);
+                req.CampaignId, req.Description, IdempotencyKey: request.Headers["Idempotency-Key"].FirstOrDefault(),
+                Method: method), ct);
             await audit.RecordAsync("donation.public_checkout", "donation", result.DonationId.ToString());
             return Results.Created($"/api/public/{tenant}/donations/{result.DonationId}", result);
         });
@@ -276,7 +285,8 @@ public sealed record CreateDonationRequest(
     decimal Amount,
     DonorInput Donor,
     Guid? CampaignId = null,
-    string? Description = null);
+    string? Description = null,
+    string Method = "pix");
 
 public sealed record CreateRecipientHttpRequest(
     Guid OrganizationId,

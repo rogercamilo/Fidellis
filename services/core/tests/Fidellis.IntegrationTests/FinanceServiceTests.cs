@@ -18,10 +18,12 @@ public class FinanceServiceTests
     private sealed class FakeGateway : IPaymentGateway
     {
         public PixOrderResult Order = new("or_1", "ch_1", "pending", "00020126PIX", "https://qr/ch_1", DateTimeOffset.UtcNow.AddHours(1));
+        public BoletoOrderResult Boleto = new("or_1", "ch_1", "pending", "34191", "barcode", "http://pdf", DateOnly.FromDateTime(DateTime.UtcNow.AddDays(3)));
         public ChargeStatusResult Charge = new("ch_1", "paid", DateTimeOffset.UtcNow);
         public CreateRecipientResult Recipient = new("rp_1", "active");
 
         public Task<PixOrderResult> CreatePixOrderAsync(CreatePixOrderRequest r, CancellationToken ct = default) => Task.FromResult(Order);
+        public Task<BoletoOrderResult> CreateBoletoOrderAsync(CreateBoletoOrderRequest r, CancellationToken ct = default) => Task.FromResult(Boleto);
         public Task<ChargeStatusResult> GetChargeAsync(string id, CancellationToken ct = default) => Task.FromResult(Charge);
         public Task<CreateRecipientResult> CreateRecipientAsync(CreateRecipientRequest r, CancellationToken ct = default) => Task.FromResult(Recipient);
     }
