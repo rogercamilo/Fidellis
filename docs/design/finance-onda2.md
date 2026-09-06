@@ -264,22 +264,16 @@ exigem papéis específicos (a definir — ver decisões).
 
 ---
 
-## 7. Decisões pendentes (para a revisão do PO)
+## 7. Decisões resolvidas (propostas aprovadas — 2026-09-06)
 
-1. **Contas: reusar `accounts` (contábil) ou nova `treasury_accounts`?** Proposta: **nova tabela**
-   dedicada (separa tesouraria de conta contábil). Confirmar.
-2. **Aprovação de AP — papéis:** quais papéis aprovam cada faixa por padrão? Proposta segue o default
-   do RF-FIN-112 (tesoureiro / +gestor / +conselho fiscal).
-3. **Pagamento de AP:** gera **remessa** (arquivo CNAB/PIX em lote) já na Onda 2, ou só marca
-   `paid` + movimento de tesouraria (execução manual do PIX)? Proposta: **só marca + movimento**;
-   remessa fica p/ Onda 3.
-4. **Baixa de AR:** automática só quando a doação carrega o `receivable_id`, ou também casamento
-   heurístico (doador+valor)? Proposta: **vínculo explícito** primeiro.
-5. **Fluxo de caixa projetado:** incluir AP `awaiting_approval` na projeção (pessimista) ou só
-   `approved/scheduled`? Proposta: **só approved/scheduled** (compromissos firmes).
-6. **Caixa físico:** a dupla conferência (2º responsável) é **obrigatória** no fechamento ou
-   configurável? Proposta: **obrigatória** (controle interno).
-7. **Fechamento de período:** reabertura exige qual papel? Proposta: **admin** + registro em auditoria.
+1. **Contas:** ✔ **nova tabela `treasury_accounts`** dedicada (separa tesouraria da conta contábil).
+2. **Aprovação de AP — papéis:** ✔ segue o **default do RF-FIN-112** (tesoureiro / +gestor / +conselho fiscal).
+3. **Pagamento de AP:** ✔ **só marca `paid` + movimento de tesouraria** (execução manual do PIX);
+   remessa CNAB/PIX em lote fica p/ Onda 3.
+4. **Baixa de AR:** ✔ **vínculo explícito** (doação carrega o `receivable_id`); casamento heurístico depois.
+5. **Fluxo de caixa projetado:** ✔ **só `approved`/`scheduled`** (compromissos firmes), não os `awaiting_approval`.
+6. **Caixa físico:** ✔ dupla conferência (2º responsável) **obrigatória** no fechamento.
+7. **Fechamento de período:** ✔ reabertura exige **admin** + registro em auditoria.
 
 ---
 
