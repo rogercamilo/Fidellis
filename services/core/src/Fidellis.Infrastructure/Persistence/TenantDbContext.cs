@@ -43,6 +43,8 @@ public sealed class TenantDbContext(
     public DbSet<Payee> Payees => Set<Payee>();
     public DbSet<Payable> Payables => Set<Payable>();
     public DbSet<PayableAllocation> PayableAllocations => Set<PayableAllocation>();
+    public DbSet<ApprovalTier> ApprovalTiers => Set<ApprovalTier>();
+    public DbSet<PayableApproval> PayableApprovals => Set<PayableApproval>();
     public DbSet<OutboxMessage> Messages => Set<OutboxMessage>();
     public DbSet<AuditLogEntry> AuditLog => Set<AuditLogEntry>();
 
@@ -262,6 +264,21 @@ public sealed class TenantDbContext(
             b.HasKey(x => x.Id);
             b.HasIndex(x => x.PayableId);
             b.Property(x => x.Amount).HasPrecision(18, 2);
+        });
+
+        modelBuilder.Entity<ApprovalTier>(b =>
+        {
+            b.ToTable("approval_tiers");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.MinAmount).HasPrecision(18, 2);
+            b.Property(x => x.MaxAmount).HasPrecision(18, 2);
+        });
+
+        modelBuilder.Entity<PayableApproval>(b =>
+        {
+            b.ToTable("payable_approvals");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => new { x.PayableId, x.ApproverId }).IsUnique();
         });
     }
 }

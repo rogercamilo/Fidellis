@@ -79,6 +79,58 @@ public static class PayablesEndpoints
             }
         });
 
+        // ---- Alçadas: aprovar / rejeitar / pagar (RF-FIN-112/113) ----
+        g.MapPost("/payables/{id:guid}/approve", async (
+            Guid id, ApprovalService approvals, ICurrentUser user, CancellationToken ct) =>
+        {
+            if (user.UserId is not { } uid)
+                return Results.BadRequest(new { error = "Usuário do request não identificado." });
+            try
+            {
+                var p = await approvals.ApproveAsync(id, uid, user.Role ?? "", ct);
+                return Results.Ok(new { id = p.Id, status = p.Status, approvedAt = p.ApprovedAt });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        g.MapPost("/payables/{id:guid}/reject", async (
+            Guid id, ApprovalService approvals, ICurrentUser user, CancellationToken ct) =>
+        {
+            if (user.UserId is not { } uid)
+                return Results.BadRequest(new { error = "Usuário do request não identificado." });
+            try
+            {
+                var p = await approvals.RejectAsync(id, uid, user.Role ?? "", ct);
+                return Results.Ok(new { id = p.Id, status = p.Status });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        g.MapPost("/payables/{id:guid}/pay", async (
+            Guid id, PayPayableRequest req, PayablesService payables, CancellationToken ct) =>
+        {
+            try
+            {
+                var p = await payables.PayAsync(id, req.TreasuryAccountId, ct);
+                return p is null ? Results.NotFound() : Results.Ok(new { id = p.Id, status = p.Status, paidAt = p.PaidAt });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Results.BadRequest(new { error = ex.Message });
+            }
+        });
+
+        // ---- Configuração das faixas de alçada (RF-FIN-112) ----
+        g.MapGet("/approval-tiers", async (TenantDbContext db, CancellationToken ct) =>
+            Results.Ok(await db.ApprovalTiers.OrderBy(t => t.MinAmount)
+                .Select(t => new ApprovalTierDto(t.Id, t.MinAmount, t.MaxAmount, t.Signatures, t.RolesCsv)).ToListAsync(ct)));
+
         return app;
     }
 }
@@ -91,3 +143,5 @@ public sealed record AllocationInput(decimal Amount, Guid? CostCenterId = null, 
 public sealed record CreatePayableRequest(
     Guid PayeeId, decimal Amount, DateOnly DueDate, string Description, Guid? CategoryId = null, string? DocumentUrl = null,
     Guid? CostCenterId = null, Guid? ProjectId = null, Guid? FundId = null, List<AllocationInput>? Allocations = null);
+public sealed record PayPayableRequest(Guid TreasuryAccountId);
+public sealed record ApprovalTierDto(Guid Id, decimal MinAmount, decimal? MaxAmount, int Signatures, string RolesCsv);
