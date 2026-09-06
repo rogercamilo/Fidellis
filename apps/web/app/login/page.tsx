@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { login } from '../lib/api';
@@ -27,31 +28,37 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="container" style={{ maxWidth: 420 }}>
-      <h1>Entrar</h1>
-      <p className="muted">Login global por e-mail — resolvemos automaticamente o(s) seu(s) tenant(s).</p>
+    <div className="auth-wrap">
+      <div className="auth-card rise">
+        <div className="auth-brand" style={{ color: 'var(--text)' }}>
+          <span className="mark">F</span> Fidellis
+        </div>
+        <h1 style={{ fontSize: '1.4rem' }}>Entrar</h1>
+        <p className="muted" style={{ marginTop: '-0.25rem' }}>
+          Login global por e-mail — resolvemos automaticamente sua instituição.
+        </p>
 
-      <form className="card" onSubmit={onSubmit}>
-        <label htmlFor="email">E-mail</label>
-        <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <form onSubmit={onSubmit} style={{ marginTop: '1.25rem' }}>
+          <div className="field">
+            <label htmlFor="email">E-mail</label>
+            <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoFocus />
+          </div>
+          <div className="field">
+            <label htmlFor="password">Senha</label>
+            <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          </div>
 
-        <label htmlFor="password">Senha</label>
-        <input
-          id="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
+          {error && <p className="error-text">{error}</p>}
 
-        {error && (
-          <p style={{ color: '#ff7a7a', marginTop: '0.75rem' }}>{error}</p>
-        )}
+          <button className="btn btn-primary" type="submit" style={{ width: '100%', marginTop: '0.5rem' }} disabled={loading}>
+            {loading ? 'Entrando…' : 'Entrar'}
+          </button>
+        </form>
 
-        <button className="btn" type="submit" style={{ marginTop: '1rem', width: '100%' }} disabled={loading}>
-          {loading ? 'Entrando…' : 'Entrar'}
-        </button>
-      </form>
-    </main>
+        <p className="muted" style={{ marginTop: '1.25rem', textAlign: 'center', fontSize: '0.9rem' }}>
+          Não tem conta? <Link href="/signup">Criar instituição</Link>
+        </p>
+      </div>
+    </div>
   );
 }

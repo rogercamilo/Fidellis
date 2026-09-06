@@ -2,7 +2,10 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { Panel } from '../../components/Panel';
 import { listReceipts, type LoginResult, type ReceiptSummary } from '../../lib/api';
+
+const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 export default function RecibosPage() {
   const [items, setItems] = useState<ReceiptSummary[]>([]);
@@ -18,27 +21,47 @@ export default function RecibosPage() {
   }, []);
 
   return (
-    <main className="container" style={{ maxWidth: 720 }}>
-      <p className="muted"><Link href="/dashboard">← Painel</Link></p>
-      <h1>Recibos</h1>
-      {error && <p style={{ color: '#ff7a7a' }}>{error}</p>}
-      {items.length === 0 ? (
-        <p className="muted">Nenhum recibo emitido ainda (são gerados na confirmação do pagamento).</p>
-      ) : (
-        <div className="card">
-          {items.map((r) => (
-            <div key={r.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem 0', borderBottom: '1px solid var(--border)' }}>
-              <span>
-                <strong>{r.number}</strong> <span className="muted">· {r.donorName}</span>
-              </span>
-              <span style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                <span>R$ {r.amount.toFixed(2)}</span>
-                <Link href={`/recibo/${r.id}`}>abrir</Link>
-              </span>
-            </div>
-          ))}
+    <>
+      <div className="page-head rise">
+        <div>
+          <h1>Recibos</h1>
+          <p className="subtitle">Emitidos automaticamente na confirmação de cada pagamento.</p>
         </div>
-      )}
-    </main>
+      </div>
+
+      <div className="rise rise-2">
+        <Panel title="Recibos emitidos" actions={<span className="muted">{items.length} total</span>} flush>
+          {error && <p className="error-text" style={{ padding: '1rem' }}>{error}</p>}
+          {items.length === 0 ? (
+            <p className="muted" style={{ padding: '1rem' }}>
+              Nenhum recibo ainda — são gerados quando um pagamento é confirmado.
+            </p>
+          ) : (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Número</th>
+                  <th>Doador</th>
+                  <th className="num">Valor</th>
+                  <th className="num">Emitido</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((r) => (
+                  <tr key={r.id}>
+                    <td className="mono">{r.number}</td>
+                    <td>{r.donorName}</td>
+                    <td className="num">{brl(r.amount)}</td>
+                    <td className="num muted">{new Date(r.issuedAt).toLocaleDateString('pt-BR')}</td>
+                    <td className="num"><Link className="btn btn-ghost btn-sm" href={`/recibo/${r.id}`}>abrir</Link></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Panel>
+      </div>
+    </>
   );
 }
