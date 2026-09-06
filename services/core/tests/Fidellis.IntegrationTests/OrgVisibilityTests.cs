@@ -1,4 +1,4 @@
-using Fidellis.Modules.Donations;
+using Fidellis.Infrastructure.Organizations;
 using Xunit;
 
 namespace Fidellis.IntegrationTests;

@@ -77,6 +77,14 @@ fluxo completo:
 3. O webhook confirma o pagamento de forma idempotente e concilia (partida dobrada). O webhook fala
    **direto com o core**, não pelo BFF.
 
+### Contabilidade + recibos
+
+Ao confirmar um pagamento, o core lança a **partida dobrada** contra o **plano de contas** do tenant
+(semeado no onboarding) e emite um **recibo** automático (número sequencial por unidade/ano). No web:
+**/dashboard/recibos** (lista + recibo imprimível em `/recibo/{id}`) e **/dashboard/contabilidade**
+(balancete consolidado das suas unidades). Ver
+[`ADR-0009`](docs/architecture/ADR-0009-accounting-receipts.md).
+
 ### Recorrência (dízimo mensal) + dunning
 
 O gestor cria recorrências em **/dashboard/recorrencia**. Um worker no core (`BillingWorker`) gera a

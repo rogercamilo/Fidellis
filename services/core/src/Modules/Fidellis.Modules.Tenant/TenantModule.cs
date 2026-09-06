@@ -38,6 +38,7 @@ public static class TenantModule
             TenantDbContext tenantDb,
             ITenantContext tenantContext,
             ISchemaProvisioner provisioner,
+            Infrastructure.Accounting.ChartOfAccountsSeeder chartSeeder,
             CancellationToken ct) =>
         {
             if (string.IsNullOrWhiteSpace(req.Slug) || string.IsNullOrWhiteSpace(req.Name))
@@ -53,8 +54,13 @@ public static class TenantModule
             // 2) registra o tenant no catálogo global
             var tenant = Infrastructure.Catalog.Tenant.Create(slug, req.Name);
             db.Tenants.Add(tenant);
+            await db.SaveChangesAsync(ct);
 
-            // 3) opcional: vincula o primeiro usuário (admin) e cria a organização-raiz,
+            // 3) semeia o plano de contas padrão do tenant
+            tenantContext.SetTenant(slug);
+            await chartSeeder.EnsureDefaultAsync(ct);
+
+            // 4) opcional: vincula o primeiro usuário (admin) e cria a organização-raiz,
             //    já associando o admin a ela — evita depender de seed manual.
             Guid? rootOrganizationId = null;
             if (req.AdminUserId is { } adminId)
@@ -62,16 +68,11 @@ public static class TenantModule
                 db.Memberships.Add(new Membership { UserId = adminId, TenantId = tenant.Id, Role = "admin" });
                 await db.SaveChangesAsync(ct);
 
-                tenantContext.SetTenant(slug);
                 var rootOrg = new Organization { Name = (req.OrganizationName ?? req.Name).Trim() };
                 tenantDb.Organizations.Add(rootOrg);
                 tenantDb.OrgMembers.Add(new OrgMember { UserId = adminId, OrganizationId = rootOrg.Id, Role = "admin" });
                 await tenantDb.SaveChangesAsync(ct);
                 rootOrganizationId = rootOrg.Id;
-            }
-            else
-            {
-                await db.SaveChangesAsync(ct);
             }
 
             var dto = new TenantDto(tenant.Id, tenant.Slug, tenant.Name, schema, tenant.Plan, tenant.Status, rootOrganizationId);

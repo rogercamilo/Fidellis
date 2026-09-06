@@ -1,3 +1,4 @@
+using Fidellis.Infrastructure.Organizations;
 using Fidellis.Infrastructure.Persistence;
 using Fidellis.Infrastructure.TenantData;
 using Fidellis.SharedKernel;

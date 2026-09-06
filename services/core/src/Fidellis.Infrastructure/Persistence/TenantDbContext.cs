@@ -28,6 +28,8 @@ public sealed class TenantDbContext(
     public DbSet<PspRecipient> PspRecipients => Set<PspRecipient>();
     public DbSet<PaymentEvent> PaymentEvents => Set<PaymentEvent>();
     public DbSet<RecurringDonation> RecurringDonations => Set<RecurringDonation>();
+    public DbSet<LedgerAccount> LedgerAccounts => Set<LedgerAccount>();
+    public DbSet<Receipt> Receipts => Set<Receipt>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -67,8 +69,25 @@ public sealed class TenantDbContext(
             b.ToTable("accounting_entries");
             b.HasKey(x => x.Id);
             b.HasIndex(x => x.TransactionId);
+            b.HasIndex(x => x.LedgerAccountId);
             b.Property(x => x.Debit).HasPrecision(18, 2);
             b.Property(x => x.Credit).HasPrecision(18, 2);
+        });
+
+        modelBuilder.Entity<LedgerAccount>(b =>
+        {
+            b.ToTable("ledger_accounts");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => x.Code).IsUnique();
+        });
+
+        modelBuilder.Entity<Receipt>(b =>
+        {
+            b.ToTable("receipts");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => x.DonationId).IsUnique();
+            b.HasIndex(x => new { x.OrganizationId, x.Number }).IsUnique();
+            b.Property(x => x.Amount).HasPrecision(18, 2);
         });
 
         modelBuilder.Entity<Donation>(b =>
