@@ -289,3 +289,43 @@ export async function getDonor(token: string, id: string): Promise<DonorDetail> 
   if (!res.ok) throw new Error(`Falha ao consultar doador (${res.status}).`);
   return res.json() as Promise<DonorDetail>;
 }
+
+// ---- Relatórios (Reporting) ----
+
+export interface ReportingOverview {
+  totalRaised: number;
+  donationsCount: number;
+  avgTicket: number;
+  activeDonors: number;
+  activeRecurring: number;
+  byMethod: { method: string; total: number; count: number }[];
+}
+
+export interface MonthPoint {
+  month: string;
+  total: number;
+  count: number;
+}
+
+export interface UnitReport {
+  organizationId: string;
+  name: string;
+  parentId: string | null;
+  total: number;
+  count: number;
+}
+
+async function authGet<T>(token: string, path: string, label: string): Promise<T> {
+  const res = await fetch(`${BFF_URL}${path}`, { headers: { authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error(`Falha ao carregar ${label} (${res.status}).`);
+  return res.json() as Promise<T>;
+}
+
+export const reportingOverview = (token: string) =>
+  authGet<ReportingOverview>(token, '/api/reporting/overview', 'resumo');
+
+export const reportingTimeseries = (token: string, months = 12) =>
+  authGet<MonthPoint[]>(token, `/api/reporting/timeseries?months=${months}`, 'série temporal');
+
+export const reportingByUnit = (token: string) =>
+  authGet<UnitReport[]>(token, '/api/reporting/by-unit', 'consolidação por unidade');

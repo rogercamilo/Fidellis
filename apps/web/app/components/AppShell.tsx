@@ -12,6 +12,7 @@ const NAV = [
   { href: '/dashboard/doadores', label: 'Doadores' },
   { href: '/dashboard/recibos', label: 'Recibos' },
   { href: '/dashboard/contabilidade', label: 'Contabilidade' },
+  { href: '/dashboard/relatorios', label: 'Relatórios' },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {

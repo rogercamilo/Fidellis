@@ -49,7 +49,7 @@ relacionamento com o doador que os concorrentes não priorizam.
 | **Donations**| Organizations, doações, **CRM 360º do doador** + régua de relacionamento | **Funcional** — CRM (histórico/situação) + outbox/e-mail (Resend) |
 | **Finance**  | Cobrança PIX (Pagar.me), webhook idempotente, conciliação, split, **recorrência + dunning** | **Funcional (PIX)** — checkout, webhook, partida dobrada, dízimo mensal + dunning |
 | **Accounting**| Plano de contas, razão/balancete, recibos automáticos                 | **Funcional** — plano de contas, partida dobrada, balancete consolidado, recibos |
-| **Reporting**| Dashboards, exportações, consolidação da rede                          | Skeleton        |
+| **Reporting**| Dashboards, série temporal, consolidação da rede                      | **Funcional** — overview, série mensal, consolidação por unidade (Recharts) |
 | **Audit**    | Trilha de auditoria / LGPD                                             | Skeleton        |
 
 ## 6. Requisitos funcionais (alto nível)
@@ -90,7 +90,9 @@ relacionamento com o doador que os concorrentes não priorizam.
 4. ✅ **CRM do doador + régua de relacionamento** — CRM 360º (histórico/situação), outbox idempotente,
    e-mail real (Resend), gatilhos (agradecimento/dunning/past_due) + reativação de inativo; WhatsApp
    desenhado (stub). **Entregue.** Ver [ADR-0010](../architecture/ADR-0010-crm-relationship-outbox.md).
-5. **Dashboards + consolidação da rede** (módulo Reporting).
+5. ✅ **Dashboards + consolidação da rede** (módulo Reporting) — overview, série temporal mensal,
+   consolidação por unidade e quebra por método (Recharts). **Entregue.**
+   Ver [ADR-0011](../architecture/ADR-0011-reporting-dashboards.md).
 6. **Portal do doador** e **auditoria/LGPD** completa.
 
 ## 9. Fora de escopo do primeiro entregável
