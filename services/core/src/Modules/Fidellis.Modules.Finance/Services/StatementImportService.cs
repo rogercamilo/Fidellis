@@ -19,10 +19,12 @@ public sealed class StatementImportService(TenantDbContext db)
             throw new InvalidOperationException("Conta de tesouraria inexistente.");
 
         var fmt = (format ?? "ofx").Trim().ToLowerInvariant();
-        if (fmt != "ofx")
-            throw new InvalidOperationException("Formato não suportado nesta entrega (use 'ofx').");
-
-        var parsed = OfxParser.Parse(content);
+        var parsed = fmt switch
+        {
+            "ofx" => OfxParser.Parse(content),
+            "cnab" => CnabParser.Parse(content),
+            _ => throw new InvalidOperationException("Formato não suportado (use 'ofx' ou 'cnab')."),
+        };
 
         // fit_ids já existentes nas linhas de extratos desta conta (dedupe entre importações).
         var accountStatementIds = db.BankStatements.Where(s => s.AccountId == accountId).Select(s => s.Id);
