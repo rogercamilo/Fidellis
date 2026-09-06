@@ -1,8 +1,8 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { OrganizationPicker } from '../../components/OrganizationPicker';
+import { Panel } from '../../components/Panel';
 import { createDonation, getDonation, type DonationCheckout, type LoginResult } from '../../lib/api';
 
 export default function CobrancaPage() {
@@ -29,14 +29,8 @@ export default function CobrancaPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!token) {
-      setError('Sessão não encontrada. Faça login novamente.');
-      return;
-    }
-    if (!organizationId) {
-      setError('Selecione ou crie uma unidade.');
-      return;
-    }
+    if (!token) return setError('Sessão não encontrada. Faça login novamente.');
+    if (!organizationId) return setError('Selecione ou crie uma unidade.');
     setLoading(true);
     try {
       const result = await createDonation(token, {
@@ -70,56 +64,85 @@ export default function CobrancaPage() {
     }, 3000);
   }
 
+  const statusBadge = status === 'paid' ? 'ok' : status === 'failed' ? 'err' : 'warn';
+
   return (
-    <main className="container" style={{ maxWidth: 560 }}>
-      <p className="muted">
-        <Link href="/dashboard">← Painel</Link>
-      </p>
-      <h1>Nova cobrança (PIX)</h1>
-
-      {!checkout ? (
-        <form className="card" onSubmit={onSubmit}>
-          <OrganizationPicker token={token} value={organizationId} onChange={setOrganizationId} />
-
-          <label htmlFor="amount">Valor (R$)</label>
-          <input id="amount" type="number" step="0.01" min="0.01" value={amount}
-            onChange={(e) => setAmount(e.target.value)} required />
-
-          <label htmlFor="dname">Doador — nome</label>
-          <input id="dname" value={donorName} onChange={(e) => setDonorName(e.target.value)} required />
-
-          <label htmlFor="ddoc">Doador — CPF/CNPJ</label>
-          <input id="ddoc" value={donorDocument} onChange={(e) => setDonorDocument(e.target.value)} required />
-
-          <label htmlFor="demail">Doador — e-mail (opcional)</label>
-          <input id="demail" type="email" value={donorEmail} onChange={(e) => setDonorEmail(e.target.value)} />
-
-          {error && <p style={{ color: '#ff7a7a', marginTop: '0.75rem' }}>{error}</p>}
-
-          <button className="btn" type="submit" style={{ marginTop: '1rem', width: '100%' }} disabled={loading}>
-            {loading ? 'Gerando…' : 'Gerar cobrança PIX'}
-          </button>
-        </form>
-      ) : (
-        <div className="card">
-          <p className="muted">Status: <strong style={{ color: status === 'paid' ? 'var(--accent)' : 'var(--fg)' }}>{status}</strong></p>
-          {checkout.qrCodeUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={checkout.qrCodeUrl} alt="QR Code PIX" style={{ width: 240, height: 240, background: '#fff', borderRadius: 8 }} />
-          )}
-          <label>PIX copia-e-cola</label>
-          <textarea readOnly value={checkout.qrCode} rows={4} style={{ width: '100%' }} />
-          <p className="muted" style={{ fontSize: '0.85rem' }}>
-            {status === 'paid'
-              ? 'Pagamento confirmado — doação conciliada.'
-              : 'Aguardando pagamento… a página atualiza sozinha quando o PIX for confirmado (webhook).'}
-          </p>
-          <button className="btn" onClick={() => { setCheckout(null); setStatus('pending'); }}
-            style={{ background: 'transparent', color: 'var(--accent)', border: '1px solid var(--border)' }}>
-            Nova cobrança
-          </button>
+    <>
+      <div className="page-head rise">
+        <div>
+          <h1>Nova cobrança</h1>
+          <p className="subtitle">Gere um PIX avulso — a confirmação e o recibo são automáticos.</p>
         </div>
-      )}
-    </main>
+      </div>
+
+      <div className="grid cols-2 rise rise-2" style={{ alignItems: 'start' }}>
+        {!checkout ? (
+          <Panel title="Dados da cobrança">
+            <form onSubmit={onSubmit}>
+              <div className="field">
+                <OrganizationPicker token={token} value={organizationId} onChange={setOrganizationId} />
+              </div>
+              <div className="field">
+                <label htmlFor="amount">Valor (R$)</label>
+                <input id="amount" type="number" step="0.01" min="0.01" value={amount}
+                  onChange={(e) => setAmount(e.target.value)} required />
+              </div>
+              <div className="field">
+                <label htmlFor="dname">Doador — nome</label>
+                <input id="dname" value={donorName} onChange={(e) => setDonorName(e.target.value)} required />
+              </div>
+              <div className="field">
+                <label htmlFor="ddoc">Doador — CPF/CNPJ</label>
+                <input id="ddoc" value={donorDocument} onChange={(e) => setDonorDocument(e.target.value)} required />
+              </div>
+              <div className="field">
+                <label htmlFor="demail">Doador — e-mail (opcional)</label>
+                <input id="demail" type="email" value={donorEmail} onChange={(e) => setDonorEmail(e.target.value)} />
+              </div>
+
+              {error && <p className="error-text">{error}</p>}
+
+              <button className="btn btn-primary" type="submit" style={{ width: '100%', marginTop: '0.5rem' }} disabled={loading}>
+                {loading ? 'Gerando…' : 'Gerar cobrança PIX'}
+              </button>
+            </form>
+          </Panel>
+        ) : (
+          <Panel title="Cobrança PIX" actions={<span className={`badge ${statusBadge}`}>{status}</span>}>
+            <div style={{ display: 'grid', placeItems: 'center', gap: '0.75rem' }}>
+              {checkout.qrCodeUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={checkout.qrCodeUrl} alt="QR Code PIX"
+                  style={{ width: 220, height: 220, background: '#fff', borderRadius: 10, border: '1px solid var(--border)', padding: 8 }} />
+              )}
+              <div className="field" style={{ width: '100%' }}>
+                <label>PIX copia-e-cola</label>
+                <textarea readOnly value={checkout.qrCode} rows={4} className="mono" style={{ fontSize: '0.8rem' }} />
+              </div>
+              <p className="hint" style={{ textAlign: 'center' }}>
+                {status === 'paid'
+                  ? 'Pagamento confirmado — doação conciliada e recibo emitido.'
+                  : 'Aguardando pagamento… a página atualiza sozinha quando o PIX for confirmado.'}
+              </p>
+              <button className="btn btn-ghost" onClick={() => { setCheckout(null); setStatus('pending'); }}>
+                Nova cobrança
+              </button>
+            </div>
+          </Panel>
+        )}
+
+        <Panel title="Como funciona">
+          <ol className="muted" style={{ margin: 0, paddingLeft: '1.1rem', lineHeight: 1.9 }}>
+            <li>Selecione a unidade (paróquia/comunidade) que recebe.</li>
+            <li>Informe o valor e os dados do doador.</li>
+            <li>Exiba o QR / copia-e-cola ao doador.</li>
+            <li>Na confirmação do PIX, geramos o <strong>recibo</strong> e os lançamentos contábeis.</li>
+          </ol>
+          <p className="hint" style={{ marginTop: '1rem' }}>
+            A plataforma não retém taxa sobre a doação — a unidade fica com 100%.
+          </p>
+        </Panel>
+      </div>
+    </>
   );
 }

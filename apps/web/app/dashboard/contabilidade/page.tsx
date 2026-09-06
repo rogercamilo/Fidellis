@@ -1,8 +1,10 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { Panel } from '../../components/Panel';
 import { trialBalance, type LoginResult, type TrialBalance } from '../../lib/api';
+
+const fmt = (n: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export default function ContabilidadePage() {
   const [tb, setTb] = useState<TrialBalance | null>(null);
@@ -17,49 +19,63 @@ export default function ContabilidadePage() {
       .catch((e) => setError(e instanceof Error ? e.message : 'Erro.'));
   }, []);
 
-  return (
-    <main className="container" style={{ maxWidth: 720 }}>
-      <p className="muted"><Link href="/dashboard">← Painel</Link></p>
-      <h1>Balancete</h1>
-      <p className="muted">Consolidado das suas unidades (unidade + filiais).</p>
-      {error && <p style={{ color: '#ff7a7a' }}>{error}</p>}
+  const balanced = tb ? Math.abs(tb.totalDebit - tb.totalCredit) < 0.005 : true;
 
-      {!tb ? (
-        <p className="muted">Carregando…</p>
-      ) : tb.accounts.length === 0 ? (
-        <p className="muted">Sem lançamentos ainda. Confirme um pagamento para ver os lançamentos.</p>
-      ) : (
-        <div className="card">
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ textAlign: 'left', color: 'var(--muted)' }}>
-                <th style={{ padding: '0.35rem 0' }}>Conta</th>
-                <th style={{ textAlign: 'right' }}>Débito</th>
-                <th style={{ textAlign: 'right' }}>Crédito</th>
-                <th style={{ textAlign: 'right' }}>Saldo</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tb.accounts.map((a) => (
-                <tr key={a.ledgerAccountId ?? a.name} style={{ borderTop: '1px solid var(--border)' }}>
-                  <td style={{ padding: '0.35rem 0' }}>{a.code ? `${a.code} · ` : ''}{a.name}</td>
-                  <td style={{ textAlign: 'right' }}>{a.debit.toFixed(2)}</td>
-                  <td style={{ textAlign: 'right' }}>{a.credit.toFixed(2)}</td>
-                  <td style={{ textAlign: 'right' }}>{a.balance.toFixed(2)}</td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr style={{ borderTop: '2px solid var(--border)', fontWeight: 700 }}>
-                <td style={{ padding: '0.5rem 0' }}>Totais</td>
-                <td style={{ textAlign: 'right' }}>{tb.totalDebit.toFixed(2)}</td>
-                <td style={{ textAlign: 'right' }}>{tb.totalCredit.toFixed(2)}</td>
-                <td style={{ textAlign: 'right' }}>{(tb.totalDebit - tb.totalCredit).toFixed(2)}</td>
-              </tr>
-            </tfoot>
-          </table>
+  return (
+    <>
+      <div className="page-head rise">
+        <div>
+          <h1>Balancete</h1>
+          <p className="subtitle">Consolidado das suas unidades (unidade + filiais).</p>
         </div>
-      )}
-    </main>
+        {tb && tb.accounts.length > 0 && (
+          <span className={`badge ${balanced ? 'ok' : 'err'}`}>
+            {balanced ? 'Débitos = Créditos' : 'Desbalanceado'}
+          </span>
+        )}
+      </div>
+
+      <div className="rise rise-2">
+        <Panel title="Balancete de verificação" flush>
+          {error && <p className="error-text" style={{ padding: '1rem' }}>{error}</p>}
+          {!tb ? (
+            <p className="muted" style={{ padding: '1rem' }}>Carregando…</p>
+          ) : tb.accounts.length === 0 ? (
+            <p className="muted" style={{ padding: '1rem' }}>
+              Sem lançamentos ainda. Confirme um pagamento para ver a movimentação.
+            </p>
+          ) : (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Conta</th>
+                  <th className="num">Débito</th>
+                  <th className="num">Crédito</th>
+                  <th className="num">Saldo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tb.accounts.map((a) => (
+                  <tr key={a.ledgerAccountId ?? a.name}>
+                    <td>{a.code && <span className="mono muted">{a.code}</span>} {a.name}</td>
+                    <td className="num">{fmt(a.debit)}</td>
+                    <td className="num">{fmt(a.credit)}</td>
+                    <td className="num">{fmt(a.balance)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td>Totais</td>
+                  <td className="num">{fmt(tb.totalDebit)}</td>
+                  <td className="num">{fmt(tb.totalCredit)}</td>
+                  <td className="num">{fmt(tb.totalDebit - tb.totalCredit)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          )}
+        </Panel>
+      </div>
+    </>
   );
 }
