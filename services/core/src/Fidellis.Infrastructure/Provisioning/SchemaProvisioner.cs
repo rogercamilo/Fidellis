@@ -456,6 +456,22 @@ public sealed class SchemaProvisioner(
                 created_at  timestamptz NOT NULL DEFAULT now(),
                 UNIQUE (payable_id, approver_id)
             );
+
+            -- Caixa físico (Onda 2 inc.2.5): sessões de coleta em espécie com dupla conferência.
+            CREATE TABLE IF NOT EXISTS "{schema}".cash_sessions (
+                id                    uuid PRIMARY KEY,
+                account_id            uuid          NOT NULL,
+                opened_by             uuid          NOT NULL,
+                opened_at             timestamptz   NOT NULL DEFAULT now(),
+                event_label           varchar(120),
+                counted_amount        numeric(18,2),
+                confirmed_by          uuid,
+                closed_at             timestamptz,
+                status                varchar(12)   NOT NULL DEFAULT 'open',   -- open | closed
+                deposited_movement_id uuid,
+                created_at            timestamptz   NOT NULL DEFAULT now()
+            );
+            CREATE INDEX IF NOT EXISTS ix_cash_sessions_acc ON "{schema}".cash_sessions (account_id, status);
             """;
 
         await ExecuteAsync(ddl, ct);
