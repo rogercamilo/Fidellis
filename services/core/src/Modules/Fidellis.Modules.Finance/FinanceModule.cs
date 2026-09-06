@@ -25,7 +25,7 @@ public static class FinanceModule
         services.AddScoped<WebhookProcessor>();
         services.AddScoped<RecipientService>();
         services.AddScoped<RecurringBillingService>();
-        services.AddSingleton<Notifications.INotifier, Notifications.LogNotifier>();
+        services.AddScoped<Notifications.INotifier, Notifications.OutboxNotifier>();
         return services;
     }
 

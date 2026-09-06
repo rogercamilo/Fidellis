@@ -9,6 +9,7 @@ const NAV = [
   { href: '/dashboard', label: 'Painel' },
   { href: '/dashboard/cobranca', label: 'Cobrança' },
   { href: '/dashboard/recorrencia', label: 'Recorrência' },
+  { href: '/dashboard/doadores', label: 'Doadores' },
   { href: '/dashboard/recibos', label: 'Recibos' },
   { href: '/dashboard/contabilidade', label: 'Contabilidade' },
 ];

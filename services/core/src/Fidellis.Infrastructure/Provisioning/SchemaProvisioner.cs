@@ -215,6 +215,25 @@ public sealed class SchemaProvisioner(
                 received_at        timestamptz  NOT NULL DEFAULT now(),
                 processed_at       timestamptz
             );
+
+            -- Régua de relacionamento (passo 4): outbox de mensagens.
+            CREATE TABLE IF NOT EXISTS "{schema}".messages (
+                id          uuid PRIMARY KEY,
+                donor_id    uuid,
+                channel     varchar(20)  NOT NULL DEFAULT 'email',
+                event_type  varchar(40)  NOT NULL,
+                template    varchar(40)  NOT NULL,
+                to_address  varchar(320) NOT NULL,
+                subject     varchar(300),
+                body        text         NOT NULL,
+                status      varchar(20)  NOT NULL DEFAULT 'queued',
+                attempts    int          NOT NULL DEFAULT 0,
+                dedupe_key  varchar(120) UNIQUE,
+                error       text,
+                created_at  timestamptz  NOT NULL DEFAULT now(),
+                sent_at     timestamptz
+            );
+            CREATE INDEX IF NOT EXISTS ix_messages_status ON "{schema}".messages (status);
             """;
 
         await ExecuteAsync(ddl, ct);

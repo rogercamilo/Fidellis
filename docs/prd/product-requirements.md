@@ -46,7 +46,7 @@ relacionamento com o doador que os concorrentes não priorizam.
 | Módulo       | Responsabilidade                                                        | Status scaffold |
 | ------------ | ---------------------------------------------------------------------- | --------------- |
 | **Tenant**   | Registro/provisionamento de instituições (schema `catalog` + `t_<slug>`)| **Funcional** (criar/listar tenant, provisiona schema) |
-| **Donations**| Campanhas, doações, doadores                                           | Skeleton (+ leitura por schema) |
+| **Donations**| Organizations, doações, **CRM 360º do doador** + régua de relacionamento | **Funcional** — CRM (histórico/situação) + outbox/e-mail (Resend) |
 | **Finance**  | Cobrança PIX (Pagar.me), webhook idempotente, conciliação, split, **recorrência + dunning** | **Funcional (PIX)** — checkout, webhook, partida dobrada, dízimo mensal + dunning |
 | **Accounting**| Plano de contas, razão/balancete, recibos automáticos                 | **Funcional** — plano de contas, partida dobrada, balancete consolidado, recibos |
 | **Reporting**| Dashboards, exportações, consolidação da rede                          | Skeleton        |
@@ -87,7 +87,9 @@ relacionamento com o doador que os concorrentes não priorizam.
 3. ✅ **Razão contábil + recibos** (módulo Accounting) — plano de contas configurável, partida dobrada
    contra o plano, balancete/razão consolidados (Rede→Unidade) e recibo automático (HTML imprimível).
    **Entregue.** Ver [ADR-0009](../architecture/ADR-0009-accounting-receipts.md).
-4. **CRM do doador + régua de relacionamento (WhatsApp/e-mail).**
+4. ✅ **CRM do doador + régua de relacionamento** — CRM 360º (histórico/situação), outbox idempotente,
+   e-mail real (Resend), gatilhos (agradecimento/dunning/past_due) + reativação de inativo; WhatsApp
+   desenhado (stub). **Entregue.** Ver [ADR-0010](../architecture/ADR-0010-crm-relationship-outbox.md).
 5. **Dashboards + consolidação da rede** (módulo Reporting).
 6. **Portal do doador** e **auditoria/LGPD** completa.
 

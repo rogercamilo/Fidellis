@@ -1,4 +1,5 @@
 using Fidellis.Infrastructure.Accounting;
+using Fidellis.Infrastructure.Messaging;
 using Fidellis.Infrastructure.Payments;
 using Fidellis.Infrastructure.Persistence;
 using Fidellis.Infrastructure.TenantData;
@@ -161,7 +162,8 @@ public class RecurringBillingTests
         await tdb.SaveChangesAsync();
 
         var clock = new FixedClock(T0);
-        var processor = new WebhookProcessor(tdb, new FakeGateway(), new ChartOfAccountsSeeder(tdb), new ReceiptService(tdb, clock), clock, NullLogger<WebhookProcessor>.Instance);
+        var processor = new WebhookProcessor(tdb, new FakeGateway(), new ChartOfAccountsSeeder(tdb), new ReceiptService(tdb, clock),
+            new OutboxNotifier(tdb, new MessageOutbox(tdb)), clock, NullLogger<WebhookProcessor>.Instance);
         await processor.ProcessAsync(new PagarmeWebhookEvent("hook_1", "charge.paid", "or_1", "ch_1", "paid"), "{}");
 
         var updated = await tdb.RecurringDonations.SingleAsync();

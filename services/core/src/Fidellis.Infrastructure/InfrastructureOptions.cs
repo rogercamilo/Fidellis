@@ -20,4 +20,13 @@ public sealed class InfrastructureOptions
 
     /// <summary>Senha do Basic auth configurado na URL de webhook do Pagar.me.</summary>
     public string? PagarmeWebhookPassword { get; init; }
+
+    /// <summary>API key do Resend p/ envio de e-mail. Vazia → envio é ignorado (log).</summary>
+    public string? ResendApiKey { get; init; }
+
+    /// <summary>Remetente dos e-mails (ex.: <c>Fidellis &lt;nao-responda@dominio.com&gt;</c>).</summary>
+    public string MailFrom { get; init; } = "Fidellis <onboarding@resend.dev>";
+
+    /// <summary>Dias sem doação para considerar um doador inativo (reativação).</summary>
+    public int ReactivationDays { get; init; } = 90;
 }

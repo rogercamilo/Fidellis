@@ -28,6 +28,9 @@ builder.Services.AddInfrastructure(new InfrastructureOptions
     PagarmeBaseUrl = config["PAGARME_BASE_URL"] ?? "https://api.pagar.me/core/v5",
     PagarmeWebhookUser = config["PAGARME_WEBHOOK_USER"],
     PagarmeWebhookPassword = config["PAGARME_WEBHOOK_PASSWORD"],
+    ResendApiKey = config["RESEND_API_KEY"],
+    MailFrom = config["MAIL_FROM"] ?? "Fidellis <onboarding@resend.dev>",
+    ReactivationDays = int.TryParse(config["REACTIVATION_DAYS"], out var rd) ? rd : 90,
 });
 
 builder.Services

@@ -111,7 +111,87 @@ public static class DonationsModule
             return Results.Created($"/api/organizations/{id}/members", new { organizationId = id, userId, role = req.Role ?? "member" });
         });
 
+        // ---- CRM 360º do doador ----
+        var crm = app.MapGroup("/api/crm").WithTags("CRM");
+
+        crm.MapGet("/donors", async (ITenantContext tenant, ICurrentUser user, TenantDbContext db, CancellationToken ct) =>
+        {
+            if (!tenant.HasTenant) return Results.BadRequest(new { error = "Nenhum tenant no request." });
+            var visible = await VisibleOrgsAsync(user, db, ct);
+
+            var rows = await db.Donations
+                .Where(d => d.DonorId != null && visible.Contains(d.OrganizationId))
+                .Select(d => new { DonorId = d.DonorId!.Value, d.Status, d.Amount, d.PaidAt })
+                .ToListAsync(ct);
+
+            var byDonor = rows.GroupBy(r => r.DonorId).ToDictionary(g => g.Key, g => g.ToList());
+            var ids = byDonor.Keys.ToList();
+            var donors = await db.Donors.Where(d => ids.Contains(d.Id)).ToListAsync(ct);
+            var activeRec = (await db.RecurringDonations
+                .Where(r => r.Status == "active" && ids.Contains(r.DonorId))
+                .Select(r => r.DonorId).ToListAsync(ct)).ToHashSet();
+
+            var window = DateTimeOffset.UtcNow.AddDays(-90);
+            var list = donors.Select(donor =>
+            {
+                var ds = byDonor[donor.Id];
+                var paid = ds.Where(x => x.Status == "paid").ToList();
+                DateTimeOffset? last = paid.Count > 0 ? paid.Max(x => x.PaidAt) : null;
+                var situacao = activeRec.Contains(donor.Id) ? "recorrente"
+                    : paid.Count == 0 ? "novo"
+                    : last is { } l && l >= window ? "ativo"
+                    : "inativo";
+                return new
+                {
+                    id = donor.Id, name = donor.Name, email = donor.Email, document = donor.Document, phone = donor.Phone,
+                    totalPaid = paid.Sum(x => x.Amount), donations = paid.Count, lastPaidAt = last, situacao,
+                };
+            }).OrderByDescending(x => x.totalPaid).ToList();
+
+            return Results.Ok(list);
+        });
+
+        crm.MapGet("/donors/{id:guid}", async (Guid id, ITenantContext tenant, ICurrentUser user, TenantDbContext db, CancellationToken ct) =>
+        {
+            if (!tenant.HasTenant) return Results.BadRequest(new { error = "Nenhum tenant no request." });
+            var visible = await VisibleOrgsAsync(user, db, ct);
+
+            var donor = await db.Donors.FirstOrDefaultAsync(d => d.Id == id, ct);
+            if (donor is null) return Results.NotFound();
+
+            var donations = await db.Donations
+                .Where(d => d.DonorId == id && visible.Contains(d.OrganizationId))
+                .OrderByDescending(d => d.CreatedAt)
+                .Select(d => new { d.Id, d.Amount, d.Status, d.Method, d.CreatedAt, d.PaidAt })
+                .ToListAsync(ct);
+            var recurring = await db.RecurringDonations
+                .Where(r => r.DonorId == id)
+                .Select(r => new { r.Id, r.Amount, r.DayOfMonth, r.Status, r.NextChargeAt })
+                .ToListAsync(ct);
+            var messages = await db.Messages
+                .Where(m => m.DonorId == id)
+                .OrderByDescending(m => m.CreatedAt)
+                .Select(m => new { m.Id, m.Channel, m.EventType, m.Status, m.Subject, m.CreatedAt, m.SentAt })
+                .ToListAsync(ct);
+
+            return Results.Ok(new
+            {
+                donor = new { donor.Id, donor.Name, donor.Email, donor.Document, donor.Phone },
+                donations,
+                recurring,
+                messages,
+            });
+        });
+
         return app;
+    }
+
+    private static async Task<HashSet<Guid>> VisibleOrgsAsync(ICurrentUser user, TenantDbContext db, CancellationToken ct)
+    {
+        if (!user.HasUser) return [];
+        var memberIds = await db.OrgMembers.Where(m => m.UserId == user.UserId).Select(m => m.OrganizationId).ToListAsync(ct);
+        var all = await db.Organizations.Select(o => new { o.Id, o.ParentId }).ToListAsync(ct);
+        return OrgVisibility.VisibleOrgIds(memberIds, all.Select(o => (o.Id, o.ParentId)).ToList());
     }
 }
 

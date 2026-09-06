@@ -2,6 +2,7 @@ using Fidellis.Infrastructure.Accounting;
 using Fidellis.Infrastructure.Payments;
 using Fidellis.Infrastructure.Persistence;
 using Fidellis.Infrastructure.TenantData;
+using Fidellis.Modules.Finance.Notifications;
 using Fidellis.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -20,6 +21,7 @@ public sealed class WebhookProcessor(
     IPaymentGateway gateway,
     ChartOfAccountsSeeder chartSeeder,
     ReceiptService receipts,
+    INotifier notifier,
     IClock clock,
     ILogger<WebhookProcessor> logger)
 {
@@ -113,7 +115,10 @@ public sealed class WebhookProcessor(
         var donorDocument = donation.DonorId is { } donorId
             ? await db.Donors.Where(d => d.Id == donorId).Select(d => d.Document).FirstOrDefaultAsync(ct)
             : null;
-        await receipts.GenerateForDonationAsync(donation, donation.DonorName ?? "Doador", donorDocument, ct);
+        var receipt = await receipts.GenerateForDonationAsync(donation, donation.DonorName ?? "Doador", donorDocument, ct);
+
+        // Régua: agradecimento ao doador (enfileira na outbox; envio pelo dispatcher).
+        await notifier.DonationPaidAsync(donation, receipt.Number, ct);
 
         // Ciclo recorrente pago: zera o dunning e agenda a próxima cobrança mensal.
         if (donation.RecurringDonationId is { } recurringId)

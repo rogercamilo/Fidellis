@@ -1,3 +1,5 @@
+using Fidellis.Infrastructure;
+using Fidellis.Infrastructure.Messaging;
 using Fidellis.Infrastructure.Persistence;
 using Fidellis.SharedKernel;
 using Microsoft.EntityFrameworkCore;
@@ -8,9 +10,10 @@ using Microsoft.Extensions.Logging;
 namespace Fidellis.Modules.Finance.Services;
 
 /// <summary>
-/// Worker de billing: a cada intervalo percorre os tenants (schema-per-tenant), e para cada um roda
-/// o dunning e depois a geração de ciclos. Instância única por ora (lock distribuído via Redis fica
-/// para multi-instância). Registrado apenas quando <c>BILLING_ENABLED</c> (desligado em testes/CI).
+/// Worker de fundo: a cada intervalo percorre os tenants (schema-per-tenant) e, por tenant, roda
+/// dunning → geração de ciclos → reativação de inativos → dispatch da outbox de mensagens.
+/// Instância única por ora (lock distribuído via Redis fica para multi-instância). Registrado apenas
+/// quando <c>BILLING_ENABLED</c> (desligado em testes/CI).
 /// </summary>
 public sealed class BillingWorker(
     IServiceScopeFactory scopeFactory,
@@ -47,16 +50,22 @@ public sealed class BillingWorker(
         foreach (var slug in slugs)
         {
             using var scope = scopeFactory.CreateScope();
-            scope.ServiceProvider.GetRequiredService<ITenantContext>().SetTenant(slug);
-            var billing = scope.ServiceProvider.GetRequiredService<RecurringBillingService>();
+            var sp = scope.ServiceProvider;
+            sp.GetRequiredService<ITenantContext>().SetTenant(slug);
             try
             {
+                var billing = sp.GetRequiredService<RecurringBillingService>();
                 await billing.RunDunningAsync(ct);
                 await billing.RunBillingCycleAsync(ct);
+
+                var reactivationDays = sp.GetRequiredService<InfrastructureOptions>().ReactivationDays;
+                await sp.GetRequiredService<ReactivationScanner>().EnqueueInactiveAsync(reactivationDays, ct);
+
+                await sp.GetRequiredService<MessageDispatcher>().DispatchQueuedAsync(ct: ct);
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Billing do tenant {Slug} falhou.", slug);
+                logger.LogError(ex, "Worker do tenant {Slug} falhou.", slug);
             }
         }
     }
