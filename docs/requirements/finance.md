@@ -1,6 +1,6 @@
 # Requisitos — Módulo Finance (Núcleo Financeiro & Tesouraria)
 
-> **Status:** rascunho para revisão do Product Owner · **Versão:** v0.2 — 2026-09-06
+> **Status:** rascunho para revisão do Product Owner · **Versão:** v0.3 — 2026-09-06
 > **Escopo:** detalha os requisitos do bloco **Finance** antes do início do desenvolvimento.
 > Complementa o [PRD](../prd/product-requirements.md) e os ADRs. Itens marcados **⚠️ Decisão
 > pendente** aguardam validação; itens **✔ Decidido** já foram acordados (ver §2).
@@ -55,6 +55,13 @@ previsibilidade** financeira a organizações que hoje operam no escuro.
 | D5 | **Caixa físico** | ✔ **Entra** na Onda 2 (coleta/oferta em espécie) | Sub-bloco E |
 | D6 | **Fundo patrimonial (endowment)** | ✔ **Futuro**; fundos com/sem restrição já na Onda 1 | RF-FIN-142 |
 | D7 | **Moeda** | ✔ **BRL único**; campo `currency` reservado (default `BRL`), sem câmbio | RNF-07 |
+| D8 | **Expiração de cobrança** | ✔ **Ambos** — webhook do PSP (primário) + job de varredura (rede de segurança) | RF-FIN-013 |
+| D9 | **Parcelamento no cartão** | ✔ **Não no MVP**; se ativado no futuro, **doador absorve** o custo | RF-FIN-020 |
+| D10 | **CPF no cartão** | ✔ **Obrigatório** (antifraude + recibo) | RF-FIN-020 |
+| D11 | **Card-on-file (cartão recorrente)** | ✔ Assumir **sim** no design; **verificar** habilitação no plano Pagar.me antes de implementar | RF-FIN-021 |
+| D12 | **Reversão de recibo em estorno** | ✔ **Cancelar** o recibo original (marca + motivo/vínculo ao evento) | RF-FIN-022 |
+| D13 | **Teto máx. de compliance (1 assinatura)** | ✔ **R$ 5.000** — acima disso, 2 assinaturas sempre obrigatórias (org pode baixar, não elevar) | RF-FIN-112 |
+| D14 | **Dimensões obrigatórias** | ✔ **Default configurável** (centro de custo padrão + fundo livre), não obrigatórias no lançamento | RF-FIN-143 |
 
 ---
 
@@ -115,31 +122,39 @@ Aceitar `Idempotency-Key` no checkout (gestor e público).
   dobrada → recibo → régua); boleto vencido → `expired`.
 - **Aceite:** boleto pago gera lançamento + recibo idênticos ao PIX.
 
-#### RF-FIN-013 — Estado de expiração · *Média*
+#### RF-FIN-013 — Estado de expiração · *Média* · **D8**
 - **RN:** `Donation.Status = "expired"` quando o prazo passa sem pagamento; não reabre (gera nova
   doação); ciclo recorrente expirado → dunning.
-- **⚠️ Decisão pendente:** expiração detectada por webhook do PSP, por job de varredura, ou ambos.
-- **Aceite:** cobrança fora do prazo → `expired`.
+- **Detecção (D8):** **ambos** — webhook do PSP como via primária **e** job de varredura interno
+  (reaproveita o padrão do `BillingWorker`) como rede de segurança para quando o PSP não notificar.
+- **Aceite:** cobrança fora do prazo → `expired`, detectada por webhook ou pela varredura.
 
 ### F1.3 — Cartão de crédito
 
-#### RF-FIN-020 — Checkout via cartão (tokenizado) · *Alta*
+#### RF-FIN-020 — Checkout via cartão (tokenizado) · *Alta* · **D9, D10**
 - **RN:** dado do cartão **nunca** no core — front tokeniza (Pagar.me.js), core recebe `card_token`;
   `Donation.Method = "card"`; resposta **síncrona**: aprovado → concilia na hora; recusado →
   `Status = "declined"` + motivo; split igual.
-- **⚠️ Decisão pendente:** parcelamento permitido? Quem absorve o custo? Exigir CPF?
-- **Aceite:** token aprovado → `paid` na hora; recusa → `declined` com motivo.
+- **Parcelamento (D9):** **não** no MVP (à vista); a estrutura reserva espaço para parcelamento
+  futuro, quando ativado, com o **custo absorvido pelo doador** (preserva "100% p/ a unidade").
+- **CPF (D10):** **obrigatório** no checkout de cartão (antifraude + recibo).
+- **Aceite:** token à vista aprovado → `paid` na hora; recusa → `declined` com motivo; checkout sem
+  CPF é rejeitado.
 
-#### RF-FIN-021 — Cartão em recorrência (card-on-file) · *Alta*
+#### RF-FIN-021 — Cartão em recorrência (card-on-file) · *Alta* · **D11**
 - **RN:** ciclo debita o cartão salvo no PSP (sem novo QR/boleto); recusa → dunning existente; cartão
   a vencer → notifica doador (CRM).
+- **Verificação (D11):** design assume card-on-file **habilitado**; confirmar a tokenização
+  recorrente no **plano Pagar.me contratado** antes de implementar. *Fallback* caso não suporte:
+  dízimo no cartão via **novo checkout por ciclo**.
 - **Aceite:** ciclo debita card-on-file; recusa entra no dunning.
 
-#### RF-FIN-022 — Estorno / chargeback · *Média*
+#### RF-FIN-022 — Estorno / chargeback · *Média* · **D12**
 - **RN:** evento de estorno → `refunded` | `charged_back` + **lançamento de reversão** (partida
-  dobrada inversa); recibo da doação estornada é invalidado/cancelado.
-- **⚠️ Decisão pendente:** política de reversão do recibo (cancelar vs. contra-recibo).
-- **Aceite:** estorno gera lançamento inverso e marca o recibo.
+  dobrada inversa).
+- **Reversão do recibo (D12):** **cancelar** o recibo original (marca como cancelado, com **motivo** e
+  vínculo ao evento de estorno); a trilha de auditoria preserva o histórico.
+- **Aceite:** estorno gera lançamento inverso e o recibo original fica cancelado com motivo.
 
 ### F1.4 — PIX Automático (mandato)
 
@@ -147,7 +162,9 @@ Aceitar `Idempotency-Key` no checkout (gestor e público).
 - **RN:** entidade `PaymentMandate` (doador, org, `RecipientId`, status, id do mandato no PSP,
   validade); doador autoriza **uma vez**; estados `pending_authorization` | `active` | `revoked` |
   `expired`; revogação (portal/LGPD) → recorrência `canceled`.
-- **⚠️ Decisão pendente:** disponibilidade do PIX Automático no PSP + requisitos BACEN (aviso prévio).
+- **Sequenciamento:** F1.4 é a **última onda do Sub-bloco A**, atrás de boleto/cartão — dá tempo de
+  **verificar** a disponibilidade do PIX Automático no PSP e os requisitos BACEN (aviso prévio ao
+  pagador). O motor de recorrência atual (PIX-QR por ciclo) segue operando enquanto isso.
 - **Aceite:** doador autoriza uma vez; próximos ciclos debitam via mandato.
 
 #### RF-FIN-031 — Cobrança recorrente via mandato · *Alta*
@@ -207,8 +224,9 @@ Todo título a pagar passa por aprovação antes de poder ser agendado/pago.
   1. **Nunca zero aprovação** — mínimo 1 aprovação sempre.
   2. **Segregação de funções** — quem lança **não** pode ser o único aprovador; quem aprova a faixa
      alta ≠ quem executa o pagamento; **autoaprovação bloqueada**.
-  3. **Teto para "1 assinatura"** — acima de um limite máximo de sistema, **2 assinaturas** passam a
-     ser sempre obrigatórias (a org pode baixar, não elevar acima do máximo de compliance).
+  3. **Teto para "1 assinatura" (D13)** — acima de **R$ 5.000** (máximo de compliance do sistema),
+     **2 assinaturas** passam a ser sempre obrigatórias. A organização pode **baixar** esse teto,
+     nunca **elevá-lo** acima de R$ 5.000.
   4. **Trilha imutável** — cada aprovação/rejeição gravada no `audit_log` (quem, quando, valor,
      faixa); não apagável.
   5. **Recurso restrito** — pagamento que consome fundo com restrição respeita a finalidade **em
@@ -303,10 +321,12 @@ Todo título a pagar passa por aprovação antes de poder ser agendado/pago.
   **bloquear** uso de recurso restrito fora da finalidade; base para endowment futuro.
 - **Aceite:** despesa contra fundo restrito exige aderência à finalidade; uso indevido é bloqueado.
 
-#### RF-FIN-143 — Três dimensões obrigatórias · *Alta*
-- **RN:** toda transação carrega **centro de custo × projeto × fundo** para relatórios cruzados
-  (default configurável quando não informado).
-- **Aceite:** lançamento sem dimensão usa o default; relatórios cruzam as 3 dimensões.
+#### RF-FIN-143 — Três dimensões com default configurável · *Alta* · **D14**
+- **RN:** toda transação carrega **centro de custo × projeto × fundo** para relatórios cruzados.
+  **Não são obrigatórias no lançamento** (D14): quando não informadas, o sistema aplica um **centro
+  de custo padrão** e o **fundo livre** configurados por unidade, mantendo o dado sempre completo sem
+  travar a usabilidade (projeto é opcional).
+- **Aceite:** lançamento sem dimensão usa os defaults; relatórios cruzam as 3 dimensões.
 
 ---
 
@@ -455,12 +475,18 @@ Todo título a pagar passa por aprovação antes de poder ser agendado/pago.
 
 ---
 
-## 18. Decisões ainda pendentes (para a próxima revisão)
+## 18. Decisões resolvidas (rodada de 2026-09-06)
 
-1. **RF-FIN-013:** expiração por webhook do PSP, job de varredura, ou ambos?
-2. **RF-FIN-020:** parcelamento no cartão? Quem absorve o custo? Exigir CPF no cartão?
-3. **RF-FIN-021:** card-on-file suportado no plano Pagar.me contratado?
-4. **RF-FIN-022:** política de reversão de recibo em estorno (cancelar vs. contra-recibo).
-5. **RF-FIN-030:** disponibilidade do PIX Automático no PSP + requisitos BACEN (aviso prévio).
-6. **RF-FIN-112:** valor do **teto máximo de compliance** para "1 assinatura" (guarda-corpo 3).
-7. **RF-FIN-143:** as 3 dimensões são **obrigatórias** ou o default cobre lançamentos sem dimensão?
+Todas as pendências desta rodada foram **decididas** (ver §2, D8–D14):
+
+1. **RF-FIN-013 (D8):** expiração detectada por **webhook + job de varredura** (ambos).
+2. **RF-FIN-020 (D9/D10):** **sem parcelamento** no MVP (doador absorve se ativado); **CPF obrigatório**.
+3. **RF-FIN-021 (D11):** card-on-file **assumido** no design; **verificar** habilitação no plano Pagar.me.
+4. **RF-FIN-022 (D12):** estorno **cancela** o recibo original (com motivo/vínculo ao evento).
+5. **RF-FIN-030:** PIX Automático é a **última onda** do Sub-bloco A; **verificar** PSP + BACEN antes.
+6. **RF-FIN-112 (D13):** teto máximo de compliance = **R$ 5.000** (2 assinaturas sempre acima disso).
+7. **RF-FIN-143 (D14):** dimensões **não obrigatórias** no lançamento; **default configurável** cobre.
+
+### Itens de verificação externa (não bloqueiam o design)
+- **PSP-1 (D11):** confirmar tokenização recorrente (card-on-file) no plano Pagar.me contratado.
+- **PSP-2 (RF-FIN-030):** confirmar disponibilidade do PIX Automático no PSP + requisitos BACEN.
