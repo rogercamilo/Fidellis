@@ -97,8 +97,9 @@ Plano de contas ganha contas de **trabalho voluntário** (receita/despesa) no se
 - **Trabalho voluntário:** `GET|POST /api/finance/volunteer-work`.
 - **MROSC:** `GET /api/finance/mrosc/{projectId}` (execução).
 - **Exportação:** `GET /api/finance/export/ledger?year=` (CSV), `GET /export/trial-balance?year=`.
-- **Transparência (público):** `GET /api/public/{tenant}/transparency?year=` (sem dados pessoais;
-  rate-limited como o resto do público).
+- **Transparência (público):** `GET /api/public/{tenant}/transparency?year=&quarter=` — resumo
+  consolidado **trimestral** (resultado + balanço resumido), sem dados pessoais; rate-limited como o
+  resto do público.
 
 RBAC: leituras de demonstrações liberadas a `fiscal_council`/`accountant`; escrita (voluntário) via
 `FinanceWriteFilter`.
@@ -113,7 +114,7 @@ RBAC: leituras de demonstrações liberadas a `fiscal_council`/`accountant`; esc
 | **4.1** | **Segregação + DMPL** | Recorte com/sem restrição + DMPL | 4.0 |
 | **4.2** | **DFC + trabalho voluntário** | DFC (direto) + registro/lançamento de voluntariado | 4.0 |
 | **4.3** | **MROSC + exportação contador** | Execução por convênio + CSV razão/saldos | 4.0 |
-| **4.4** | **Portal de transparência** | Página pública por unidade (receitas/despesas/projetos) | 4.0–4.3 |
+| **4.4** | **Portal de transparência** | Resumo público **trimestral** (resultado + balanço resumido), por unidade e consolidado | 4.0–4.3 |
 
 > 4.0 primeiro: o balancete é a base de todas as demonstrações. 4.4 por último (consome os anteriores).
 
@@ -133,19 +134,17 @@ RBAC: leituras de demonstrações liberadas a `fiscal_council`/`accountant`; esc
 
 ---
 
-## 7. Decisões pendentes (para a revisão do PO)
+## 7. Decisões resolvidas (2026-09-06)
 
-1. **DFC:** método **direto** (a partir de `treasury_movements`) ou **indireto** (a partir do
-   resultado)? Proposta: **direto** — temos os movimentos e é mais simples/claro p/ o terceiro setor.
-2. **Exportação:** **CSV** de razão/saldos agora e **SPED ECD** depois? Proposta: **CSV primeiro**.
-3. **Trabalho voluntário:** entrada **manual** (o gestor lança a valor justo) ou também estimativa por
-   horas × valor/hora? Proposta: **manual** (valor justo informado) na primeira entrega.
-4. **Transparência:** quais números públicos e granularidade (mensal/anual; por unidade/consolidado)?
-   Proposta: **anual por unidade**, receitas/despesas por rubrica + lista de projetos, **sem dados
-   pessoais**.
-5. **Snapshot de demonstrações:** congelar a demonstração emitida (tabela `financial_statements`) para
-   histórico/versão, ou sempre calcular on-the-fly? Proposta: **on-the-fly** agora; snapshot quando
-   houver assinatura/aprovação formal (RF-FIN-173).
+1. **DFC:** ✔ método **direto** (a partir de `treasury_movements`).
+2. **Exportação:** ✔ **CSV** de razão/saldos agora; SPED ECD depois.
+3. **Trabalho voluntário:** ✔ entrada **manual** (valor justo informado) na primeira entrega.
+4. **Transparência:** ✔ portal público = **resumo financeiro consolidado** (resultado — receitas/
+   despesas/superávit — + **balanço resumido**), **consolidação trimestral**, por unidade e
+   consolidado da rede, **sem dados pessoais**. É a versão pública/enxuta das demonstrações (não o
+   detalhe contábil da ITG 2002).
+5. **Snapshot de demonstrações:** ✔ **on-the-fly** agora; snapshot quando houver assinatura/aprovação
+   formal (RF-FIN-173).
 
 ---
 
