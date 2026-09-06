@@ -24,6 +24,7 @@ public static class FinanceModule
 {
     public static IServiceCollection AddFinanceModule(this IServiceCollection services)
     {
+        services.AddScoped<ReconciliationService>();
         services.AddScoped<DonationCheckoutService>();
         services.AddScoped<WebhookProcessor>();
         services.AddScoped<RecipientService>();
@@ -53,15 +54,17 @@ public static class FinanceModule
             if (req.Amount <= 0)
                 return Results.BadRequest(new { error = "amount deve ser positivo." });
             if (req.Donor is null || string.IsNullOrWhiteSpace(req.Donor.Name) || string.IsNullOrWhiteSpace(req.Donor.Document))
-                return Results.BadRequest(new { error = "donor.name e donor.document são obrigatórios (PIX/boleto exigem CPF/CNPJ)." });
+                return Results.BadRequest(new { error = "donor.name e donor.document são obrigatórios (PIX/boleto/cartão exigem CPF/CNPJ)." });
             var method = (req.Method ?? "pix").Trim().ToLowerInvariant();
-            if (method is not ("pix" or "boleto"))
-                return Results.BadRequest(new { error = "method deve ser 'pix' ou 'boleto'." });
+            if (method is not ("pix" or "boleto" or "card"))
+                return Results.BadRequest(new { error = "method deve ser 'pix', 'boleto' ou 'card'." });
+            if (method == "card" && string.IsNullOrWhiteSpace(req.CardToken))
+                return Results.BadRequest(new { error = "cardToken é obrigatório para pagamento com cartão." });
 
             var result = await checkout.CreateAsync(new CheckoutCommand(
                 req.OrganizationId, req.Amount, req.Donor.Name, req.Donor.Email ?? "", req.Donor.Document,
                 req.CampaignId, req.Description, IdempotencyKey: request.Headers["Idempotency-Key"].FirstOrDefault(),
-                Method: method), ct);
+                Method: method, CardToken: req.CardToken), ct);
 
             return Results.Created($"/api/finance/donations/{result.DonationId}", result);
         });
@@ -176,13 +179,15 @@ public static class FinanceModule
             if (req.Donor is null || string.IsNullOrWhiteSpace(req.Donor.Name) || string.IsNullOrWhiteSpace(req.Donor.Document))
                 return Results.BadRequest(new { error = "donor.name e donor.document são obrigatórios." });
             var method = (req.Method ?? "pix").Trim().ToLowerInvariant();
-            if (method is not ("pix" or "boleto"))
-                return Results.BadRequest(new { error = "method deve ser 'pix' ou 'boleto'." });
+            if (method is not ("pix" or "boleto" or "card"))
+                return Results.BadRequest(new { error = "method deve ser 'pix', 'boleto' ou 'card'." });
+            if (method == "card" && string.IsNullOrWhiteSpace(req.CardToken))
+                return Results.BadRequest(new { error = "cardToken é obrigatório para pagamento com cartão." });
 
             var result = await checkout.CreateAsync(new CheckoutCommand(
                 req.OrganizationId, req.Amount, req.Donor.Name, req.Donor.Email ?? "", req.Donor.Document,
                 req.CampaignId, req.Description, IdempotencyKey: request.Headers["Idempotency-Key"].FirstOrDefault(),
-                Method: method), ct);
+                Method: method, CardToken: req.CardToken), ct);
             await audit.RecordAsync("donation.public_checkout", "donation", result.DonationId.ToString());
             return Results.Created($"/api/public/{tenant}/donations/{result.DonationId}", result);
         });
@@ -286,7 +291,8 @@ public sealed record CreateDonationRequest(
     DonorInput Donor,
     Guid? CampaignId = null,
     string? Description = null,
-    string Method = "pix");
+    string Method = "pix",
+    string? CardToken = null);
 
 public sealed record CreateRecipientHttpRequest(
     Guid OrganizationId,

@@ -16,7 +16,8 @@ public sealed class DonationCheckoutService(
     TenantDbContext tenantDb,
     CatalogDbContext catalogDb,
     IPaymentGateway gateway,
-    ITenantContext tenant)
+    ITenantContext tenant,
+    ReconciliationService? reconciliation = null)
 {
     public async Task<CheckoutResult> CreateAsync(CheckoutCommand cmd, CancellationToken ct = default)
     {
@@ -68,6 +69,8 @@ public sealed class DonationCheckoutService(
 
         if (method == "boleto")
             await CreateBoletoChargeAsync(donation, donor, cmd.Description, ct);
+        else if (method == "card")
+            await CreateCardChargeAsync(donation, donor, cmd.CardToken, cmd.Description, ct);
         else
             await CreatePixChargeAsync(donation, donor, cmd.Description, ct);
 
@@ -89,7 +92,8 @@ public sealed class DonationCheckoutService(
     private static CheckoutResult ToResult(Donation d) => new(
         d.Id, d.Status, d.Method,
         QrCode: d.PixQrCode, QrCodeUrl: d.PixQrCodeUrl, ExpiresAt: d.ExpiresAt,
-        BoletoLine: d.BoletoLine, BoletoUrl: d.BoletoUrl, DueDate: d.DueDate);
+        BoletoLine: d.BoletoLine, BoletoUrl: d.BoletoUrl, DueDate: d.DueDate,
+        DeclineReason: d.DeclineReason);
 
     /// <summary>
     /// Gera o pedido PIX para uma doação já criada (avulsa ou de ciclo recorrente): aplica o split
@@ -176,5 +180,60 @@ public sealed class DonationCheckoutService(
         }
 
         return order;
+    }
+
+    /// <summary>
+    /// Cobra um cartão de crédito à vista (RF-FIN-020): resposta síncrona do PSP. Aprovado → marca
+    /// <c>paid</c> e <b>concilia na hora</b> (partida dobrada + recibo + régua) via
+    /// <see cref="ReconciliationService"/>; recusado → <c>declined</c> com o motivo. O PAN nunca
+    /// trafega — só o <c>card_token</c> do front. Não faz <c>SaveChanges</c> — quem chama persiste.
+    /// </summary>
+    public async Task CreateCardChargeAsync(
+        Donation donation, Donor donor, string? cardToken, string? description = null, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(cardToken))
+            throw new ArgumentException("cardToken é obrigatório para pagamento com cartão.");
+
+        var recipient = await tenantDb.PspRecipients
+            .Where(r => r.OrganizationId == donation.OrganizationId && r.Status == "active")
+            .Select(r => r.ProviderRecipientId)
+            .FirstOrDefaultAsync(ct);
+
+        var result = await gateway.CreateCardOrderAsync(new CreateCardOrderRequest(
+            Amount: donation.Amount,
+            DonorName: donor.Name,
+            DonorEmail: donor.Email ?? "",
+            DonorDocument: donor.Document ?? "",
+            CardToken: cardToken,
+            RecipientId: recipient,
+            Description: description ?? "Doação"), ct);
+
+        donation.PspOrderId = result.OrderId;
+        donation.PspChargeId = result.ChargeId;
+        donation.CardBrand = result.Brand;
+        donation.CardLast4 = result.Last4;
+
+        if (!string.IsNullOrEmpty(result.OrderId))
+        {
+            catalogDb.PspOrders.Add(new PspOrder
+            {
+                ProviderOrderId = result.OrderId,
+                TenantSlug = tenant.TenantId!,
+                DonationId = donation.Id,
+            });
+        }
+
+        if (string.Equals(result.Status, "paid", StringComparison.OrdinalIgnoreCase))
+        {
+            donation.Status = "paid";
+            donation.PaidAt = DateTimeOffset.UtcNow;
+            if (reconciliation is not null)
+                await reconciliation.PostPaidAsync(donation, ct);
+        }
+        else
+        {
+            donation.Status = "declined";
+            donation.DeclineReason = result.DeclineReason ?? "Cartão recusado.";
+        }
     }
 }

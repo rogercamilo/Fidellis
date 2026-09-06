@@ -24,6 +24,8 @@ public class FinanceServiceTests
 
         public Task<PixOrderResult> CreatePixOrderAsync(CreatePixOrderRequest r, CancellationToken ct = default) => Task.FromResult(Order);
         public Task<BoletoOrderResult> CreateBoletoOrderAsync(CreateBoletoOrderRequest r, CancellationToken ct = default) => Task.FromResult(Boleto);
+        public CardChargeResult Card = new("or_1", "ch_1", "paid", null, "visa", "1234");
+        public Task<CardChargeResult> CreateCardOrderAsync(CreateCardOrderRequest r, CancellationToken ct = default) => Task.FromResult(Card);
         public Task<ChargeStatusResult> GetChargeAsync(string id, CancellationToken ct = default) => Task.FromResult(Charge);
         public Task<CreateRecipientResult> CreateRecipientAsync(CreateRecipientRequest r, CancellationToken ct = default) => Task.FromResult(Recipient);
     }

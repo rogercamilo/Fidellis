@@ -24,6 +24,13 @@ public sealed class PagarmePaymentGateway(HttpClient http, ILogger<PagarmePaymen
         return PagarmePayloads.ParseBoletoOrderResponse(json);
     }
 
+    public async Task<CardChargeResult> CreateCardOrderAsync(CreateCardOrderRequest request, CancellationToken ct = default)
+    {
+        var body = PagarmePayloads.BuildCardOrder(request);
+        var json = await PostAsync("orders", body, ct);
+        return PagarmePayloads.ParseCardOrderResponse(json);
+    }
+
     public async Task<ChargeStatusResult> GetChargeAsync(string chargeId, CancellationToken ct = default)
     {
         using var res = await http.GetAsync($"charges/{chargeId}", ct);

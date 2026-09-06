@@ -10,9 +10,10 @@ public sealed record CheckoutCommand(
     Guid? CampaignId = null,
     string? Description = null,
     string? IdempotencyKey = null,
-    string Method = "pix");
+    string Method = "pix",
+    string? CardToken = null);
 
-/// <summary>Resultado do checkout: dados do PIX ou do boleto para exibir ao doador.</summary>
+/// <summary>Resultado do checkout: dados do PIX, do boleto ou do cartão para exibir ao doador.</summary>
 public sealed record CheckoutResult(
     Guid DonationId,
     string Status,
@@ -22,6 +23,7 @@ public sealed record CheckoutResult(
     DateTimeOffset? ExpiresAt = null,
     string? BoletoLine = null,
     string? BoletoUrl = null,
-    DateOnly? DueDate = null);
+    DateOnly? DueDate = null,
+    string? DeclineReason = null);
 
 public sealed record RecipientResult(Guid Id, string ProviderRecipientId, string Status);

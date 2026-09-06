@@ -21,6 +21,8 @@ public class AccountingTests
             => Task.FromResult(new PixOrderResult("or_1", "ch_1", "pending", "qr", null, null));
         public Task<BoletoOrderResult> CreateBoletoOrderAsync(CreateBoletoOrderRequest r, CancellationToken ct = default)
             => Task.FromResult(new BoletoOrderResult("or_1", "ch_1", "pending", "34191", "barcode", "http://pdf", DateOnly.FromDateTime(DateTime.UtcNow.AddDays(3))));
+        public Task<CardChargeResult> CreateCardOrderAsync(CreateCardOrderRequest r, CancellationToken ct = default)
+            => Task.FromResult(new CardChargeResult("or_1", "ch_1", "paid", null, "visa", "1234"));
         public Task<ChargeStatusResult> GetChargeAsync(string id, CancellationToken ct = default)
             => Task.FromResult(new ChargeStatusResult(id, "paid", DateTimeOffset.UtcNow));
         public Task<CreateRecipientResult> CreateRecipientAsync(CreateRecipientRequest r, CancellationToken ct = default)

@@ -53,6 +53,10 @@ public sealed class WebhookProcessor(
             await ConfirmPaymentAsync(chargeId, ct);
         else if (IsFailedEvent(evt.Type) && evt.ChargeId is { Length: > 0 } failedChargeId)
             await MarkFailedAsync(failedChargeId, ct);
+        else if (IsRefundEvent(evt.Type) && evt.ChargeId is { Length: > 0 } refundedChargeId)
+            await MarkReversedAsync(refundedChargeId, "refunded", "estorno", ct);
+        else if (IsChargebackEvent(evt.Type) && evt.ChargeId is { Length: > 0 } cbChargeId)
+            await MarkReversedAsync(cbChargeId, "charged_back", "chargeback", ct);
 
         record.Status = "processed";
         record.ProcessedAt = DateTimeOffset.UtcNow;
@@ -82,60 +86,7 @@ public sealed class WebhookProcessor(
         donation.Status = "paid";
         donation.PaidAt = charge.PaidAt ?? DateTimeOffset.UtcNow;
 
-        // Conta da organization (cria uma padrão se ainda não existir).
-        var account = await db.Accounts.FirstOrDefaultAsync(a => a.OrganizationId == donation.OrganizationId, ct);
-        if (account is null)
-        {
-            account = new Account { OrganizationId = donation.OrganizationId, Name = "Conta principal" };
-            db.Accounts.Add(account);
-        }
-
-        var transaction = new Transaction
-        {
-            AccountId = account.Id,
-            Amount = donation.Amount,
-            Kind = "credit",
-            Description = $"Doação {donation.Id}",
-            // Propaga as dimensões gerenciais da doação para a movimentação (RF-FIN-143).
-            CostCenterId = donation.CostCenterId,
-            ProjectId = donation.ProjectId,
-            FundId = donation.FundId,
-        };
-        db.Transactions.Add(transaction);
-
-        // Partida dobrada contra o plano de contas (garante o plano p/ tenants antigos).
-        await chartSeeder.EnsureDefaultAsync(ct);
-        var accounts = await db.LedgerAccounts
-            .Where(a => a.Code == ChartOfAccounts.Receivable || a.Code == ChartOfAccounts.Revenue)
-            .ToDictionaryAsync(a => a.Code, a => a, ct);
-        var receivable = accounts[ChartOfAccounts.Receivable];
-        var revenue = accounts[ChartOfAccounts.Revenue];
-
-        db.AccountingEntries.AddRange(
-            new AccountingEntry { TransactionId = transaction.Id, LedgerAccountId = receivable.Id, Ledger = receivable.Name, Debit = donation.Amount, Credit = 0 },
-            new AccountingEntry { TransactionId = transaction.Id, LedgerAccountId = revenue.Id, Ledger = revenue.Name, Debit = 0, Credit = donation.Amount });
-
-        // Recibo automático (idempotente por doação).
-        var donorDocument = donation.DonorId is { } donorId
-            ? await db.Donors.Where(d => d.Id == donorId).Select(d => d.Document).FirstOrDefaultAsync(ct)
-            : null;
-        var receipt = await receipts.GenerateForDonationAsync(donation, donation.DonorName ?? "Doador", donorDocument, ct);
-
-        // Régua: agradecimento ao doador (enfileira na outbox; envio pelo dispatcher).
-        await notifier.DonationPaidAsync(donation, receipt.Number, ct);
-
-        // Ciclo recorrente pago: zera o dunning e agenda a próxima cobrança mensal.
-        if (donation.RecurringDonationId is { } recurringId)
-        {
-            var recurring = await db.RecurringDonations.FirstOrDefaultAsync(r => r.Id == recurringId, ct);
-            if (recurring is not null && recurring.Status is "active" or "past_due")
-            {
-                recurring.Attempt = 0;
-                recurring.Status = "active";
-                recurring.NextChargeAt = RecurringBillingService.NextChargeDate(recurring.DayOfMonth, clock.UtcNow.AddDays(1));
-            }
-        }
-
+        await Reconciliation().PostPaidAsync(donation, ct);
         logger.LogInformation("Doação {DonationId} conciliada (R$ {Amount}).", donation.Id, donation.Amount);
     }
 
@@ -146,9 +97,30 @@ public sealed class WebhookProcessor(
             donation.Status = "failed";
     }
 
+    /// <summary>Estorno/chargeback (RF-FIN-022): reverte a conciliação e cancela o recibo.</summary>
+    private async Task MarkReversedAsync(string chargeId, string newStatus, string reason, CancellationToken ct)
+    {
+        var donation = await db.Donations.FirstOrDefaultAsync(d => d.PspChargeId == chargeId, ct);
+        if (donation is null)
+        {
+            logger.LogWarning("Estorno sem doação para a cobrança {ChargeId}.", chargeId);
+            return;
+        }
+        await Reconciliation().ReverseAsync(donation, newStatus, reason, ct);
+        logger.LogInformation("Doação {DonationId} revertida ({Status}).", donation.Id, newStatus);
+    }
+
+    private ReconciliationService Reconciliation() => new(db, chartSeeder, receipts, notifier, clock);
+
     private static bool IsPaidEvent(string type)
         => type is "charge.paid" or "order.paid";
 
     private static bool IsFailedEvent(string type)
         => type is "charge.payment_failed" or "order.payment_failed";
+
+    private static bool IsRefundEvent(string type)
+        => type is "charge.refunded" or "order.refunded";
+
+    private static bool IsChargebackEvent(string type)
+        => type is "charge.chargedback" or "charge.chargeback";
 }

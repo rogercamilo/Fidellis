@@ -155,6 +155,81 @@ public static class PagarmePayloads
         return new BoletoOrderResult(orderId, chargeId, status, line, barcode, url, dueDate);
     }
 
+    /// <summary>Monta o corpo de <c>POST /orders</c> para cartão de crédito à vista (token do front; sem PAN).</summary>
+    public static string BuildCardOrder(CreateCardOrderRequest req)
+    {
+        var cents = ToCents(req.Amount);
+
+        object creditCard = req.RecipientId is { Length: > 0 } rid
+            ? new
+            {
+                installments = 1,
+                statement_descriptor = "DOACAO",
+                card_token = req.CardToken,
+                split = new[]
+                {
+                    new
+                    {
+                        amount = 100,
+                        recipient_id = rid,
+                        type = "percentage",
+                        options = new { charge_processing_fee = true, liable = true, charge_remainder_fee = true },
+                    },
+                },
+            }
+            : new
+            {
+                installments = 1,
+                statement_descriptor = "DOACAO",
+                card_token = req.CardToken,
+            };
+
+        var order = new
+        {
+            items = new[]
+            {
+                new { amount = cents, description = req.Description ?? "Doação", quantity = 1 },
+            },
+            customer = new
+            {
+                name = req.DonorName,
+                email = req.DonorEmail,
+                type = "individual",
+                document = req.DonorDocument,
+            },
+            payments = new[] { new { payment_method = "credit_card", credit_card = creditCard } },
+        };
+
+        return JsonSerializer.Serialize(order);
+    }
+
+    public static CardChargeResult ParseCardOrderResponse(string json)
+    {
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        var orderId = GetString(root, "id") ?? "";
+        var charge = root.TryGetProperty("charges", out var charges) && charges.ValueKind == JsonValueKind.Array && charges.GetArrayLength() > 0
+            ? charges[0]
+            : default;
+
+        var chargeId = charge.ValueKind == JsonValueKind.Object ? GetString(charge, "id") ?? "" : "";
+        var status = charge.ValueKind == JsonValueKind.Object ? GetString(charge, "status") ?? "failed" : "failed";
+
+        string? declineReason = null, brand = null, last4 = null;
+        if (charge.ValueKind == JsonValueKind.Object && charge.TryGetProperty("last_transaction", out var tx) && tx.ValueKind == JsonValueKind.Object)
+        {
+            declineReason = GetString(tx, "acquirer_message") ?? GetString(tx, "gateway_response_code");
+            if (tx.TryGetProperty("card", out var card) && card.ValueKind == JsonValueKind.Object)
+            {
+                brand = GetString(card, "brand");
+                last4 = GetString(card, "last_four_digits");
+            }
+        }
+
+        return new CardChargeResult(orderId, chargeId, status, declineReason, brand, last4);
+    }
+
     public static ChargeStatusResult ParseChargeResponse(string json)
     {
         using var doc = JsonDocument.Parse(json);

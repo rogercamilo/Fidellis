@@ -36,4 +36,11 @@ public sealed class Donation : Entity
     public string? BoletoBarcode { get; set; }
     public string? BoletoUrl { get; set; }
     public DateOnly? DueDate { get; set; }
+
+    // Cartão (Onda 1 inc.1.4). O PAN nunca trafega/persiste — só bandeira e 4 últimos.
+    public string? CardBrand { get; set; }
+    public string? CardLast4 { get; set; }
+
+    /// <summary>Motivo da recusa do PSP quando <c>Status = "declined"</c>.</summary>
+    public string? DeclineReason { get; set; }
 }
