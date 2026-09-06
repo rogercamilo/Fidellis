@@ -5,6 +5,7 @@ using Fidellis.Infrastructure.Payments;
 using Fidellis.Infrastructure.Persistence;
 using Fidellis.Infrastructure.TenantData;
 using Fidellis.Modules.Finance.Banking;
+using Fidellis.Modules.Finance.Budgeting;
 using Fidellis.Modules.Finance.CashSessions;
 using Fidellis.Modules.Finance.Configuration;
 using Fidellis.Modules.Finance.Dimensions;
@@ -46,6 +47,7 @@ public static class FinanceModule
         services.AddScoped<PeriodService>();
         services.AddScoped<StatementImportService>();
         services.AddScoped<ReconciliationMatchService>();
+        services.AddScoped<BudgetService>();
         services.AddScoped<Notifications.INotifier, Notifications.OutboxNotifier>();
         return services;
     }
@@ -277,6 +279,9 @@ public static class FinanceModule
 
         // Conciliação: import de extrato bancário (OFX).
         app.MapStatements();
+
+        // Orçamento (previsto × realizado por dimensão).
+        app.MapBudgets();
 
         return app;
     }

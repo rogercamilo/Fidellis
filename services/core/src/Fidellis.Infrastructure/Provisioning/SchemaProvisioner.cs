@@ -509,6 +509,21 @@ public sealed class SchemaProvisioner(
                 created_at   timestamptz   NOT NULL DEFAULT now()
             );
             CREATE INDEX IF NOT EXISTS ix_bank_lines ON "{schema}".bank_statement_lines (statement_id, status);
+
+            -- Orçamento (Onda 3 inc.3.3): previsto por dimensão/ano.
+            CREATE TABLE IF NOT EXISTS "{schema}".budgets (
+                id             uuid PRIMARY KEY,
+                year           int          NOT NULL,
+                cost_center_id uuid,
+                project_id     uuid,
+                fund_id        uuid,
+                kind           varchar(10)  NOT NULL,   -- revenue | expense
+                amount         numeric(18,2) NOT NULL,
+                revision       int          NOT NULL DEFAULT 1,
+                active         boolean      NOT NULL DEFAULT true,
+                created_at     timestamptz  NOT NULL DEFAULT now()
+            );
+            CREATE INDEX IF NOT EXISTS ix_budgets_year ON "{schema}".budgets (year, kind);
             """;
 
         await ExecuteAsync(ddl, ct);
