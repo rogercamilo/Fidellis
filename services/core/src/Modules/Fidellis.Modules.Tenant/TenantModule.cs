@@ -39,6 +39,8 @@ public static class TenantModule
             ITenantContext tenantContext,
             ISchemaProvisioner provisioner,
             Infrastructure.Accounting.ChartOfAccountsSeeder chartSeeder,
+            Infrastructure.Dimensions.DimensionsSeeder dimensionsSeeder,
+            Infrastructure.Configuration.FinanceConfigSeeder financeConfigSeeder,
             CancellationToken ct) =>
         {
             if (string.IsNullOrWhiteSpace(req.Slug) || string.IsNullOrWhiteSpace(req.Name))
@@ -56,9 +58,11 @@ public static class TenantModule
             db.Tenants.Add(tenant);
             await db.SaveChangesAsync(ct);
 
-            // 3) semeia o plano de contas padrão do tenant
+            // 3) semeia o plano de contas + dimensões + configuração financeira default do tenant
             tenantContext.SetTenant(slug);
             await chartSeeder.EnsureDefaultAsync(ct);
+            await dimensionsSeeder.EnsureDefaultsAsync(ct);
+            await financeConfigSeeder.EnsureDefaultsAsync(ct);
 
             // 4) opcional: vincula o primeiro usuário (admin) e cria a organização-raiz,
             //    já associando o admin a ela — evita depender de seed manual.

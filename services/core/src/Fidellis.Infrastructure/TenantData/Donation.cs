@@ -25,4 +25,9 @@ public sealed class Donation : Entity
     public Guid? RecurringDonationId { get; set; }
     public DateTimeOffset? DueAt { get; set; }
     public int Attempt { get; set; }
+
+    // Dimensões gerenciais (Onda 1). Default aplicado quando não informado (RF-FIN-143).
+    public Guid? CostCenterId { get; set; }
+    public Guid? ProjectId { get; set; }
+    public Guid? FundId { get; set; }
 }

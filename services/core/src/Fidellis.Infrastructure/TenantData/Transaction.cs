@@ -9,4 +9,9 @@ public sealed class Transaction : Entity
     public required decimal Amount { get; set; }
     public string Kind { get; set; } = "credit";
     public string? Description { get; set; }
+
+    // Dimensões gerenciais (Onda 1). Default aplicado quando não informado (RF-FIN-143).
+    public Guid? CostCenterId { get; set; }
+    public Guid? ProjectId { get; set; }
+    public Guid? FundId { get; set; }
 }

@@ -25,6 +25,18 @@ public sealed class DonationCheckoutService(
         if (!tenant.HasTenant)
             throw new InvalidOperationException("Nenhum tenant resolvido para o request.");
 
+        // Idempotência (RF-FIN-003): mesma chave (não expirada) devolve a doação já criada.
+        if (!string.IsNullOrWhiteSpace(cmd.IdempotencyKey))
+        {
+            var existingKey = await tenantDb.IdempotencyKeys
+                .FirstOrDefaultAsync(k => k.Key == cmd.IdempotencyKey && k.ExpiresAt > DateTimeOffset.UtcNow, ct);
+            if (existingKey is not null)
+            {
+                var prior = await tenantDb.Donations.FirstAsync(d => d.Id == existingKey.DonationId, ct);
+                return new CheckoutResult(prior.Id, prior.Status, prior.PixQrCode ?? "", prior.PixQrCodeUrl, prior.ExpiresAt);
+            }
+        }
+
         // Doador: reusa por e-mail se já existir; senão cria.
         var donor = await tenantDb.Donors.FirstOrDefaultAsync(
             d => d.Email != null && d.Email == cmd.DonorEmail, ct);
@@ -46,7 +58,22 @@ public sealed class DonationCheckoutService(
         };
         tenantDb.Donations.Add(donation);
 
+        // Dimensões: aplica os defaults do tenant quando não informadas (RF-FIN-143).
+        donation.CostCenterId ??= await tenantDb.CostCenters
+            .Where(c => c.IsDefault).Select(c => (Guid?)c.Id).FirstOrDefaultAsync(ct);
+        donation.FundId ??= await tenantDb.Funds
+            .Where(f => f.IsDefault).Select(f => (Guid?)f.Id).FirstOrDefaultAsync(ct);
+
         var order = await CreatePixChargeAsync(donation, donor, cmd.Description, ct);
+
+        // Registra a chave de idempotência (validade 24h) apontando para a nova doação.
+        if (!string.IsNullOrWhiteSpace(cmd.IdempotencyKey))
+            tenantDb.IdempotencyKeys.Add(new IdempotencyKey
+            {
+                Key = cmd.IdempotencyKey,
+                DonationId = donation.Id,
+                ExpiresAt = DateTimeOffset.UtcNow.AddHours(24),
+            });
 
         await tenantDb.SaveChangesAsync(ct);
         await catalogDb.SaveChangesAsync(ct);

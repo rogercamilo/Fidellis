@@ -250,6 +250,85 @@ public sealed class SchemaProvisioner(
                 created_at    timestamptz  NOT NULL DEFAULT now()
             );
             CREATE INDEX IF NOT EXISTS ix_audit_created ON "{schema}".audit_log (created_at DESC);
+
+            -- Dimensões gerenciais (Onda 1): centros de custo, fundos (com/sem restrição) e projetos.
+            CREATE TABLE IF NOT EXISTS "{schema}".cost_centers (
+                id         uuid PRIMARY KEY,
+                code       varchar(20)  NOT NULL UNIQUE,
+                name       varchar(200) NOT NULL,
+                is_default boolean      NOT NULL DEFAULT false,
+                active     boolean      NOT NULL DEFAULT true,
+                created_at timestamptz  NOT NULL DEFAULT now()
+            );
+
+            CREATE TABLE IF NOT EXISTS "{schema}".funds (
+                id          uuid PRIMARY KEY,
+                code        varchar(20)  NOT NULL UNIQUE,
+                name        varchar(200) NOT NULL,
+                restriction varchar(12)  NOT NULL DEFAULT 'free',   -- free | restricted
+                purpose     text,
+                is_default  boolean      NOT NULL DEFAULT false,
+                active      boolean      NOT NULL DEFAULT true,
+                created_at  timestamptz  NOT NULL DEFAULT now()
+            );
+
+            CREATE TABLE IF NOT EXISTS "{schema}".projects (
+                id            uuid PRIMARY KEY,
+                code          varchar(20)  NOT NULL UNIQUE,
+                name          varchar(200) NOT NULL,
+                fund_id       uuid,
+                budget_amount numeric(18,2),
+                starts_at     date,
+                ends_at       date,
+                status        varchar(20)  NOT NULL DEFAULT 'active',
+                created_at    timestamptz  NOT NULL DEFAULT now()
+            );
+
+            -- Dimensões nas transações e doações (default aplicado quando null — RF-FIN-143).
+            ALTER TABLE "{schema}".transactions ADD COLUMN IF NOT EXISTS cost_center_id uuid;
+            ALTER TABLE "{schema}".transactions ADD COLUMN IF NOT EXISTS project_id     uuid;
+            ALTER TABLE "{schema}".transactions ADD COLUMN IF NOT EXISTS fund_id        uuid;
+            ALTER TABLE "{schema}".donations    ADD COLUMN IF NOT EXISTS cost_center_id uuid;
+            ALTER TABLE "{schema}".donations    ADD COLUMN IF NOT EXISTS project_id     uuid;
+            ALTER TABLE "{schema}".donations    ADD COLUMN IF NOT EXISTS fund_id        uuid;
+
+            -- Configurabilidade (Onda 1): nomenclatura, tipos de doador e rubricas.
+            CREATE TABLE IF NOT EXISTS "{schema}".finance_settings (
+                id              uuid PRIMARY KEY,
+                recurring_label varchar(60) NOT NULL DEFAULT 'Dízimo',
+                onetime_label   varchar(60) NOT NULL DEFAULT 'Oferta',
+                updated_at      timestamptz NOT NULL DEFAULT now(),
+                created_at      timestamptz NOT NULL DEFAULT now()
+            );
+
+            CREATE TABLE IF NOT EXISTS "{schema}".donor_types (
+                id                   uuid PRIMARY KEY,
+                name                 varchar(60) NOT NULL,
+                is_recurring_default boolean     NOT NULL DEFAULT false,
+                active               boolean     NOT NULL DEFAULT true,
+                created_at           timestamptz NOT NULL DEFAULT now()
+            );
+
+            CREATE TABLE IF NOT EXISTS "{schema}".finance_categories (
+                id                uuid PRIMARY KEY,
+                kind              varchar(10)  NOT NULL,   -- revenue | expense
+                name              varchar(120) NOT NULL,
+                ledger_account_id uuid,
+                active            boolean      NOT NULL DEFAULT true,
+                created_at        timestamptz  NOT NULL DEFAULT now()
+            );
+
+            -- Jornada apoiador→recorrente (RF-FIN-182).
+            ALTER TABLE "{schema}".donors ADD COLUMN IF NOT EXISTS donor_type_id uuid;
+            ALTER TABLE "{schema}".donors ADD COLUMN IF NOT EXISTS converted_at  timestamptz;
+
+            -- Idempotência de criação de cobrança (RF-FIN-003).
+            CREATE TABLE IF NOT EXISTS "{schema}".idempotency_keys (
+                key         varchar(120) PRIMARY KEY,
+                donation_id uuid        NOT NULL,
+                created_at  timestamptz NOT NULL DEFAULT now(),
+                expires_at  timestamptz NOT NULL
+            );
             """;
 
         await ExecuteAsync(ddl, ct);

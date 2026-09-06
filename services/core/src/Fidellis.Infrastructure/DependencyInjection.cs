@@ -47,6 +47,12 @@ public static class DependencyInjection
         services.AddScoped<Accounting.ChartOfAccountsSeeder>();
         services.AddScoped<Accounting.ReceiptService>();
 
+        // Dimensões gerenciais (centros de custo/fundos/projetos) + seeding dos defaults.
+        services.AddScoped<Dimensions.DimensionsSeeder>();
+
+        // Configuração financeira (nomenclaturas + tipos de doador) + seeding dos defaults.
+        services.AddScoped<Configuration.FinanceConfigSeeder>();
+
         // Auditoria (trilha).
         services.AddScoped<IAuditLog, AuditLog>();
 

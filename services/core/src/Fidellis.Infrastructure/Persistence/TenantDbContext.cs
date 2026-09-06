@@ -30,6 +30,13 @@ public sealed class TenantDbContext(
     public DbSet<RecurringDonation> RecurringDonations => Set<RecurringDonation>();
     public DbSet<LedgerAccount> LedgerAccounts => Set<LedgerAccount>();
     public DbSet<Receipt> Receipts => Set<Receipt>();
+    public DbSet<CostCenter> CostCenters => Set<CostCenter>();
+    public DbSet<Fund> Funds => Set<Fund>();
+    public DbSet<Project> Projects => Set<Project>();
+    public DbSet<FinanceSettings> FinanceSettings => Set<FinanceSettings>();
+    public DbSet<DonorType> DonorTypes => Set<DonorType>();
+    public DbSet<FinanceCategory> FinanceCategories => Set<FinanceCategory>();
+    public DbSet<IdempotencyKey> IdempotencyKeys => Set<IdempotencyKey>();
     public DbSet<OutboxMessage> Messages => Set<OutboxMessage>();
     public DbSet<AuditLogEntry> AuditLog => Set<AuditLogEntry>();
 
@@ -153,6 +160,53 @@ public sealed class TenantDbContext(
             b.HasIndex(x => new { x.Status, x.NextChargeAt });
             b.HasIndex(x => x.OrganizationId);
             b.Property(x => x.Amount).HasPrecision(18, 2);
+        });
+
+        modelBuilder.Entity<CostCenter>(b =>
+        {
+            b.ToTable("cost_centers");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => x.Code).IsUnique();
+        });
+
+        modelBuilder.Entity<Fund>(b =>
+        {
+            b.ToTable("funds");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => x.Code).IsUnique();
+        });
+
+        modelBuilder.Entity<Project>(b =>
+        {
+            b.ToTable("projects");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => x.Code).IsUnique();
+            b.Property(x => x.BudgetAmount).HasPrecision(18, 2);
+        });
+
+        modelBuilder.Entity<FinanceSettings>(b =>
+        {
+            b.ToTable("finance_settings");
+            b.HasKey(x => x.Id);
+        });
+
+        modelBuilder.Entity<DonorType>(b =>
+        {
+            b.ToTable("donor_types");
+            b.HasKey(x => x.Id);
+        });
+
+        modelBuilder.Entity<FinanceCategory>(b =>
+        {
+            b.ToTable("finance_categories");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => x.Kind);
+        });
+
+        modelBuilder.Entity<IdempotencyKey>(b =>
+        {
+            b.ToTable("idempotency_keys");
+            b.HasKey(x => x.Key);
         });
     }
 }
