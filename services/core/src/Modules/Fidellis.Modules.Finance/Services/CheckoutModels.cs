@@ -9,14 +9,19 @@ public sealed record CheckoutCommand(
     string DonorDocument,
     Guid? CampaignId = null,
     string? Description = null,
-    string? IdempotencyKey = null);
+    string? IdempotencyKey = null,
+    string Method = "pix");
 
-/// <summary>Resultado do checkout: dados do PIX para exibir ao doador.</summary>
+/// <summary>Resultado do checkout: dados do PIX ou do boleto para exibir ao doador.</summary>
 public sealed record CheckoutResult(
     Guid DonationId,
     string Status,
-    string QrCode,
-    string? QrCodeUrl,
-    DateTimeOffset? ExpiresAt);
+    string Method,
+    string? QrCode = null,
+    string? QrCodeUrl = null,
+    DateTimeOffset? ExpiresAt = null,
+    string? BoletoLine = null,
+    string? BoletoUrl = null,
+    DateOnly? DueDate = null);
 
 public sealed record RecipientResult(Guid Id, string ProviderRecipientId, string Status);

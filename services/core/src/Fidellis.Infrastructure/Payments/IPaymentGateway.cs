@@ -9,6 +9,9 @@ public interface IPaymentGateway
     /// <summary>Cria um pedido PIX e retorna o QR (copia-e-cola + imagem) e os ids do PSP.</summary>
     Task<PixOrderResult> CreatePixOrderAsync(CreatePixOrderRequest request, CancellationToken ct = default);
 
+    /// <summary>Cria um pedido boleto e retorna a linha digitável, o código de barras, a URL do PDF e o vencimento.</summary>
+    Task<BoletoOrderResult> CreateBoletoOrderAsync(CreateBoletoOrderRequest request, CancellationToken ct = default);
+
     /// <summary>Consulta o status de uma cobrança no PSP (fonte de verdade na conciliação).</summary>
     Task<ChargeStatusResult> GetChargeAsync(string chargeId, CancellationToken ct = default);
 
@@ -32,6 +35,24 @@ public sealed record PixOrderResult(
     string QrCode,
     string? QrCodeUrl,
     DateTimeOffset? ExpiresAt);
+
+public sealed record CreateBoletoOrderRequest(
+    decimal Amount,
+    string DonorName,
+    string DonorEmail,
+    string DonorDocument,
+    int DueInDays = 3,
+    string? RecipientId = null,
+    string? Description = null);
+
+public sealed record BoletoOrderResult(
+    string OrderId,
+    string ChargeId,
+    string Status,
+    string? Line,
+    string? Barcode,
+    string? BoletoUrl,
+    DateOnly? DueDate);
 
 public sealed record ChargeStatusResult(
     string ChargeId,

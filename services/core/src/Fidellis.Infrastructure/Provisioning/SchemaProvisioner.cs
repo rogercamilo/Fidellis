@@ -329,6 +329,12 @@ public sealed class SchemaProvisioner(
                 created_at  timestamptz NOT NULL DEFAULT now(),
                 expires_at  timestamptz NOT NULL
             );
+
+            -- Boleto (Onda 1 inc.1.3): dados da cobrança bancária na doação.
+            ALTER TABLE "{schema}".donations ADD COLUMN IF NOT EXISTS boleto_line    varchar(60);
+            ALTER TABLE "{schema}".donations ADD COLUMN IF NOT EXISTS boleto_barcode varchar(60);
+            ALTER TABLE "{schema}".donations ADD COLUMN IF NOT EXISTS boleto_url     text;
+            ALTER TABLE "{schema}".donations ADD COLUMN IF NOT EXISTS due_date       date;
             """;
 
         await ExecuteAsync(ddl, ct);

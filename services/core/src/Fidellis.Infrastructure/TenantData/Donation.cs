@@ -30,4 +30,10 @@ public sealed class Donation : Entity
     public Guid? CostCenterId { get; set; }
     public Guid? ProjectId { get; set; }
     public Guid? FundId { get; set; }
+
+    // Boleto (Onda 1 inc.1.3). Nulo em doações não-boleto.
+    public string? BoletoLine { get; set; }
+    public string? BoletoBarcode { get; set; }
+    public string? BoletoUrl { get; set; }
+    public DateOnly? DueDate { get; set; }
 }

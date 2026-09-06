@@ -58,6 +58,9 @@ public sealed class BillingWorker(
                 await billing.RunDunningAsync(ct);
                 await billing.RunBillingCycleAsync(ct);
 
+                // Expira doações avulsas (PIX/boleto) fora do prazo (RF-FIN-013).
+                await sp.GetRequiredService<DonationExpiryService>().ExpireOverdueAsync(ct);
+
                 var reactivationDays = sp.GetRequiredService<InfrastructureOptions>().ReactivationDays;
                 await sp.GetRequiredService<ReactivationScanner>().EnqueueInactiveAsync(reactivationDays, ct);
 
