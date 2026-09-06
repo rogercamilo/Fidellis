@@ -37,6 +37,8 @@ public sealed class TenantDbContext(
     public DbSet<DonorType> DonorTypes => Set<DonorType>();
     public DbSet<FinanceCategory> FinanceCategories => Set<FinanceCategory>();
     public DbSet<IdempotencyKey> IdempotencyKeys => Set<IdempotencyKey>();
+    public DbSet<TreasuryAccount> TreasuryAccounts => Set<TreasuryAccount>();
+    public DbSet<TreasuryMovement> TreasuryMovements => Set<TreasuryMovement>();
     public DbSet<OutboxMessage> Messages => Set<OutboxMessage>();
     public DbSet<AuditLogEntry> AuditLog => Set<AuditLogEntry>();
 
@@ -207,6 +209,22 @@ public sealed class TenantDbContext(
         {
             b.ToTable("idempotency_keys");
             b.HasKey(x => x.Key);
+        });
+
+        modelBuilder.Entity<TreasuryAccount>(b =>
+        {
+            b.ToTable("treasury_accounts");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => x.OrganizationId);
+            b.Property(x => x.OpeningBalance).HasPrecision(18, 2);
+        });
+
+        modelBuilder.Entity<TreasuryMovement>(b =>
+        {
+            b.ToTable("treasury_movements");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => new { x.AccountId, x.OccurredAt });
+            b.Property(x => x.Amount).HasPrecision(18, 2);
         });
     }
 }

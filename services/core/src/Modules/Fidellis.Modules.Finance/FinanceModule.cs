@@ -8,6 +8,7 @@ using Fidellis.Modules.Finance.Configuration;
 using Fidellis.Modules.Finance.Dimensions;
 using Fidellis.Modules.Finance.Security;
 using Fidellis.Modules.Finance.Services;
+using Fidellis.Modules.Finance.Treasury;
 using Fidellis.SharedKernel;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -31,6 +32,7 @@ public static class FinanceModule
         services.AddScoped<RecipientService>();
         services.AddScoped<RecurringBillingService>();
         services.AddScoped<DonationExpiryService>();
+        services.AddScoped<TreasuryService>();
         services.AddScoped<Notifications.INotifier, Notifications.OutboxNotifier>();
         return services;
     }
@@ -244,6 +246,9 @@ public static class FinanceModule
 
         // Configurabilidade financeira (nomenclatura, tipos de doador, rubricas).
         app.MapFinanceConfig();
+
+        // Tesouraria (contas/caixas, saldo consolidado, transferências).
+        app.MapTreasury();
 
         return app;
     }
