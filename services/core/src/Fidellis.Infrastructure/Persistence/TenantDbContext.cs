@@ -36,6 +36,7 @@ public sealed class TenantDbContext(
     public DbSet<FinanceSettings> FinanceSettings => Set<FinanceSettings>();
     public DbSet<DonorType> DonorTypes => Set<DonorType>();
     public DbSet<FinanceCategory> FinanceCategories => Set<FinanceCategory>();
+    public DbSet<IdempotencyKey> IdempotencyKeys => Set<IdempotencyKey>();
     public DbSet<OutboxMessage> Messages => Set<OutboxMessage>();
     public DbSet<AuditLogEntry> AuditLog => Set<AuditLogEntry>();
 
@@ -200,6 +201,12 @@ public sealed class TenantDbContext(
             b.ToTable("finance_categories");
             b.HasKey(x => x.Id);
             b.HasIndex(x => x.Kind);
+        });
+
+        modelBuilder.Entity<IdempotencyKey>(b =>
+        {
+            b.ToTable("idempotency_keys");
+            b.HasKey(x => x.Key);
         });
     }
 }
