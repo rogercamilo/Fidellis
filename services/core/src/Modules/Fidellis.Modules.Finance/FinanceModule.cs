@@ -11,6 +11,7 @@ using Fidellis.Modules.Finance.Configuration;
 using Fidellis.Modules.Finance.Dimensions;
 using Fidellis.Modules.Finance.Payables;
 using Fidellis.Modules.Finance.Periods;
+using Fidellis.Modules.Finance.Reports;
 using Fidellis.Modules.Finance.Receivables;
 using Fidellis.Modules.Finance.Security;
 using Fidellis.Modules.Finance.Services;
@@ -48,6 +49,7 @@ public static class FinanceModule
         services.AddScoped<StatementImportService>();
         services.AddScoped<ReconciliationMatchService>();
         services.AddScoped<BudgetService>();
+        services.AddScoped<StatementsService>();
         services.AddScoped<Notifications.INotifier, Notifications.OutboxNotifier>();
         return services;
     }
@@ -282,6 +284,9 @@ public static class FinanceModule
 
         // Orçamento (previsto × realizado por dimensão).
         app.MapBudgets();
+
+        // Demonstrações contábeis ITG 2002 (balancete, DRP, Balanço Patrimonial).
+        app.MapReports();
 
         return app;
     }
