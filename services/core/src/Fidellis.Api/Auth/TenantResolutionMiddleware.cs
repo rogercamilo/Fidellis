@@ -15,6 +15,7 @@ public sealed class TenantResolutionMiddleware(RequestDelegate next, string jwtS
     {
         string? tenant = null;
         string? userId = null;
+        string? role = null;
 
         var auth = context.Request.Headers.Authorization.ToString();
         if (auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
@@ -27,16 +28,19 @@ public sealed class TenantResolutionMiddleware(RequestDelegate next, string jwtS
                     tenant = t.GetString();
                 if (claims.TryGetValue("sub", out var s) && s.ValueKind == JsonValueKind.String)
                     userId = s.GetString();
+                if (claims.TryGetValue("role", out var r) && r.ValueKind == JsonValueKind.String)
+                    role = r.GetString();
             }
         }
 
         tenant ??= context.Request.Headers["X-Tenant"].FirstOrDefault();
         userId ??= context.Request.Headers["X-User"].FirstOrDefault();
+        role ??= context.Request.Headers["X-Role"].FirstOrDefault();
 
         if (!string.IsNullOrWhiteSpace(tenant))
             tenantContext.SetTenant(tenant);
         if (Guid.TryParse(userId, out var uid))
-            currentUser.SetUser(uid);
+            currentUser.SetUser(uid, role);
 
         await next(context);
     }

@@ -6,6 +6,7 @@ using Fidellis.Infrastructure.Persistence;
 using Fidellis.Infrastructure.TenantData;
 using Fidellis.Modules.Finance.Configuration;
 using Fidellis.Modules.Finance.Dimensions;
+using Fidellis.Modules.Finance.Security;
 using Fidellis.Modules.Finance.Services;
 using Fidellis.SharedKernel;
 using Microsoft.AspNetCore.Builder;
@@ -36,7 +37,8 @@ public static class FinanceModule
 
     public static IEndpointRouteBuilder MapFinanceModule(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/finance").WithTags("Finance");
+        // RBAC financeiro (RF-FIN-171): bloqueia gravações de perfis somente-leitura.
+        var group = app.MapGroup("/api/finance").WithTags("Finance").AddEndpointFilter<FinanceWriteFilter>();
 
         group.MapGet("/ping", (ITenantContext tenant) =>
             Results.Ok(new { module = "Finance", tenant = tenant.TenantId, schema = tenant.SchemaName }));

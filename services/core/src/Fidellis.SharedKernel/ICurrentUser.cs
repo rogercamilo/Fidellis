@@ -8,7 +8,11 @@ public interface ICurrentUser
 {
     Guid? UserId { get; }
     bool HasUser { get; }
-    void SetUser(Guid userId);
+
+    /// <summary>Papel do usuário no tenant do request (ex.: admin, treasurer, fiscal_council). Pode ser nulo.</summary>
+    string? Role { get; }
+
+    void SetUser(Guid userId, string? role = null);
 }
 
 /// <summary>Implementação scoped (uma por request).</summary>
@@ -16,5 +20,11 @@ public sealed class CurrentUser : ICurrentUser
 {
     public Guid? UserId { get; private set; }
     public bool HasUser => UserId is not null;
-    public void SetUser(Guid userId) => UserId = userId;
+    public string? Role { get; private set; }
+
+    public void SetUser(Guid userId, string? role = null)
+    {
+        UserId = userId;
+        Role = role;
+    }
 }
