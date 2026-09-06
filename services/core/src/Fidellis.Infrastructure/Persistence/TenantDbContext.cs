@@ -50,6 +50,7 @@ public sealed class TenantDbContext(
     public DbSet<BankStatement> BankStatements => Set<BankStatement>();
     public DbSet<BankStatementLine> BankStatementLines => Set<BankStatementLine>();
     public DbSet<Budget> Budgets => Set<Budget>();
+    public DbSet<VolunteerWork> VolunteerWork => Set<VolunteerWork>();
     public DbSet<OutboxMessage> Messages => Set<OutboxMessage>();
     public DbSet<AuditLogEntry> AuditLog => Set<AuditLogEntry>();
 
@@ -322,6 +323,14 @@ public sealed class TenantDbContext(
             b.HasKey(x => x.Id);
             b.HasIndex(x => new { x.Year, x.Kind });
             b.Property(x => x.Amount).HasPrecision(18, 2);
+        });
+
+        modelBuilder.Entity<VolunteerWork>(b =>
+        {
+            b.ToTable("volunteer_work");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => x.OrganizationId);
+            b.Property(x => x.FairValue).HasPrecision(18, 2);
         });
     }
 }

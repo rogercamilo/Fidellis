@@ -24,6 +24,10 @@ public sealed record SegregatedIncome(int Year, ResultBlock Free, ResultBlock Re
 public sealed record Dmpl(int Year, decimal OpeningEquity, decimal Surplus, decimal ClosingEquity,
     decimal FreeSurplus, decimal RestrictedSurplus);
 
+/// <summary>Demonstração dos Fluxos de Caixa (método direto): entradas − saídas de tesouraria.</summary>
+public sealed record CashFlowStatement(int Year, decimal OpeningCash, decimal Inflows, decimal Outflows,
+    decimal NetCash, decimal ClosingCash);
+
 /// <summary>
 /// Demonstrações contábeis ITG 2002 (Onda 4 inc.4.0): balancete, DRP e Balanço Patrimonial, agregados
 /// do razão (<c>accounting_entries</c> + <c>ledger_accounts</c>) do ano. Gera o <b>rascunho</b> — o
@@ -100,6 +104,29 @@ public sealed class StatementsService(TenantDbContext db)
 
         var seg = await IncomeSegregatedAsync(year, ct);
         return new Dmpl(year, opening, seg.Total.Surplus, opening + seg.Total.Surplus, seg.Free.Surplus, seg.Restricted.Surplus);
+    }
+
+    /// <summary>DFC método direto (RF-FIN-160 / decisão D1): entradas − saídas de tesouraria no ano.</summary>
+    public async Task<CashFlowStatement> CashFlowAsync(int year, CancellationToken ct = default)
+    {
+        var start = new DateTimeOffset(year, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var end = start.AddYears(1);
+
+        var openingBalances = await db.TreasuryAccounts.SumAsync(a => a.OpeningBalance, ct);
+        var movements = await db.TreasuryMovements.Select(m => new { m.Kind, m.Amount, m.OccurredAt }).ToListAsync(ct);
+
+        // Delta consolidado: entradas somam, saídas subtraem; transferências internas se cancelam no total.
+        static decimal Delta(IEnumerable<(string Kind, decimal Amount)> ms)
+            => ms.Sum(m => m.Kind is "inflow" or "transfer_in" ? m.Amount : -m.Amount);
+
+        var opening = openingBalances + Delta(movements.Where(m => m.OccurredAt < start).Select(m => (m.Kind, m.Amount)));
+        var closing = openingBalances + Delta(movements.Where(m => m.OccurredAt < end).Select(m => (m.Kind, m.Amount)));
+
+        var yearMovs = movements.Where(m => m.OccurredAt >= start && m.OccurredAt < end).ToList();
+        var inflows = yearMovs.Where(m => m.Kind == "inflow").Sum(m => m.Amount);
+        var outflows = yearMovs.Where(m => m.Kind == "outflow").Sum(m => m.Amount);
+
+        return new CashFlowStatement(year, opening, inflows, outflows, inflows - outflows, closing);
     }
 
     private async Task<Dictionary<(string Type, string Restriction), decimal>> AggregateByTypeRestrictionAsync(int year, CancellationToken ct)

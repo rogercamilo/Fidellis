@@ -50,6 +50,7 @@ public static class FinanceModule
         services.AddScoped<ReconciliationMatchService>();
         services.AddScoped<BudgetService>();
         services.AddScoped<StatementsService>();
+        services.AddScoped<VolunteerWorkService>();
         services.AddScoped<Notifications.INotifier, Notifications.OutboxNotifier>();
         return services;
     }

@@ -524,6 +524,21 @@ public sealed class SchemaProvisioner(
                 created_at     timestamptz  NOT NULL DEFAULT now()
             );
             CREATE INDEX IF NOT EXISTS ix_budgets_year ON "{schema}".budgets (year, kind);
+
+            -- Trabalho voluntário a valor justo (Onda 4 inc.4.2 / RF-FIN-162).
+            CREATE TABLE IF NOT EXISTS "{schema}".volunteer_work (
+                id              uuid PRIMARY KEY,
+                organization_id uuid          NOT NULL,
+                description     varchar(200)  NOT NULL,
+                fair_value      numeric(18,2) NOT NULL,
+                performed_on    date          NOT NULL,
+                cost_center_id  uuid,
+                project_id      uuid,
+                fund_id         uuid,
+                transaction_id  uuid,
+                created_at      timestamptz   NOT NULL DEFAULT now()
+            );
+            CREATE INDEX IF NOT EXISTS ix_volunteer_org ON "{schema}".volunteer_work (organization_id);
             """;
 
         await ExecuteAsync(ddl, ct);
