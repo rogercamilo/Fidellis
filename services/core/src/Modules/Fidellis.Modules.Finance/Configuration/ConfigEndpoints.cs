@@ -1,5 +1,6 @@
 using Fidellis.Infrastructure.Persistence;
 using Fidellis.Infrastructure.TenantData;
+using Fidellis.Modules.Finance.Security;
 using Fidellis.SharedKernel;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -16,7 +17,7 @@ public static class ConfigEndpoints
 {
     public static IEndpointRouteBuilder MapFinanceConfig(this IEndpointRouteBuilder app)
     {
-        var g = app.MapGroup("/api/finance").WithTags("Finance/Config");
+        var g = app.MapGroup("/api/finance").WithTags("Finance/Config").AddEndpointFilter<FinanceWriteFilter>();
 
         // ---- Nomenclatura (RF-FIN-180/181) ----
         g.MapGet("/settings", async (TenantDbContext db, CancellationToken ct) =>

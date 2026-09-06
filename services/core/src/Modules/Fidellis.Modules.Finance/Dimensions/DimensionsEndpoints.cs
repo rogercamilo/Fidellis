@@ -1,5 +1,6 @@
 using Fidellis.Infrastructure.Persistence;
 using Fidellis.Infrastructure.TenantData;
+using Fidellis.Modules.Finance.Security;
 using Fidellis.SharedKernel;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
@@ -16,7 +17,7 @@ public static class DimensionsEndpoints
 {
     public static IEndpointRouteBuilder MapDimensions(this IEndpointRouteBuilder app)
     {
-        var g = app.MapGroup("/api/finance").WithTags("Finance/Dimensions");
+        var g = app.MapGroup("/api/finance").WithTags("Finance/Dimensions").AddEndpointFilter<FinanceWriteFilter>();
 
         // ---- Centros de custo ----
         g.MapGet("/cost-centers", async (TenantDbContext db, CancellationToken ct) =>
