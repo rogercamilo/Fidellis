@@ -28,10 +28,12 @@ por unidade seguem em DT-14.
 
 ## 🟠 Médio impacto
 
-### DT-04 — RBAC financeiro raso (RF-FIN-171)
-Só bloqueia papéis explicitamente somente-leitura; **não há atribuição** dos papéis financeiros
-(`treasurer`/`manager`/etc.) aos membros. O RBAC existe mas não é exercido. (Relacionado a DT-01.)
-**Correção sugerida:** endpoint p/ atribuir papel financeiro à membership + UI.
+### DT-04 — RBAC financeiro raso (RF-FIN-171) · ✅ resolvido
+Não havia **atribuição** dos papéis financeiros aos membros. **Correção:** `TeamService` + endpoints
+`/api/finance/team` (listar membros, `GET /roles`, `PUT /{userId}/role` — **somente admin**, com
+auditoria) que definem o papel na `catalog.memberships` (alimenta o claim `role` → RBAC/alçadas). No
+front, painel **"Equipe e papéis"** em Configurações (admin). Agora o RBAC e as alçadas são exercidos
+de verdade (junto com o DT-01).
 
 ### DT-05 — Migrações EF versionadas (ADR-0002)
 Ainda usamos DDL idempotente no `SchemaProvisioner`, reaplicada a todos os tenants no startup. Frágil

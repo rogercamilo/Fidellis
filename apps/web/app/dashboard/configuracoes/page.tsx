@@ -5,9 +5,9 @@ import { FinanceNav } from '../../components/FinanceNav';
 import { Panel } from '../../components/Panel';
 import {
   createCategory, createCostCenter, createDonorType, createFund,
-  getFinanceSettings, listCategories, listCostCenters, listDonorTypes, listFunds,
-  updateFinanceSettings,
-  type CostCenter, type Fund, type DonorTypeItem, type FinanceCategoryItem, type LoginResult,
+  getFinanceSettings, listCategories, listCostCenters, listDonorTypes, listFunds, listTeam,
+  setMemberRole, teamRoles, updateFinanceSettings,
+  type CostCenter, type Fund, type DonorTypeItem, type FinanceCategoryItem, type LoginResult, type TeamMember,
 } from '../../lib/api';
 
 export default function ConfiguracoesPage() {
@@ -33,7 +33,11 @@ export default function ConfiguracoesPage() {
   const [catKind, setCatKind] = useState('expense');
   const [catName, setCatName] = useState('');
 
-  const refresh = useCallback(async (t: string) => {
+  const [team, setTeam] = useState<TeamMember[]>([]);
+  const [roles, setRoles] = useState<string[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  const refresh = useCallback(async (t: string, admin: boolean) => {
     try {
       const [s, cc, fn, dt, ct] = await Promise.all([
         getFinanceSettings(t), listCostCenters(t), listFunds(t), listDonorTypes(t), listCategories(t),
@@ -44,6 +48,10 @@ export default function ConfiguracoesPage() {
       setFunds(fn);
       setDonorTypes(dt);
       setCategories(ct);
+      if (admin) {
+        setTeam(await listTeam(t));
+        setRoles(await teamRoles(t));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar.');
     }
@@ -52,17 +60,26 @@ export default function ConfiguracoesPage() {
   useEffect(() => {
     const raw = sessionStorage.getItem('fidellis.session');
     if (raw) {
-      const t = (JSON.parse(raw) as LoginResult).accessToken;
-      setToken(t);
-      void refresh(t);
+      const s = JSON.parse(raw) as LoginResult;
+      const admin = s.tenants.find((x) => x.slug === s.activeTenant)?.role === 'admin';
+      setToken(s.accessToken);
+      setIsAdmin(admin);
+      void refresh(s.accessToken, admin);
     }
   }, [refresh]);
+
+  async function changeRole(userId: string, role: string) {
+    if (!token) return;
+    setError(null);
+    try { await setMemberRole(token, userId, role); await refresh(token, isAdmin); }
+    catch (err) { setError(err instanceof Error ? err.message : 'Erro ao atribuir papel.'); }
+  }
 
   function guard<T>(fn: () => Promise<T>) {
     return async () => {
       if (!token) return setError('Sessão não encontrada.');
       setError(null);
-      try { await fn(); await refresh(token); }
+      try { await fn(); await refresh(token, isAdmin); }
       catch (err) { setError(err instanceof Error ? err.message : 'Erro inesperado.'); }
     };
   }
@@ -168,6 +185,32 @@ export default function ConfiguracoesPage() {
           </ul>
         </Panel>
       </div>
+
+      {isAdmin && (
+        <div className="rise rise-3" style={{ marginTop: '1rem' }}>
+          <Panel title="Equipe e papéis" flush>
+            <p className="muted" style={{ padding: '0.75rem 1rem 0' }}>
+              O papel define o RBAC financeiro e as alçadas de aprovação. Somente admin atribui papéis.
+            </p>
+            <table className="table">
+              <thead><tr><th>Usuário</th><th>E-mail</th><th>Papel</th></tr></thead>
+              <tbody>
+                {team.map((m) => (
+                  <tr key={m.userId}>
+                    <td>{m.displayName || '—'}</td>
+                    <td className="muted">{m.email}</td>
+                    <td>
+                      <select value={m.role} onChange={(e) => changeRole(m.userId, e.target.value)}>
+                        {roles.map((r) => <option key={r} value={r}>{r}</option>)}
+                      </select>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Panel>
+        </div>
+      )}
     </>
   );
 }
