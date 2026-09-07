@@ -1,16 +1,9 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import { Fraunces, IBM_Plex_Mono, Inter } from 'next/font/google';
+import { IBM_Plex_Mono, Inter } from 'next/font/google';
 import './globals.css';
 
-// Fraunces: display editorial (títulos, valores). Inter: UI. IBM Plex Mono: dados/números.
-const display = Fraunces({
-  subsets: ['latin'],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-fraunces',
-  display: 'swap',
-});
-
+// Inter aproxima o tipo "72" da SAP (UI). IBM Plex Mono para dados/números tabulares.
 const sans = Inter({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
@@ -33,7 +26,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="pt-BR" className={`${display.variable} ${sans.variable} ${mono.variable}`}>
+    <html lang="pt-BR" className={`${sans.variable} ${mono.variable}`}>
       <body>{children}</body>
     </html>
   );

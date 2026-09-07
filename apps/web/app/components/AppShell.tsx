@@ -5,12 +5,9 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 import type { LoginResult } from '../lib/api';
 
-/** Navegação do ERP, agrupada por módulo. Cresce a cada novo bloco da plataforma. */
+/** Navegação do ERP, agrupada por módulo (estilo SAP Fiori). Cresce a cada novo bloco. */
 const NAV: { label: string; items: { href: string; label: string }[] }[] = [
-  {
-    label: '',
-    items: [{ href: '/dashboard', label: 'Painel' }],
-  },
+  { label: '', items: [{ href: '/dashboard', label: 'Início' }] },
   {
     label: 'Financeiro',
     items: [
@@ -41,10 +38,7 @@ const NAV: { label: string; items: { href: string; label: string }[] }[] = [
       { href: '/dashboard/auditoria', label: 'Auditoria' },
     ],
   },
-  {
-    label: 'Organização',
-    items: [{ href: '/dashboard/configuracoes', label: 'Configurações' }],
-  },
+  { label: 'Organização', items: [{ href: '/dashboard/configuracoes', label: 'Configurações' }] },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -58,7 +52,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (raw) setSession(JSON.parse(raw) as LoginResult);
   }, []);
 
-  // Fecha o menu móvel ao navegar.
   useEffect(() => setOpen(false), [pathname]);
 
   function logout() {
@@ -71,58 +64,38 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="app">
-      <div className="sidebar-backdrop" data-open={open} onClick={() => setOpen(false)} />
-
-      <aside className="sidebar" data-open={open}>
-        <Link href="/dashboard" className="sidebar-brand" style={{ textDecoration: 'none' }}>
-          <span className="mark">F</span>
-          <span>
-            <span className="name">Fidellis</span>
-            <span className="tag">Gestão · Terceiro setor</span>
-          </span>
+      <header className="shellbar">
+        <button className="icon-btn menu-btn" aria-label="Menu" onClick={() => setOpen((v) => !v)}>☰</button>
+        <Link href="/dashboard" className="shellbar-brand" style={{ textDecoration: 'none' }}>
+          <span className="mark">F</span> Fidellis
         </Link>
+        <div className="shellbar-search" aria-hidden>
+          <span>⌕</span> Buscar aplicativos, contas, doadores…
+        </div>
+        <div className="shellbar-right">
+          {session?.activeTenant && (
+            <span className="tenant-chip"><span className="dot ok" /> {session.activeTenant}</span>
+          )}
+          <span className="who">{session?.user.displayName ?? session?.user.email ?? '—'}</span>
+          <button className="icon-btn" aria-label="Sair" title="Sair" onClick={logout}>⎋</button>
+        </div>
+      </header>
 
-        <nav className="sidenav">
+      <div className="shell-body">
+        <div className="sidenav-backdrop" data-open={open} onClick={() => setOpen(false)} />
+        <aside className="sidenav-fiori" data-open={open}>
           {NAV.map((group, gi) => (
             <div className="nav-group" key={group.label || `g${gi}`}>
               {group.label && <div className="nav-group-label">{group.label}</div>}
               {group.items.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`side-link${isActive(item.href) ? ' active' : ''}`}
-                >
+                <Link key={item.href} href={item.href} className={`side-link${isActive(item.href) ? ' active' : ''}`}>
                   <span className="side-ico" aria-hidden />
                   {item.label}
                 </Link>
               ))}
             </div>
           ))}
-        </nav>
-
-        <div className="sidebar-foot">
-          {session?.activeTenant && (
-            <span className="tenant-chip">
-              <span className="dot ok" /> {session.activeTenant}
-            </span>
-          )}
-          <span className="who">{session?.user.displayName ?? session?.user.email ?? '—'}</span>
-          <button className="linkbtn" onClick={logout}>Sair</button>
-        </div>
-      </aside>
-
-      <div className="app-main">
-        <header className="appbar">
-          <button className="menu-btn" aria-label="Abrir menu" onClick={() => setOpen((v) => !v)}>
-            ☰
-          </button>
-          <div className="spacer" />
-          {session?.activeTenant && (
-            <span className="tenant-chip">
-              <span className="dot ok" /> {session.activeTenant}
-            </span>
-          )}
-        </header>
+        </aside>
 
         <main className="content">{children}</main>
       </div>
