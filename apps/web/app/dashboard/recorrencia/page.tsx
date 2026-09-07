@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { ListCard, PageHeader, StatusBadge } from '../../components/Fiori';
 import { OrganizationPicker } from '../../components/OrganizationPicker';
 import { Panel } from '../../components/Panel';
 import {
@@ -12,13 +13,6 @@ import {
 } from '../../lib/api';
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-function statusBadge(status: string): string {
-  if (status === 'active') return 'ok';
-  if (status === 'past_due') return 'err';
-  if (status === 'canceled') return 'muted';
-  return 'warn';
-}
 
 export default function RecorrenciaPage() {
   const [token, setToken] = useState<string | null>(null);
@@ -86,14 +80,10 @@ export default function RecorrenciaPage() {
 
   return (
     <>
-      <div className="page-head rise">
-        <div>
-          <h1>Dízimo recorrente</h1>
-          <p className="subtitle">
-            Cobrança PIX gerada a cada ciclo; falhas entram na régua de dunning (D+1, D+3, D+5).
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        title="Recorrência"
+        subtitle="Dízimos e apoios mensais — uma cobrança é gerada a cada ciclo; falhas entram na régua de lembretes (D+1, D+3, D+5)."
+      />
 
       <div className="grid cols-2 rise rise-2" style={{ alignItems: 'start' }}>
         <Panel title="Nova recorrência">
@@ -134,9 +124,9 @@ export default function RecorrenciaPage() {
           </form>
         </Panel>
 
-        <Panel title="Recorrências" flush>
+        <ListCard label="Recorrências" count={items.length}>
           {items.length === 0 ? (
-            <p className="muted" style={{ padding: '1rem' }}>Nenhuma recorrência ainda.</p>
+            <p className="muted" style={{ padding: '1.25rem' }}>Nenhuma recorrência ainda. Crie a primeira ao lado.</p>
           ) : (
             <table className="table">
               <thead>
@@ -154,7 +144,7 @@ export default function RecorrenciaPage() {
                       <strong>{brl(r.amount)}</strong> <span className="muted">/ dia {r.dayOfMonth}</span>
                     </td>
                     <td>
-                      <span className={`badge ${statusBadge(r.status)}`}>{r.status}</span>
+                      <StatusBadge status={r.status} />
                       {r.attempt > 0 && <span className="muted" style={{ fontSize: '0.75rem' }}> · tent. {r.attempt}</span>}
                     </td>
                     <td className="muted">{new Date(r.nextChargeAt).toLocaleDateString('pt-BR')}</td>
@@ -168,7 +158,7 @@ export default function RecorrenciaPage() {
               </tbody>
             </table>
           )}
-        </Panel>
+        </ListCard>
       </div>
     </>
   );

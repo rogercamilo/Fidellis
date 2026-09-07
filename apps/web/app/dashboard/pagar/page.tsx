@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FinanceNav } from '../../components/FinanceNav';
+import { ListCard, PageHeader, StatusBadge } from '../../components/Fiori';
 import { Panel } from '../../components/Panel';
 import {
   approvePayable, createPayable, createPayee, listApprovalTiers, listPayables, listPayees,
@@ -12,13 +12,6 @@ import {
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const date = (s: string) => new Date(s + 'T00:00:00').toLocaleDateString('pt-BR');
 const READ_ONLY_ROLES = ['fiscal_council', 'accountant'];
-
-function statusBadge(status: string): string {
-  if (status === 'paid') return 'ok';
-  if (status === 'approved') return 'ok';
-  if (status === 'rejected' || status === 'canceled') return 'muted';
-  return 'warn';
-}
 
 export default function PagarPage() {
   const [token, setToken] = useState<string | null>(null);
@@ -93,14 +86,10 @@ export default function PagarPage() {
 
   return (
     <>
-      <div className="page-head rise">
-        <div>
-          <h1>Contas a Pagar</h1>
-          <p className="subtitle">Credores, títulos e alçadas de aprovação (segregação de funções + dupla assinatura).</p>
-        </div>
-      </div>
-
-      <FinanceNav />
+      <PageHeader
+        title="Contas a pagar"
+        subtitle="Credores, títulos e aprovações — cada pagamento passa pela alçada correta (quem lança não aprova)."
+      />
 
       {error && <p className="error-text">{error}</p>}
       {!canWrite && <p className="muted" style={{ marginBottom: '0.5rem' }}>Perfil somente-leitura: ações de escrita ocultadas.</p>}
@@ -166,20 +155,20 @@ export default function PagarPage() {
       </div>
 
       <div className="rise rise-3" style={{ marginTop: '1rem' }}>
-        <Panel
-          title="Títulos"
-          flush
-          actions={canWrite && (
+        <ListCard
+          label="Títulos"
+          count={payables.length}
+          actions={canWrite ? (
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem' }}>
               <span className="muted">Pagar de:</span>
               <select value={payFrom} onChange={(e) => setPayFrom(e.target.value)}>
                 {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
             </span>
-          )}
+          ) : undefined}
         >
           {payables.length === 0 ? (
-            <p className="muted" style={{ padding: '1rem' }}>Nenhum título ainda.</p>
+            <p className="muted" style={{ padding: '1.25rem' }}>Nenhum título ainda. Lance o primeiro acima.</p>
           ) : (
             <table className="table">
               <thead><tr><th>Descrição</th><th>Credor</th><th>Vencimento</th><th className="num">Valor</th><th>Status</th><th></th></tr></thead>
@@ -190,7 +179,7 @@ export default function PagarPage() {
                     <td className="muted">{payeeName.get(p.payeeId) ?? '—'}</td>
                     <td className="muted">{date(p.dueDate)}</td>
                     <td className="num"><strong>{brl(p.amount)}</strong></td>
-                    <td><span className={`badge ${statusBadge(p.status)}`}>{p.status}</span></td>
+                    <td><StatusBadge status={p.status} /></td>
                     <td className="num" style={{ whiteSpace: 'nowrap' }}>
                       {canWrite && p.status === 'awaiting_approval' && (
                         <>
@@ -205,7 +194,7 @@ export default function PagarPage() {
               </tbody>
             </table>
           )}
-        </Panel>
+        </ListCard>
       </div>
     </>
   );

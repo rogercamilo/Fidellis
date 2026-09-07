@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { FinanceNav } from '../../components/FinanceNav';
+import { ListCard, PageHeader, StatusBadge } from '../../components/Fiori';
 import { OrganizationPicker } from '../../components/OrganizationPicker';
 import { Panel } from '../../components/Panel';
 import {
@@ -11,13 +11,6 @@ import {
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const date = (s: string) => new Date(s + 'T00:00:00').toLocaleDateString('pt-BR');
-
-function statusBadge(status: string): string {
-  if (status === 'received') return 'ok';
-  if (status === 'partial') return 'warn';
-  if (status === 'canceled') return 'muted';
-  return 'warn';
-}
 const sourceLabel = (s: string) => (s === 'grant' ? 'Convênio' : s === 'agreement' ? 'Acordo' : 'Promessa');
 
 export default function ReceberPage() {
@@ -77,14 +70,10 @@ export default function ReceberPage() {
 
   return (
     <>
-      <div className="page-head rise">
-        <div>
-          <h1>Contas a Receber</h1>
-          <p className="subtitle">Promessas de doação e recebíveis (convênios/editais), com aging e baixa.</p>
-        </div>
-      </div>
-
-      <FinanceNav />
+      <PageHeader
+        title="Contas a receber"
+        subtitle="Promessas de doação e recebíveis (convênios e editais) — acompanhe vencimentos e dê baixa nos recebimentos."
+      />
 
       {error && <p className="error-text">{error}</p>}
 
@@ -126,9 +115,9 @@ export default function ReceberPage() {
           </form>
         </Panel>
 
-        <Panel title="Recebíveis" flush>
+        <ListCard label="Recebíveis" count={items.length}>
           {items.length === 0 ? (
-            <p className="muted" style={{ padding: '1rem' }}>Nenhum recebível ainda.</p>
+            <p className="muted" style={{ padding: '1.25rem' }}>Nenhum recebível ainda. Registre a primeira promessa ao lado.</p>
           ) : (
             <table className="table">
               <thead><tr><th>Descrição</th><th>Vencimento</th><th className="num">Valor</th><th>Status</th><th></th></tr></thead>
@@ -138,14 +127,14 @@ export default function ReceberPage() {
                     <td>{r.description || sourceLabel(r.source)}<br /><span className="muted" style={{ fontSize: '0.75rem' }}>{sourceLabel(r.source)}</span></td>
                     <td className="muted">{date(r.dueDate)}</td>
                     <td className="num"><strong>{brl(r.amount)}</strong>{r.receivedAmount > 0 && <><br /><span className="muted" style={{ fontSize: '0.75rem' }}>recebido {brl(r.receivedAmount)}</span></>}</td>
-                    <td><span className={`badge ${statusBadge(r.status)}`}>{r.status}</span></td>
+                    <td><StatusBadge status={r.status} /></td>
                     <td className="num">{(r.status === 'open' || r.status === 'partial') && <button className="btn btn-ghost btn-sm" onClick={() => settle(r)}>Baixar</button>}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           )}
-        </Panel>
+        </ListCard>
       </div>
     </>
   );

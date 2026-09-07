@@ -1,7 +1,7 @@
 'use client';
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
-import { FinanceNav } from '../../components/FinanceNav';
+import { ListCard, PageHeader, StatusBadge } from '../../components/Fiori';
 import { Panel } from '../../components/Panel';
 import {
   ignoreLine, importStatement, lineSuggestions, listStatements, listTreasuryAccounts, matchLine, statementLines,
@@ -88,18 +88,12 @@ export default function ConciliacaoPage() {
     catch (err) { setError(err instanceof Error ? err.message : 'Erro ao ignorar.'); }
   }
 
-  const statusBadge = (s: string) => (s === 'matched' ? 'ok' : s === 'ignored' ? 'muted' : 'warn');
-
   return (
     <>
-      <div className="page-head rise">
-        <div>
-          <h1>Conciliação bancária</h1>
-          <p className="subtitle">Importe o extrato (OFX/CNAB) e case as linhas com recebíveis e contas a pagar.</p>
-        </div>
-      </div>
-
-      <FinanceNav />
+      <PageHeader
+        title="Conciliação bancária"
+        subtitle="Importe o extrato do banco (OFX/CNAB) e concilie cada lançamento com contas a receber e a pagar."
+      />
 
       {error && <p className="error-text">{error}</p>}
 
@@ -134,9 +128,9 @@ export default function ConciliacaoPage() {
           </form>
         </Panel>
 
-        <Panel title="Extratos" flush>
+        <ListCard label="Extratos" count={statements.length}>
           {statements.length === 0 ? (
-            <p className="muted" style={{ padding: '1rem' }}>Nenhum extrato importado.</p>
+            <p className="muted" style={{ padding: '1.25rem' }}>Nenhum extrato importado.</p>
           ) : (
             <table className="table">
               <thead><tr><th>Referência</th><th>Conta</th><th>Formato</th><th></th></tr></thead>
@@ -152,14 +146,14 @@ export default function ConciliacaoPage() {
               </tbody>
             </table>
           )}
-        </Panel>
+        </ListCard>
       </div>
 
       {selected && (
         <div className="rise rise-3" style={{ marginTop: '1rem' }}>
-          <Panel title="Linhas do extrato" flush>
+          <ListCard label="Linhas do extrato" count={lines.length}>
             {lines.length === 0 ? (
-              <p className="muted" style={{ padding: '1rem' }}>Sem linhas.</p>
+              <p className="muted" style={{ padding: '1.25rem' }}>Sem linhas.</p>
             ) : (
               <table className="table">
                 <thead><tr><th>Data</th><th>Histórico</th><th className="num">Valor</th><th>Status</th><th></th></tr></thead>
@@ -170,7 +164,7 @@ export default function ConciliacaoPage() {
                         <td className="muted">{date(l.postedAt)}</td>
                         <td>{l.memo || '—'}</td>
                         <td className="num" style={{ color: l.amount < 0 ? '#d0483c' : '#2f9e6b' }}>{brl(l.amount)}</td>
-                        <td><span className={`badge ${statusBadge(l.status)}`}>{l.status}</span></td>
+                        <td><StatusBadge status={l.status} /></td>
                         <td className="num" style={{ whiteSpace: 'nowrap' }}>
                           {l.status === 'unmatched' && (
                             <>
@@ -205,7 +199,7 @@ export default function ConciliacaoPage() {
                 </tbody>
               </table>
             )}
-          </Panel>
+          </ListCard>
         </div>
       )}
     </>

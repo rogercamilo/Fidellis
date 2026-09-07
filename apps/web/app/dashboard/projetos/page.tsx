@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { FinanceNav } from '../../components/FinanceNav';
 import { OrganizationPicker } from '../../components/OrganizationPicker';
 import { Panel } from '../../components/Panel';
 import {
@@ -89,8 +88,6 @@ export default function ProjetosPage() {
           <p className="subtitle">Prestação de contas de parcerias (MROSC) e trabalho voluntário a valor justo (ITG 2002).</p>
         </div>
       </div>
-
-      <FinanceNav />
 
       {error && <p className="error-text">{error}</p>}
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { FinanceNav } from '../../components/FinanceNav';
+import { ListCard, PageHeader, StatusBadge } from '../../components/Fiori';
 import { Panel } from '../../components/Panel';
 import {
   closePeriod, listPeriods, reopenPeriod,
@@ -54,14 +54,10 @@ export default function FechamentoPage() {
 
   return (
     <>
-      <div className="page-head rise">
-        <div>
-          <h1>Fechamento de período</h1>
-          <p className="subtitle">Fecha o mês bloqueando lançamentos retroativos. Reabertura somente por admin (com auditoria).</p>
-        </div>
-      </div>
-
-      <FinanceNav />
+      <PageHeader
+        title="Fechamento de período"
+        subtitle="Fechar o mês impede novos lançamentos naquele período. A reabertura é restrita ao administrador e fica registrada."
+      />
 
       {error && <p className="error-text">{error}</p>}
 
@@ -82,9 +78,9 @@ export default function FechamentoPage() {
           </div>
         </Panel>
 
-        <Panel title="Períodos" flush>
+        <ListCard label="Períodos" count={periods.length}>
           {periods.length === 0 ? (
-            <p className="muted" style={{ padding: '1rem' }}>Nenhum período registrado.</p>
+            <p className="muted" style={{ padding: '1.25rem' }}>Nenhum período registrado.</p>
           ) : (
             <table className="table">
               <thead><tr><th>Período</th><th>Status</th><th></th></tr></thead>
@@ -92,7 +88,7 @@ export default function FechamentoPage() {
                 {periods.map((p) => (
                   <tr key={`${p.year}-${p.month}`}>
                     <td>{monthLabel(p.month)}/{p.year}</td>
-                    <td><span className={`badge ${p.status === 'closed' ? 'muted' : 'ok'}`}>{p.status === 'closed' ? 'fechado' : 'aberto'}</span></td>
+                    <td><StatusBadge status={p.status} /></td>
                     <td className="num">
                       {p.status === 'closed' && isAdmin && <button className="btn btn-ghost btn-sm" onClick={() => reopen(p)}>Reabrir</button>}
                     </td>
@@ -101,7 +97,7 @@ export default function FechamentoPage() {
               </tbody>
             </table>
           )}
-        </Panel>
+        </ListCard>
       </div>
     </>
   );

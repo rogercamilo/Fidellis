@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FinanceNav } from '../../components/FinanceNav';
+import { ListCard, PageHeader } from '../../components/Fiori';
 import { Panel } from '../../components/Panel';
 import {
   closeCashSession, depositCashSession, listCashSessions, listTreasuryAccounts, openCashSession,
@@ -69,14 +69,10 @@ export default function CaixaPage() {
 
   return (
     <>
-      <div className="page-head rise">
-        <div>
-          <h1>Caixa físico</h1>
-          <p className="subtitle">Coleta/oferta em espécie: abrir sessão, fechar com dupla conferência e depositar no banco.</p>
-        </div>
-      </div>
-
-      <FinanceNav />
+      <PageHeader
+        title="Caixa físico"
+        subtitle="Coletas em espécie: abra a sessão, feche com dupla conferência e deposite o valor no banco."
+      />
 
       {error && <p className="error-text">{error}</p>}
 
@@ -114,9 +110,9 @@ export default function CaixaPage() {
       </div>
 
       <div className="rise rise-3" style={{ marginTop: '1rem' }}>
-        <Panel title="Sessões" flush>
+        <ListCard label="Sessões" count={sessions.length}>
           {sessions.length === 0 ? (
-            <p className="muted" style={{ padding: '1rem' }}>Nenhuma sessão ainda.</p>
+            <p className="muted" style={{ padding: '1.25rem' }}>Nenhuma sessão ainda. Abra a primeira acima.</p>
           ) : (
             <table className="table">
               <thead><tr><th>Caixa / evento</th><th>Fechada em</th><th>Status</th><th className="num">Conferido</th><th></th></tr></thead>
@@ -136,7 +132,7 @@ export default function CaixaPage() {
               </tbody>
             </table>
           )}
-        </Panel>
+        </ListCard>
       </div>
     </>
   );
