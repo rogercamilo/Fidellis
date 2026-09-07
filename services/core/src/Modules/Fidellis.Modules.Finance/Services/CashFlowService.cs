@@ -31,9 +31,9 @@ public sealed class CashFlowService(TenantDbContext db, TreasuryService treasury
             .Select(r => new { Outstanding = r.Amount - r.ReceivedAmount, r.DueDate })
             .ToListAsync(ct);
 
-        // Payables não têm organização no modelo atual: projeção considera o tenant inteiro.
+        // Contas a Pagar aprovadas/agendadas, escopadas pelas unidades (DT-03).
         var payables = await db.Payables
-            .Where(p => p.Status == "approved" || p.Status == "scheduled")
+            .Where(p => (p.Status == "approved" || p.Status == "scheduled") && organizationIds.Contains(p.OrganizationId))
             .Select(p => new { p.Amount, p.DueDate })
             .ToListAsync(ct);
 

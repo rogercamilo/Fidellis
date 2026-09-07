@@ -33,7 +33,7 @@ public sealed class PayablesService(TenantDbContext db, IClock? clock = null, Ch
     public async Task<Payable> CreatePayableAsync(
         Guid payeeId, decimal amount, DateOnly dueDate, string description, Guid? categoryId, string? documentUrl,
         Guid? costCenterId, Guid? projectId, Guid? fundId,
-        IReadOnlyList<PayableAllocationInput>? allocations, Guid? createdBy, CancellationToken ct = default)
+        IReadOnlyList<PayableAllocationInput>? allocations, Guid? createdBy, Guid organizationId = default, CancellationToken ct = default)
     {
         if (amount <= 0) throw new ArgumentException("O valor deve ser positivo.");
         if (!await db.Payees.AnyAsync(p => p.Id == payeeId, ct))
@@ -50,6 +50,7 @@ public sealed class PayablesService(TenantDbContext db, IClock? clock = null, Ch
 
         var payable = new Payable
         {
+            OrganizationId = organizationId,
             PayeeId = payeeId,
             Amount = amount,
             DueDate = dueDate,
@@ -137,10 +138,11 @@ public sealed class PayablesService(TenantDbContext db, IClock? clock = null, Ch
         var expense = accounts[ChartOfAccounts.Expense];
         var bank = accounts[ChartOfAccounts.Bank];
 
-        var account = await db.Accounts.FirstOrDefaultAsync(ct);
+        // Conta contábil da unidade do título (DT-03): encontra ou cria a da organização.
+        var account = await db.Accounts.FirstOrDefaultAsync(a => a.OrganizationId == payable.OrganizationId, ct);
         if (account is null)
         {
-            account = new Account { OrganizationId = Guid.Empty, Name = "Conta de despesas" };
+            account = new Account { OrganizationId = payable.OrganizationId, Name = "Conta principal" };
             db.Accounts.Add(account);
         }
         var transaction = new Transaction

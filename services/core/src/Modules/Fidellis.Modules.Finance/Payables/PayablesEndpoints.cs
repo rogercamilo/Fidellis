@@ -51,12 +51,14 @@ public static class PayablesEndpoints
             if (!tenant.HasTenant) return Results.BadRequest(new { error = "Nenhum tenant no request." });
             if (req.PayeeId == Guid.Empty || req.Amount <= 0 || string.IsNullOrWhiteSpace(req.Description))
                 return Results.BadRequest(new { error = "payeeId, amount (>0) e description são obrigatórios." });
+            if (req.OrganizationId == Guid.Empty)
+                return Results.BadRequest(new { error = "organizationId é obrigatório." });
             try
             {
                 var allocations = req.Allocations?
                     .Select(a => new PayableAllocationInput(a.Amount, a.CostCenterId, a.ProjectId, a.FundId)).ToList();
                 var p = await payables.CreatePayableAsync(req.PayeeId, req.Amount, req.DueDate, req.Description.Trim(),
-                    req.CategoryId, req.DocumentUrl, req.CostCenterId, req.ProjectId, req.FundId, allocations, user.UserId, ct);
+                    req.CategoryId, req.DocumentUrl, req.CostCenterId, req.ProjectId, req.FundId, allocations, user.UserId, req.OrganizationId, ct);
                 return Results.Created($"/api/finance/payables/{p.Id}",
                     new PayableDto(p.Id, p.PayeeId, p.Description, p.Amount, p.DueDate, p.Status, p.CategoryId, p.PaidAt));
             }
@@ -141,7 +143,7 @@ public sealed record PayableDto(Guid Id, Guid PayeeId, string Description, decim
 public sealed record CreatePayeeRequest(string Name, string? Document = null, string? PixKey = null, string? Kind = null);
 public sealed record AllocationInput(decimal Amount, Guid? CostCenterId = null, Guid? ProjectId = null, Guid? FundId = null);
 public sealed record CreatePayableRequest(
-    Guid PayeeId, decimal Amount, DateOnly DueDate, string Description, Guid? CategoryId = null, string? DocumentUrl = null,
+    Guid OrganizationId, Guid PayeeId, decimal Amount, DateOnly DueDate, string Description, Guid? CategoryId = null, string? DocumentUrl = null,
     Guid? CostCenterId = null, Guid? ProjectId = null, Guid? FundId = null, List<AllocationInput>? Allocations = null);
 public sealed record PayPayableRequest(Guid TreasuryAccountId);
 public sealed record ApprovalTierDto(Guid Id, decimal MinAmount, decimal? MaxAmount, int Signatures, string RolesCsv);

@@ -20,10 +20,11 @@ Patrimonial e a DFC podem não bater com dados reais (demonstrações são "rasc
 **Correção sugerida:** modelo de lançamento consistente (débito Caixa no recebimento) e unificação
 tesouraria ↔ razão.
 
-### DT-03 — `Payable` sem `organization_id`
-Títulos a pagar não têm unidade. O fluxo de caixa projeta AP no tenant inteiro; o pagamento usa conta
-contábil genérica (`OrganizationId = Guid.Empty`); demonstrações/MROSC não escopam despesas de AP por
-unidade. **Correção sugerida:** adicionar `organization_id` ao payable e propagar.
+### DT-03 — `Payable` sem `organization_id` · ✅ resolvido
+Títulos a pagar não tinham unidade. **Correção:** `Payable.OrganizationId` adicionado; o **fluxo de
+caixa** passa a escopar AP pelas unidades visíveis; o **pagamento** lança a despesa na **conta contábil
+da unidade** do título (não mais genérica); endpoint exige `organizationId`. **Resta:** demonstrações
+por unidade seguem em DT-14.
 
 ## 🟠 Médio impacto
 
