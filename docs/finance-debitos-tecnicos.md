@@ -2,7 +2,7 @@
 
 > Inventário dos débitos técnicos acumulados nas Ondas 1–4 do módulo Finance. Mantido atualizado à
 > medida que forem resolvidos. Severidade: 🔴 alto (afeta correção/uso real) · 🟠 médio · 🟡 baixo.
-> Última revisão: 2026-09-06.
+> Última revisão: 2026-09-07.
 
 ## 🔴 Alto impacto
 
@@ -75,8 +75,14 @@ A aprovação exige **papel de governança** (admin/conselho fiscal) e **segrega
 aprova); uma vez aprovado é imutável e auditado. Entidade `statement_snapshots` + endpoints
 `/api/finance/reports/snapshots` (listar, obter, gerar, aprovar).
 
-### DT-11 — Rate limiting e idempotência sem teste E2E
-O rate limiter é middleware, só verificável manualmente; sem teste de integração.
+### DT-11 — Rate limiting e idempotência sem teste E2E · ✅ resolvido
+O rate limiter era middleware só verificável manualmente. **Correção:** `RateLimitEndpointTests` sobe a
+API in-memory (`WebApplicationFactory`) e prova de ponta a ponta que a janela fixa por IP+tenant admite
+exatamente `PUBLIC_RATE_LIMIT_PERMITS` requisições e barra as excedentes com **429** (com header
+`Retry-After` via `OnRejected`), sem depender de Postgres — o limiter roda antes do endpoint. A
+**idempotência** do checkout já tem cobertura de integração no nível de serviço em `HardeningTests`
+(mesma chave reusa a doação e não recria pedido no PSP; chaves distintas criam doações distintas); um
+E2E HTTP dela exigiria provisionar Postgres, que o harness de testes (in-memory) não possui.
 
 ### DT-12 — Assinatura HMAC do webhook com header presumido
 Assumido `X-Hub-Signature-256`/`X-Hub-Signature`; o mecanismo real do Pagar.me precisa ser confirmado.
