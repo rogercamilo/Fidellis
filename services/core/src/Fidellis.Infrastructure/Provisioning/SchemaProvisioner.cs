@@ -548,6 +548,21 @@ public sealed class SchemaProvisioner(
                 created_at      timestamptz   NOT NULL DEFAULT now()
             );
             CREATE INDEX IF NOT EXISTS ix_volunteer_org ON "{schema}".volunteer_work (organization_id);
+
+            -- Snapshots congelados das demonstrações + assinatura/aprovação (DT-10).
+            CREATE TABLE IF NOT EXISTS "{schema}".statement_snapshots (
+                id           uuid PRIMARY KEY,
+                year         integer      NOT NULL,
+                quarter      integer,
+                payload      text         NOT NULL,
+                hash         varchar(64)  NOT NULL,
+                status       varchar(20)  NOT NULL DEFAULT 'draft',
+                generated_by varchar(200),
+                approved_by  varchar(200),
+                approved_at  timestamptz,
+                created_at   timestamptz  NOT NULL DEFAULT now()
+            );
+            CREATE INDEX IF NOT EXISTS ix_snapshot_period ON "{schema}".statement_snapshots (year, quarter);
             """;
 
         await ExecuteAsync(ddl, ct);

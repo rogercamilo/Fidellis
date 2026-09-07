@@ -51,6 +51,7 @@ public static class FinanceModule
         services.AddScoped<ReconciliationMatchService>();
         services.AddScoped<BudgetService>();
         services.AddScoped<StatementsService>();
+        services.AddScoped<StatementSnapshotService>();
         services.AddScoped<VolunteerWorkService>();
         services.AddScoped<MroscReportService>();
         services.AddScoped<AccountantExportService>();
@@ -304,6 +305,9 @@ public static class FinanceModule
 
         // Demonstrações contábeis ITG 2002 (balancete, DRP, Balanço Patrimonial).
         app.MapReports();
+
+        // Snapshots/assinatura das demonstrações (prestação de contas congelada — DT-10).
+        app.MapReportSnapshots();
 
         // Equipe/papéis financeiros (RBAC — DT-04).
         app.MapFinanceTeam();
