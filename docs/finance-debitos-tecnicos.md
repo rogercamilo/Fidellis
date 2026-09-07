@@ -2,16 +2,19 @@
 
 > Inventário dos débitos técnicos acumulados nas Ondas 1–4 do módulo Finance. Mantido atualizado à
 > medida que forem resolvidos. Severidade: 🔴 alto (afeta correção/uso real) · 🟠 médio · 🟡 baixo.
-> Última revisão: 2026-09-07 (DT-05).
+> Última revisão: 2026-09-07 (DT-01, DT-05).
 
 ## 🔴 Alto impacto
 
-### DT-01 — Admin não conseguia aprovar Contas a Pagar · ✅ em correção
+### DT-01 — Admin não conseguia aprovar Contas a Pagar · ✅ resolvido
 As faixas de alçada default exigem `treasurer`/`manager`/`fiscal_council`, mas as memberships só têm
 `admin`/`member` — o admin do onboarding não casava com nenhuma faixa e não aprovava nada.
-**Correção (este PR):** `admin` passa a ser **aprovador coringa** (satisfaz qualquer faixa), mantendo
-a segregação de funções (não aprova o próprio lançamento). **Resta (ver DT-04):** fluxo de atribuição
-dos papéis financeiros a outros usuários para exercer a segregação plena.
+**Correção:** `admin` é **aprovador coringa** (satisfaz qualquer faixa) no `ApprovalService`, mantendo
+a segregação de funções (não aprova o próprio lançamento). A cadeia funciona end-to-end: o claim
+`role` do JWT (alimentado pelas memberships via `TeamService`, DT-04) chega ao endpoint
+`/payables/{id}/approve` → `ApprovalService`. Coberto por teste
+(`Admin_is_a_wildcard_approver_but_still_cannot_self_approve`). A atribuição plena de papéis a outros
+usuários foi entregue no DT-04.
 
 ### DT-02 — Bookkeeping simplificado: o Balanço não fechava · ✅ resolvido
 A conciliação debitava "Recebível" (não "Caixa") e tesouraria/razão eram paralelos. **Correção:** a
@@ -117,6 +120,6 @@ unidade no front das demonstrações.
 
 ## Ordem de ataque sugerida
 
-1. **DT-01** (admin aprovar AP) — rápido, destrava alçadas no demo. **← em andamento.**
+1. **DT-01** (admin aprovar AP) — rápido, destrava alçadas no demo. **✅ concluído.**
 2. **DT-03** (`Payable.organization_id`) — desbloqueia fluxo de caixa e despesa contábil corretos.
 3. **DT-02** (bookkeeping consistente) — o mais estrutural; faz as demonstrações fecharem de verdade.
