@@ -44,7 +44,7 @@ public sealed class AccountantExportService(TenantDbContext db, StatementsServic
 
     public async Task<string> TrialBalanceCsvAsync(int year, CancellationToken ct = default)
     {
-        var lines = await statements.TrialBalanceAsync(year, ct);
+        var lines = await statements.TrialBalanceAsync(year, ct: ct);
         var sb = new StringBuilder();
         sb.AppendLine("codigo;conta;tipo;debito;credito;saldo");
         foreach (var l in lines)

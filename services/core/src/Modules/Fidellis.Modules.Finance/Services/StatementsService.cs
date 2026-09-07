@@ -39,19 +39,36 @@ public sealed record TransparencySummary(int Year, int? Quarter, decimal Revenue
 /// </summary>
 public sealed class StatementsService(TenantDbContext db)
 {
-    public async Task<IReadOnlyList<LedgerLine>> TrialBalanceAsync(int year, CancellationToken ct = default)
+    /// <summary>
+    /// Conjunto de transações de uma unidade (DT-14): ids das <c>transactions</c> cujas <c>accounts</c>
+    /// pertencem à organização. <c>null</c> = consolidado (rede inteira, sem recorte).
+    /// </summary>
+    private async Task<HashSet<Guid>?> OrgTxAsync(Guid? organizationId, CancellationToken ct)
+    {
+        if (organizationId is not { } org) return null;
+        var ids = await (
+            from t in db.Transactions
+            join a in db.Accounts on t.AccountId equals a.Id
+            where a.OrganizationId == org
+            select t.Id).ToListAsync(ct);
+        return ids.ToHashSet();
+    }
+
+    public async Task<IReadOnlyList<LedgerLine>> TrialBalanceAsync(int year, Guid? organizationId = null, CancellationToken ct = default)
     {
         // Competência (DT-07): agrega pela data contábil do lançamento, não por CreatedAt.
         var start = new DateOnly(year, 1, 1);
         var end = new DateOnly(year + 1, 1, 1);
+        var orgTx = await OrgTxAsync(organizationId, ct);
 
         var entries = await db.AccountingEntries
             .Where(e => e.AccountingDate >= start && e.AccountingDate < end && e.LedgerAccountId != null)
-            .Select(e => new { e.LedgerAccountId, e.Debit, e.Credit })
+            .Select(e => new { e.LedgerAccountId, e.Debit, e.Credit, e.TransactionId })
             .ToListAsync(ct);
         var accounts = await db.LedgerAccounts.ToDictionaryAsync(a => a.Id, a => a, ct);
 
         return entries
+            .Where(e => orgTx is null || orgTx.Contains(e.TransactionId))
             .GroupBy(e => e.LedgerAccountId!.Value)
             .Where(g => accounts.ContainsKey(g.Key))
             .Select(g =>
@@ -66,9 +83,9 @@ public sealed class StatementsService(TenantDbContext db)
             .ToList();
     }
 
-    public async Task<IncomeStatement> IncomeAsync(int year, CancellationToken ct = default)
+    public async Task<IncomeStatement> IncomeAsync(int year, Guid? organizationId = null, CancellationToken ct = default)
     {
-        var tb = await TrialBalanceAsync(year, ct);
+        var tb = await TrialBalanceAsync(year, organizationId, ct);
         var revenueLines = tb.Where(l => l.Type == "revenue").ToList();
         var expenseLines = tb.Where(l => l.Type == "expense").ToList();
         var revenues = revenueLines.Sum(l => l.Balance);
@@ -77,9 +94,9 @@ public sealed class StatementsService(TenantDbContext db)
     }
 
     /// <summary>DRP segregada por recurso livre × restrito (RF-FIN-161).</summary>
-    public async Task<SegregatedIncome> IncomeSegregatedAsync(int year, CancellationToken ct = default)
+    public async Task<SegregatedIncome> IncomeSegregatedAsync(int year, Guid? organizationId = null, CancellationToken ct = default)
     {
-        var agg = await AggregateByTypeRestrictionAsync(year, ct);
+        var agg = await AggregateByTypeRestrictionAsync(year, organizationId, ct);
         ResultBlock Block(string r)
         {
             var rev = agg.GetValueOrDefault(("revenue", r), 0m);
@@ -93,21 +110,23 @@ public sealed class StatementsService(TenantDbContext db)
     }
 
     /// <summary>DMPL: PL inicial + superávit/déficit do período = PL final (RF-FIN-160).</summary>
-    public async Task<Dmpl> DmplAsync(int year, CancellationToken ct = default)
+    public async Task<Dmpl> DmplAsync(int year, Guid? organizationId = null, CancellationToken ct = default)
     {
         var start = new DateOnly(year, 1, 1);
+        var orgTx = await OrgTxAsync(organizationId, ct);
 
         // PL inicial = saldo das contas de PL a partir dos lançamentos anteriores ao ano (por competência).
         var prior = await db.AccountingEntries
             .Where(e => e.AccountingDate < start && e.LedgerAccountId != null)
-            .Select(e => new { e.LedgerAccountId, e.Debit, e.Credit })
+            .Select(e => new { e.LedgerAccountId, e.Debit, e.Credit, e.TransactionId })
             .ToListAsync(ct);
         var accounts = await db.LedgerAccounts.ToDictionaryAsync(a => a.Id, a => a, ct);
         var opening = prior
-            .Where(e => accounts.TryGetValue(e.LedgerAccountId!.Value, out var a) && a.Type == "equity")
+            .Where(e => (orgTx is null || orgTx.Contains(e.TransactionId))
+                && accounts.TryGetValue(e.LedgerAccountId!.Value, out var a) && a.Type == "equity")
             .Sum(e => accounts[e.LedgerAccountId!.Value].NormalBalance == "debit" ? e.Debit - e.Credit : e.Credit - e.Debit);
 
-        var seg = await IncomeSegregatedAsync(year, ct);
+        var seg = await IncomeSegregatedAsync(year, organizationId, ct);
         return new Dmpl(year, opening, seg.Total.Surplus, opening + seg.Total.Surplus, seg.Free.Surplus, seg.Restricted.Surplus);
     }
 
@@ -167,13 +186,23 @@ public sealed class StatementsService(TenantDbContext db)
     }
 
     /// <summary>DFC método direto (RF-FIN-160 / decisão D1): entradas − saídas de tesouraria no ano.</summary>
-    public async Task<CashFlowStatement> CashFlowAsync(int year, CancellationToken ct = default)
+    public async Task<CashFlowStatement> CashFlowAsync(int year, Guid? organizationId = null, CancellationToken ct = default)
     {
         var start = new DateTimeOffset(year, 1, 1, 0, 0, 0, TimeSpan.Zero);
         var end = start.AddYears(1);
 
-        var openingBalances = await db.TreasuryAccounts.SumAsync(a => a.OpeningBalance, ct);
-        var movements = await db.TreasuryMovements.Select(m => new { m.Kind, m.Amount, m.OccurredAt }).ToListAsync(ct);
+        // Recorte por unidade (DT-14): contas de tesouraria da organização.
+        var accountsQ = db.TreasuryAccounts.AsQueryable();
+        if (organizationId is { } org) accountsQ = accountsQ.Where(a => a.OrganizationId == org);
+        var openingBalances = await accountsQ.SumAsync(a => a.OpeningBalance, ct);
+
+        var movementsQ = db.TreasuryMovements.AsQueryable();
+        if (organizationId is { } org2)
+        {
+            var accIds = await db.TreasuryAccounts.Where(a => a.OrganizationId == org2).Select(a => a.Id).ToListAsync(ct);
+            movementsQ = movementsQ.Where(m => accIds.Contains(m.AccountId));
+        }
+        var movements = await movementsQ.Select(m => new { m.Kind, m.Amount, m.OccurredAt }).ToListAsync(ct);
 
         // Delta consolidado: entradas somam, saídas subtraem; transferências internas se cancelam no total.
         static decimal Delta(IEnumerable<(string Kind, decimal Amount)> ms)
@@ -189,10 +218,11 @@ public sealed class StatementsService(TenantDbContext db)
         return new CashFlowStatement(year, opening, inflows, outflows, inflows - outflows, closing);
     }
 
-    private async Task<Dictionary<(string Type, string Restriction), decimal>> AggregateByTypeRestrictionAsync(int year, CancellationToken ct)
+    private async Task<Dictionary<(string Type, string Restriction), decimal>> AggregateByTypeRestrictionAsync(int year, Guid? organizationId, CancellationToken ct)
     {
         var start = new DateOnly(year, 1, 1);
         var end = new DateOnly(year + 1, 1, 1);
+        var orgTx = await OrgTxAsync(organizationId, ct);
 
         var entries = await db.AccountingEntries
             .Where(e => e.AccountingDate >= start && e.AccountingDate < end && e.LedgerAccountId != null)
@@ -205,6 +235,7 @@ public sealed class StatementsService(TenantDbContext db)
         var result = new Dictionary<(string, string), decimal>();
         foreach (var e in entries)
         {
+            if (orgTx is not null && !orgTx.Contains(e.TransactionId)) continue;
             if (!accounts.TryGetValue(e.LedgerAccountId!.Value, out var a)) continue;
             var balance = a.NormalBalance == "debit" ? e.Debit - e.Credit : e.Credit - e.Debit;
 
@@ -219,9 +250,9 @@ public sealed class StatementsService(TenantDbContext db)
         return result;
     }
 
-    public async Task<BalanceSheet> BalanceSheetAsync(int year, CancellationToken ct = default)
+    public async Task<BalanceSheet> BalanceSheetAsync(int year, Guid? organizationId = null, CancellationToken ct = default)
     {
-        var tb = await TrialBalanceAsync(year, ct);
+        var tb = await TrialBalanceAsync(year, organizationId, ct);
         var assetLines = tb.Where(l => l.Type == "asset").ToList();
         var liabilityLines = tb.Where(l => l.Type == "liability").ToList();
         var equityLines = tb.Where(l => l.Type == "equity").ToList();

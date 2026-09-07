@@ -77,8 +77,12 @@ Resolvido junto com o DT-07: com `AccountingDate` (setter público), os testes d
 transparência, orçamento e DMPL passam a fixar **períodos históricos determinísticos** (ex.: 2025),
 sem depender de "ano/trimestre corrente".
 
-### DT-14 — Demonstrações não escopadas por unidade
-Agregam o tenant inteiro; sem BP/DRP por unidade da rede.
+### DT-14 — Demonstrações por unidade · ✅ resolvido
+Antes agregavam o tenant inteiro. **Correção:** `StatementsService` aceita `organizationId` opcional
+(ausente = consolidado da rede). Recorte via `Transaction → Account.OrganizationId` (balancete, DRP,
+Balanço, DMPL, segregação) e via `TreasuryAccount.OrganizationId` (DFC). Endpoints
+`/api/finance/reports/*` ganham o query param `organizationId`. **Resta (evolução):** seletor de
+unidade no front das demonstrações.
 
 ---
 
