@@ -13,12 +13,12 @@ As faixas de alçada default exigem `treasurer`/`manager`/`fiscal_council`, mas 
 a segregação de funções (não aprova o próprio lançamento). **Resta (ver DT-04):** fluxo de atribuição
 dos papéis financeiros a outros usuários para exercer a segregação plena.
 
-### DT-02 — Bookkeeping simplificado: o Balanço não fecha em dados reais
-A conciliação de doação debita "Recebível" (não "Caixa") e o pagamento credita "Banco"; tesouraria
-(`treasury_movements`) e razão (`accounting_entries`) são **paralelos, não integrados**. O Balanço
-Patrimonial e a DFC podem não bater com dados reais (demonstrações são "rascunho").
-**Correção sugerida:** modelo de lançamento consistente (débito Caixa no recebimento) e unificação
-tesouraria ↔ razão.
+### DT-02 — Bookkeeping simplificado: o Balanço não fechava · ✅ resolvido
+A conciliação debitava "Recebível" (não "Caixa") e tesouraria/razão eram paralelos. **Correção:** a
+doação recebida agora **debita Banco** (ativo) / credita Receita — o **Balanço fecha** (Ativo Banco =
+Receita − Despesa = superávit) — e registra uma **entrada de tesouraria** na conta bancária da unidade
+(o estorno reverte ambos). Integra razão ↔ tesouraria para as doações. **Resta (parcial):** unificação
+total razão↔tesouraria para todos os fluxos (AR/AP já criam movimento; caixa físico idem).
 
 ### DT-03 — `Payable` sem `organization_id` · ✅ resolvido
 Títulos a pagar não tinham unidade. **Correção:** `Payable.OrganizationId` adicionado; o **fluxo de

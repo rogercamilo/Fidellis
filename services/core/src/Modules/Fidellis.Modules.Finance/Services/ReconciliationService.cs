@@ -41,10 +41,12 @@ public sealed class ReconciliationService(
         };
         db.Transactions.Add(transaction);
 
-        var (receivable, revenue) = await LedgerPairAsync(ct);
+        var (cash, revenue) = await LedgerPairAsync(ct);
         db.AccountingEntries.AddRange(
-            new AccountingEntry { TransactionId = transaction.Id, LedgerAccountId = receivable.Id, Ledger = receivable.Name, Debit = donation.Amount, Credit = 0 },
+            new AccountingEntry { TransactionId = transaction.Id, LedgerAccountId = cash.Id, Ledger = cash.Name, Debit = donation.Amount, Credit = 0 },
             new AccountingEntry { TransactionId = transaction.Id, LedgerAccountId = revenue.Id, Ledger = revenue.Name, Debit = 0, Credit = donation.Amount });
+
+        await AddTreasuryAsync(donation, "inflow", ct);
 
         var donorDocument = donation.DonorId is { } donorId
             ? await db.Donors.Where(d => d.Id == donorId).Select(d => d.Document).FirstOrDefaultAsync(ct)
@@ -96,11 +98,13 @@ public sealed class ReconciliationService(
         };
         db.Transactions.Add(transaction);
 
-        var (receivable, revenue) = await LedgerPairAsync(ct);
-        // Inverso da conciliação: debita Receita, credita Recebível.
+        var (cash, revenue) = await LedgerPairAsync(ct);
+        // Inverso da conciliação: debita Receita, credita Banco.
         db.AccountingEntries.AddRange(
             new AccountingEntry { TransactionId = transaction.Id, LedgerAccountId = revenue.Id, Ledger = revenue.Name, Debit = donation.Amount, Credit = 0 },
-            new AccountingEntry { TransactionId = transaction.Id, LedgerAccountId = receivable.Id, Ledger = receivable.Name, Debit = 0, Credit = donation.Amount });
+            new AccountingEntry { TransactionId = transaction.Id, LedgerAccountId = cash.Id, Ledger = cash.Name, Debit = 0, Credit = donation.Amount });
+
+        await AddTreasuryAsync(donation, "outflow", ct);
 
         var receipt = await db.Receipts.FirstOrDefaultAsync(r => r.DonationId == donation.Id, ct);
         if (receipt is not null && receipt.CanceledAt is null)
@@ -121,12 +125,31 @@ public sealed class ReconciliationService(
         return account;
     }
 
-    private async Task<(LedgerAccount Receivable, LedgerAccount Revenue)> LedgerPairAsync(CancellationToken ct)
+    // DT-02: a doação recebida entra no Caixa/Banco (ativo), não em "a receber" — assim o Balanço fecha
+    // (Ativo Banco = Receita − Despesa = superávit).
+    private async Task<(LedgerAccount Cash, LedgerAccount Revenue)> LedgerPairAsync(CancellationToken ct)
     {
         await chartSeeder.EnsureDefaultAsync(ct);
         var accounts = await db.LedgerAccounts
-            .Where(a => a.Code == ChartOfAccounts.Receivable || a.Code == ChartOfAccounts.Revenue)
+            .Where(a => a.Code == ChartOfAccounts.Bank || a.Code == ChartOfAccounts.Revenue)
             .ToDictionaryAsync(a => a.Code, a => a, ct);
-        return (accounts[ChartOfAccounts.Receivable], accounts[ChartOfAccounts.Revenue]);
+        return (accounts[ChartOfAccounts.Bank], accounts[ChartOfAccounts.Revenue]);
+    }
+
+    /// <summary>Movimento de tesouraria na conta bancária da unidade (integra razão ↔ tesouraria — DT-02).</summary>
+    private async Task AddTreasuryAsync(Donation donation, string kind, CancellationToken ct)
+    {
+        var bank = await db.TreasuryAccounts
+            .FirstOrDefaultAsync(a => a.OrganizationId == donation.OrganizationId && a.Kind == "bank" && a.Active, ct);
+        if (bank is null) return;
+        db.TreasuryMovements.Add(new TreasuryMovement
+        {
+            AccountId = bank.Id,
+            Kind = kind,
+            Amount = donation.Amount,
+            Description = $"Doação {donation.Id}",
+            DonationId = donation.Id,
+            OccurredAt = donation.PaidAt ?? clock.UtcNow,
+        });
     }
 }
