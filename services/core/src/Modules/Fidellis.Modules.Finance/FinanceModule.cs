@@ -226,6 +226,18 @@ public static class FinanceModule
             return Results.Ok(new { id = d.Id, status = d.Status, qrCode = d.PixQrCode, qrCodeUrl = d.PixQrCodeUrl, expiresAt = d.ExpiresAt, amount = d.Amount });
         });
 
+        // Portal de transparência (Onda 4 inc.4.4): resumo público consolidado trimestral, sem dados pessoais.
+        pub.MapGet("/transparency", async (
+            string tenant, int? year, int? quarter,
+            CatalogDbContext catalog, ITenantContext tc, Services.StatementsService statements, CancellationToken ct) =>
+        {
+            if (!await PublicTenant.TryResolveAsync(catalog, tc, tenant, ct))
+                return Results.NotFound(new { error = "Instituição não encontrada." });
+            var y = year ?? DateTimeOffset.UtcNow.Year;
+            var q = quarter is >= 1 and <= 4 ? quarter : null;
+            return Results.Ok(await statements.TransparencyAsync(y, q, ct));
+        });
+
         // Receptor de webhook do Pagar.me — FORA da resolução de tenant por JWT.
         group.MapPost("/webhooks/pagarme", async (
             HttpRequest request,

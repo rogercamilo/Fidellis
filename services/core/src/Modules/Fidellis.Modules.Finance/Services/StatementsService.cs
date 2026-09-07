@@ -28,6 +28,10 @@ public sealed record Dmpl(int Year, decimal OpeningEquity, decimal Surplus, deci
 public sealed record CashFlowStatement(int Year, decimal OpeningCash, decimal Inflows, decimal Outflows,
     decimal NetCash, decimal ClosingCash);
 
+/// <summary>Resumo público de transparência (consolidado trimestral): resultado do período + balanço resumido.</summary>
+public sealed record TransparencySummary(int Year, int? Quarter, decimal Revenues, decimal Expenses,
+    decimal Surplus, decimal Assets, decimal Liabilities, decimal NetEquity);
+
 /// <summary>
 /// Demonstrações contábeis ITG 2002 (Onda 4 inc.4.0): balancete, DRP e Balanço Patrimonial, agregados
 /// do razão (<c>accounting_entries</c> + <c>ledger_accounts</c>) do ano. Gera o <b>rascunho</b> — o
@@ -104,6 +108,61 @@ public sealed class StatementsService(TenantDbContext db)
 
         var seg = await IncomeSegregatedAsync(year, ct);
         return new Dmpl(year, opening, seg.Total.Surplus, opening + seg.Total.Surplus, seg.Free.Surplus, seg.Restricted.Surplus);
+    }
+
+    /// <summary>
+    /// Resumo público de transparência (RF-FIN-164 / decisão 4): resultado do período (ano ou
+    /// trimestre) + balanço resumido consolidado no fim do período. Sem dados pessoais.
+    /// </summary>
+    public async Task<TransparencySummary> TransparencyAsync(int year, int? quarter, CancellationToken ct = default)
+    {
+        var (start, end) = QuarterBounds(year, quarter);
+        var period = await LinesAsync(start, end, ct);
+        var revenues = period.Where(l => l.Type == "revenue").Sum(l => l.Balance);
+        var expenses = period.Where(l => l.Type == "expense").Sum(l => l.Balance);
+
+        var snapshot = await LinesAsync(null, end, ct);
+        var assets = snapshot.Where(l => l.Type == "asset").Sum(l => l.Balance);
+        var liabilities = snapshot.Where(l => l.Type == "liability").Sum(l => l.Balance);
+        var equityAccounts = snapshot.Where(l => l.Type == "equity").Sum(l => l.Balance);
+        var accumulatedSurplus = snapshot.Where(l => l.Type == "revenue").Sum(l => l.Balance)
+                                 - snapshot.Where(l => l.Type == "expense").Sum(l => l.Balance);
+
+        return new TransparencySummary(year, quarter, revenues, expenses, revenues - expenses,
+            assets, liabilities, equityAccounts + accumulatedSurplus);
+    }
+
+    private static (DateTimeOffset Start, DateTimeOffset End) QuarterBounds(int year, int? quarter)
+    {
+        if (quarter is >= 1 and <= 4)
+        {
+            var s = new DateTimeOffset(year, (quarter.Value - 1) * 3 + 1, 1, 0, 0, 0, TimeSpan.Zero);
+            return (s, s.AddMonths(3));
+        }
+        var ys = new DateTimeOffset(year, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        return (ys, ys.AddYears(1));
+    }
+
+    private async Task<List<LedgerLine>> LinesAsync(DateTimeOffset? from, DateTimeOffset to, CancellationToken ct)
+    {
+        var q = db.AccountingEntries.Where(e => e.CreatedAt < to && e.LedgerAccountId != null);
+        if (from is { } f) q = q.Where(e => e.CreatedAt >= f);
+        var entries = await q.Select(e => new { e.LedgerAccountId, e.Debit, e.Credit }).ToListAsync(ct);
+        var accounts = await db.LedgerAccounts.ToDictionaryAsync(a => a.Id, a => a, ct);
+
+        return entries
+            .GroupBy(e => e.LedgerAccountId!.Value)
+            .Where(g => accounts.ContainsKey(g.Key))
+            .Select(g =>
+            {
+                var a = accounts[g.Key];
+                var debit = g.Sum(x => x.Debit);
+                var credit = g.Sum(x => x.Credit);
+                var balance = a.NormalBalance == "debit" ? debit - credit : credit - debit;
+                return new LedgerLine(a.Code, a.Name, a.Type, debit, credit, balance);
+            })
+            .OrderBy(l => l.Code)
+            .ToList();
     }
 
     /// <summary>DFC método direto (RF-FIN-160 / decisão D1): entradas − saídas de tesouraria no ano.</summary>
