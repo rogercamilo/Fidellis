@@ -630,3 +630,21 @@ export async function publicTransparency(tenant: string, year: number, quarter?:
   if (!res.ok) throw new Error(`Não foi possível carregar a transparência (${res.status}).`);
   return res.json() as Promise<TransparencySummary>;
 }
+
+// ---- Trabalho voluntário a valor justo (RF-FIN-162) ----
+
+export interface VolunteerWork { id: string; organizationId: string; description: string; fairValue: number; performedOn: string }
+
+export const listVolunteerWork = (t: string) =>
+  authGet<VolunteerWork[]>(t, '/api/finance/volunteer-work/', 'trabalho voluntário');
+export const recordVolunteerWork = (
+  t: string,
+  body: { organizationId: string; description: string; fairValue: number; performedOn: string; projectId?: string; fundId?: string; costCenterId?: string },
+) => authSend<VolunteerWork>(t, 'POST', '/api/finance/volunteer-work/', body, 'registrar voluntariado');
+
+// ---- Prestação de contas MROSC por projeto (RF-FIN-163) ----
+
+export interface MroscReport { projectId: string; projectName: string; expected: number; received: number; spent: number; balance: number }
+
+export const mroscReport = (t: string, projectId: string) =>
+  authGet<MroscReport>(t, `/api/finance/mrosc/${projectId}`, 'prestação MROSC');

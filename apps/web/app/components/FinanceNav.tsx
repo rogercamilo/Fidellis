@@ -11,6 +11,7 @@ const AREAS = [
   { href: '/dashboard/caixa', label: 'Caixa' },
   { href: '/dashboard/conciliacao', label: 'Conciliação' },
   { href: '/dashboard/orcamento', label: 'Orçamento' },
+  { href: '/dashboard/projetos', label: 'Projetos' },
   { href: '/dashboard/fechamento', label: 'Fechamento' },
   { href: '/dashboard/configuracoes', label: 'Configurações' },
 ];
