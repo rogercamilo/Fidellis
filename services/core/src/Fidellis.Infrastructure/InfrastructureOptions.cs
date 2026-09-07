@@ -47,4 +47,20 @@ public sealed class InfrastructureOptions
     /// versionadas por schema; <c>ddl</c> mantém a DDL idempotente legada como fallback.
     /// </summary>
     public string SchemaStrategy { get; init; } = "migrations";
+
+    /// <summary>
+    /// Endpoint S3-compatível para armazenar arquivos (recibos em PDF). R2 em prod
+    /// (<c>https://&lt;acct&gt;.r2.cloudflarestorage.com</c>) ou MinIO local. Vazio → storage desligado
+    /// (o PDF é gerado sob demanda, sem arquivar).
+    /// </summary>
+    public string? StorageEndpoint { get; init; }
+
+    /// <summary>Access key do storage S3/R2.</summary>
+    public string? StorageAccessKey { get; init; }
+
+    /// <summary>Secret key do storage S3/R2.</summary>
+    public string? StorageSecret { get; init; }
+
+    /// <summary>Bucket onde os recibos são arquivados.</summary>
+    public string? StorageBucket { get; init; }
 }

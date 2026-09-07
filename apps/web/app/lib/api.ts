@@ -255,6 +255,23 @@ export async function getReceipt(token: string, id: string): Promise<ReceiptDeta
   return res.json() as Promise<ReceiptDetail>;
 }
 
+/** Baixa o PDF do recibo (gerado no core; arquivado no R2 quando configurado). */
+export async function downloadReceiptPdf(token: string, id: string, number: string): Promise<void> {
+  const res = await fetch(`${BFF_URL}/api/accounting/receipts/${id}/pdf`, {
+    headers: { authorization: `Bearer ${token}` },
+  });
+  if (!res.ok) throw new Error(`Falha ao baixar o PDF (${res.status}).`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `recibo-${number.replace('/', '-')}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export async function trialBalance(token: string): Promise<TrialBalance> {
   const res = await fetch(`${BFF_URL}/api/accounting/trial-balance`, {
     headers: { authorization: `Bearer ${token}` },

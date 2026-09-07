@@ -58,6 +58,13 @@ public static class DependencyInjection
         // Contabilidade: plano de contas + recibos (usados pela conciliação e pelo módulo Accounting).
         services.AddScoped<Accounting.ChartOfAccountsSeeder>();
         services.AddScoped<Accounting.ReceiptService>();
+        services.AddSingleton<Accounting.ReceiptPdfService>();
+
+        // Storage de arquivos (recibos em PDF): S3/R2 quando configurado, senão no-op (gera sob demanda).
+        if (!string.IsNullOrWhiteSpace(options.StorageEndpoint) && !string.IsNullOrWhiteSpace(options.StorageBucket))
+            services.AddSingleton<Storage.IObjectStorage, Storage.S3ObjectStorage>();
+        else
+            services.AddSingleton<Storage.IObjectStorage, Storage.NullObjectStorage>();
 
         // Dimensões gerenciais (centros de custo/fundos/projetos) + seeding dos defaults.
         services.AddScoped<Dimensions.DimensionsSeeder>();
