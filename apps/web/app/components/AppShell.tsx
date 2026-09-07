@@ -13,6 +13,7 @@ const NAV = [
   { href: '/dashboard/recibos', label: 'Recibos' },
   { href: '/dashboard/configuracoes', label: 'Financeiro' },
   { href: '/dashboard/contabilidade', label: 'Contabilidade' },
+  { href: '/dashboard/demonstracoes', label: 'Demonstrações' },
   { href: '/dashboard/relatorios', label: 'Relatórios' },
   { href: '/dashboard/auditoria', label: 'Auditoria' },
 ];

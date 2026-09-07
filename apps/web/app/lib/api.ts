@@ -550,3 +550,83 @@ export const listTeam = (t: string) => authGet<TeamMember[]>(t, '/api/finance/te
 export const teamRoles = (t: string) => authGet<string[]>(t, '/api/finance/team/roles', 'papéis');
 export const setMemberRole = (t: string, userId: string, role: string) =>
   authSend<{ userId: string; role: string }>(t, 'PUT', `/api/finance/team/${userId}/role`, { role }, 'atribuir papel');
+
+// =====================================================================
+// Demonstrações contábeis (Onda 4) — DRE/DRP, Balanço, DFC, DMPL, segregação.
+// Endpoints aceitam organizationId opcional (DT-14): ausente = consolidado da rede.
+// =====================================================================
+
+export interface LedgerLineDto { code: string; name: string; type: string; debit: number; credit: number; balance: number }
+export interface ReportTrialBalance { year: number; organizationId: string | null; totalDebit: number; totalCredit: number; accounts: LedgerLineDto[] }
+export interface ReportIncome { year: number; revenues: number; expenses: number; surplus: number; revenueLines: LedgerLineDto[]; expenseLines: LedgerLineDto[] }
+export interface ReportBalanceSheet {
+  year: number; assets: number; liabilities: number; equityAccounts: number; surplus: number;
+  totalLiabilitiesAndEquity: number; balanced: boolean;
+  assetLines: LedgerLineDto[]; liabilityLines: LedgerLineDto[]; equityLines: LedgerLineDto[];
+}
+export interface ResultBlock { revenues: number; expenses: number; surplus: number }
+export interface ReportSegregated { year: number; free: ResultBlock; restricted: ResultBlock; total: ResultBlock }
+export interface ReportDmpl { year: number; openingEquity: number; surplus: number; closingEquity: number; freeSurplus: number; restrictedSurplus: number }
+export interface ReportCashFlow { year: number; openingCash: number; inflows: number; outflows: number; netCash: number; closingCash: number }
+
+const reportQuery = (year: number, organizationId?: string) =>
+  `year=${year}${organizationId ? `&organizationId=${organizationId}` : ''}`;
+
+export const reportIncome = (t: string, year: number, org?: string) =>
+  authGet<ReportIncome>(t, `/api/finance/reports/income?${reportQuery(year, org)}`, 'DRE');
+export const reportBalanceSheet = (t: string, year: number, org?: string) =>
+  authGet<ReportBalanceSheet>(t, `/api/finance/reports/balance-sheet?${reportQuery(year, org)}`, 'Balanço');
+export const reportSegregated = (t: string, year: number, org?: string) =>
+  authGet<ReportSegregated>(t, `/api/finance/reports/income-segregated?${reportQuery(year, org)}`, 'segregação');
+export const reportDmpl = (t: string, year: number, org?: string) =>
+  authGet<ReportDmpl>(t, `/api/finance/reports/dmpl?${reportQuery(year, org)}`, 'DMPL');
+export const reportCashFlow = (t: string, year: number, org?: string) =>
+  authGet<ReportCashFlow>(t, `/api/finance/reports/cashflow?${reportQuery(year, org)}`, 'DFC');
+
+// ---- Snapshots / assinatura das demonstrações (DT-10) ----
+
+export interface SnapshotSummary {
+  id: string; year: number; quarter: number | null; status: string; hash: string;
+  generatedBy: string | null; approvedBy: string | null; approvedAt: string | null; createdAt: string;
+}
+
+export const listSnapshots = (t: string, year?: number) =>
+  authGet<SnapshotSummary[]>(t, `/api/finance/reports/snapshots/${year ? `?year=${year}` : ''}`, 'snapshots');
+export const generateSnapshot = (t: string, year: number) =>
+  authSend<SnapshotSummary>(t, 'POST', '/api/finance/reports/snapshots/', { year }, 'gerar snapshot');
+export const approveSnapshot = (t: string, id: string) =>
+  authSend<SnapshotSummary>(t, 'POST', `/api/finance/reports/snapshots/${id}/approve`, {}, 'aprovar snapshot');
+
+// ---- Exportação para o contador (CSV) ----
+
+async function downloadCsv(token: string, path: string, filename: string): Promise<void> {
+  const res = await fetch(`${BFF_URL}${path}`, { headers: { authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error(`Falha ao exportar (${res.status}).`);
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+export const exportLedgerCsv = (t: string, year: number) =>
+  downloadCsv(t, `/api/finance/export/ledger?year=${year}`, `razao-${year}.csv`);
+export const exportTrialBalanceCsv = (t: string, year: number) =>
+  downloadCsv(t, `/api/finance/export/trial-balance?year=${year}`, `balancete-${year}.csv`);
+
+// ---- Transparência pública (sem autenticação; tenant no path) ----
+
+export interface TransparencySummary {
+  year: number; quarter: number | null; revenues: number; expenses: number;
+  surplus: number; assets: number; liabilities: number; netEquity: number;
+}
+
+export async function publicTransparency(tenant: string, year: number, quarter?: number): Promise<TransparencySummary> {
+  const res = await fetch(`${BFF_URL}/api/public/${tenant}/transparency?year=${year}${quarter ? `&quarter=${quarter}` : ''}`);
+  if (!res.ok) throw new Error(`Não foi possível carregar a transparência (${res.status}).`);
+  return res.json() as Promise<TransparencySummary>;
+}
