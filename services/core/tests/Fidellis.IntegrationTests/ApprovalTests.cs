@@ -44,6 +44,24 @@ public class ApprovalTests
     }
 
     [Fact]
+    public async Task Admin_is_a_wildcard_approver_but_still_cannot_self_approve()
+    {
+        var (tdb, payables, approvals, payee) = await SetupAsync($"apv_{Guid.NewGuid()}");
+        var creator = Guid.NewGuid();
+        // Faixa 500–5000 exige treasurer+manager; admin (coringa) aprova mesmo assim (DT-01).
+        var p = await payables.CreatePayableAsync(payee, 3000m, new DateOnly(2026, 6, 1), "Reforma", null, null, null, null, null, null, creator);
+
+        var afterFirst = await approvals.ApproveAsync(p.Id, Guid.NewGuid(), "admin");
+        Assert.Equal("awaiting_approval", afterFirst.Status); // 2 assinaturas na faixa
+        var afterSecond = await approvals.ApproveAsync(p.Id, Guid.NewGuid(), "admin");
+        Assert.Equal("approved", afterSecond.Status);
+
+        // Segregação continua: quem lançou não aprova, nem sendo admin.
+        var p2 = await payables.CreatePayableAsync(payee, 100m, new DateOnly(2026, 6, 1), "Material", null, null, null, null, null, null, creator);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => approvals.ApproveAsync(p2.Id, creator, "admin"));
+    }
+
+    [Fact]
     public async Task Self_approval_is_blocked()
     {
         var (tdb, payables, approvals, payee) = await SetupAsync($"apv_{Guid.NewGuid()}");

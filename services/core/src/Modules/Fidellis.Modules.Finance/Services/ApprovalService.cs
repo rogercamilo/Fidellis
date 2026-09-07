@@ -1,5 +1,6 @@
 using Fidellis.Infrastructure.Persistence;
 using Fidellis.Infrastructure.TenantData;
+using Fidellis.Modules.Finance.Security;
 using Fidellis.SharedKernel;
 using Microsoft.EntityFrameworkCore;
 
@@ -41,9 +42,11 @@ public sealed class ApprovalService(TenantDbContext db, IClock clock)
         var tier = await ResolveTierAsync(payable.Amount, ct)
             ?? throw new InvalidOperationException("Nenhuma faixa de alçada cobre este valor.");
 
-        // Guarda-corpo: papel deve pertencer à faixa.
+        // Guarda-corpo: papel deve pertencer à faixa. Admin é aprovador coringa (satisfaz qualquer
+        // faixa) — mas a segregação de funções (autoaprovação bloqueada) continua valendo.
         var roles = tier.RolesCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (!roles.Contains(role, StringComparer.OrdinalIgnoreCase))
+        var isAdmin = string.Equals(role, FinanceRoles.Admin, StringComparison.OrdinalIgnoreCase);
+        if (!isAdmin && !roles.Contains(role, StringComparer.OrdinalIgnoreCase))
             throw new InvalidOperationException($"O papel '{role}' não aprova títulos nesta faixa.");
 
         // Guarda-corpo: um aprovador não assina duas vezes.
