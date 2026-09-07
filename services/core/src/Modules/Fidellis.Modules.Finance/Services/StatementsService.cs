@@ -41,11 +41,12 @@ public sealed class StatementsService(TenantDbContext db)
 {
     public async Task<IReadOnlyList<LedgerLine>> TrialBalanceAsync(int year, CancellationToken ct = default)
     {
-        var start = new DateTimeOffset(year, 1, 1, 0, 0, 0, TimeSpan.Zero);
-        var end = start.AddYears(1);
+        // Competência (DT-07): agrega pela data contábil do lançamento, não por CreatedAt.
+        var start = new DateOnly(year, 1, 1);
+        var end = new DateOnly(year + 1, 1, 1);
 
         var entries = await db.AccountingEntries
-            .Where(e => e.CreatedAt >= start && e.CreatedAt < end && e.LedgerAccountId != null)
+            .Where(e => e.AccountingDate >= start && e.AccountingDate < end && e.LedgerAccountId != null)
             .Select(e => new { e.LedgerAccountId, e.Debit, e.Credit })
             .ToListAsync(ct);
         var accounts = await db.LedgerAccounts.ToDictionaryAsync(a => a.Id, a => a, ct);
@@ -94,11 +95,11 @@ public sealed class StatementsService(TenantDbContext db)
     /// <summary>DMPL: PL inicial + superávit/déficit do período = PL final (RF-FIN-160).</summary>
     public async Task<Dmpl> DmplAsync(int year, CancellationToken ct = default)
     {
-        var start = new DateTimeOffset(year, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var start = new DateOnly(year, 1, 1);
 
-        // PL inicial = saldo das contas de PL a partir dos lançamentos anteriores ao ano.
+        // PL inicial = saldo das contas de PL a partir dos lançamentos anteriores ao ano (por competência).
         var prior = await db.AccountingEntries
-            .Where(e => e.CreatedAt < start && e.LedgerAccountId != null)
+            .Where(e => e.AccountingDate < start && e.LedgerAccountId != null)
             .Select(e => new { e.LedgerAccountId, e.Debit, e.Credit })
             .ToListAsync(ct);
         var accounts = await db.LedgerAccounts.ToDictionaryAsync(a => a.Id, a => a, ct);
@@ -132,21 +133,21 @@ public sealed class StatementsService(TenantDbContext db)
             assets, liabilities, equityAccounts + accumulatedSurplus);
     }
 
-    private static (DateTimeOffset Start, DateTimeOffset End) QuarterBounds(int year, int? quarter)
+    private static (DateOnly Start, DateOnly End) QuarterBounds(int year, int? quarter)
     {
         if (quarter is >= 1 and <= 4)
         {
-            var s = new DateTimeOffset(year, (quarter.Value - 1) * 3 + 1, 1, 0, 0, 0, TimeSpan.Zero);
+            var s = new DateOnly(year, (quarter.Value - 1) * 3 + 1, 1);
             return (s, s.AddMonths(3));
         }
-        var ys = new DateTimeOffset(year, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        var ys = new DateOnly(year, 1, 1);
         return (ys, ys.AddYears(1));
     }
 
-    private async Task<List<LedgerLine>> LinesAsync(DateTimeOffset? from, DateTimeOffset to, CancellationToken ct)
+    private async Task<List<LedgerLine>> LinesAsync(DateOnly? from, DateOnly to, CancellationToken ct)
     {
-        var q = db.AccountingEntries.Where(e => e.CreatedAt < to && e.LedgerAccountId != null);
-        if (from is { } f) q = q.Where(e => e.CreatedAt >= f);
+        var q = db.AccountingEntries.Where(e => e.AccountingDate < to && e.LedgerAccountId != null);
+        if (from is { } f) q = q.Where(e => e.AccountingDate >= f);
         var entries = await q.Select(e => new { e.LedgerAccountId, e.Debit, e.Credit }).ToListAsync(ct);
         var accounts = await db.LedgerAccounts.ToDictionaryAsync(a => a.Id, a => a, ct);
 
@@ -190,11 +191,11 @@ public sealed class StatementsService(TenantDbContext db)
 
     private async Task<Dictionary<(string Type, string Restriction), decimal>> AggregateByTypeRestrictionAsync(int year, CancellationToken ct)
     {
-        var start = new DateTimeOffset(year, 1, 1, 0, 0, 0, TimeSpan.Zero);
-        var end = start.AddYears(1);
+        var start = new DateOnly(year, 1, 1);
+        var end = new DateOnly(year + 1, 1, 1);
 
         var entries = await db.AccountingEntries
-            .Where(e => e.CreatedAt >= start && e.CreatedAt < end && e.LedgerAccountId != null)
+            .Where(e => e.AccountingDate >= start && e.AccountingDate < end && e.LedgerAccountId != null)
             .Select(e => new { e.LedgerAccountId, e.Debit, e.Credit, e.TransactionId })
             .ToListAsync(ct);
         var accounts = await db.LedgerAccounts.ToDictionaryAsync(a => a.Id, a => a, ct);

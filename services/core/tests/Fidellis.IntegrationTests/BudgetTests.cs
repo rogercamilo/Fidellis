@@ -17,11 +17,12 @@ public class BudgetTests
         return new TenantDbContext(new DbContextOptionsBuilder<TenantDbContext>().UseInMemoryDatabase(db).Options, tenant);
     }
 
-    // CreatedAt (competência) é sempre "agora" (ano corrente = 2026); o ano do orçamento usa esse ano.
-    private static readonly int CurrentYear = DateTimeOffset.UtcNow.Year;
+    // Competência dedicada (DT-07): a data contábil determina o ano do realizado — determinístico.
+    private const int CurrentYear = 2026;
+    private static readonly DateOnly Comp = new(CurrentYear, 6, 15);
 
     private static void AddTx(TenantDbContext tdb, string kind, decimal amount, Guid? cc = null, Guid? fund = null)
-        => tdb.Transactions.Add(new Transaction { AccountId = Guid.NewGuid(), Kind = kind, Amount = amount, Description = "x", CostCenterId = cc, FundId = fund });
+        => tdb.Transactions.Add(new Transaction { AccountId = Guid.NewGuid(), Kind = kind, Amount = amount, Description = "x", CostCenterId = cc, FundId = fund, AccountingDate = Comp });
 
     [Fact]
     public async Task Actual_sums_realized_expense_and_flags_overbudget()

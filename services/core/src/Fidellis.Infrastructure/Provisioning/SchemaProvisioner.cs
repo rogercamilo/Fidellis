@@ -110,6 +110,13 @@ public sealed class SchemaProvisioner(
             );
             ALTER TABLE "{schema}".accounting_entries ADD COLUMN IF NOT EXISTS ledger_account_id uuid;
 
+            -- Competência contábil (DT-07): data do fato econômico, base de ano/trimestre.
+            -- Retrocompatível: adiciona a coluna e faz backfill a partir de created_at.
+            ALTER TABLE "{schema}".transactions ADD COLUMN IF NOT EXISTS accounting_date date;
+            UPDATE "{schema}".transactions SET accounting_date = created_at::date WHERE accounting_date IS NULL;
+            ALTER TABLE "{schema}".accounting_entries ADD COLUMN IF NOT EXISTS accounting_date date;
+            UPDATE "{schema}".accounting_entries SET accounting_date = created_at::date WHERE accounting_date IS NULL;
+
             -- Plano de contas (chart of accounts) + recibos (passo 3).
             CREATE TABLE IF NOT EXISTS "{schema}".ledger_accounts (
                 id             uuid PRIMARY KEY,

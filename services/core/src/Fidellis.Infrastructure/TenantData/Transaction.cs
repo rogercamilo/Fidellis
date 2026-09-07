@@ -10,6 +10,10 @@ public sealed class Transaction : Entity
     public string Kind { get; set; } = "credit";
     public string? Description { get; set; }
 
+    /// <summary>Data de competência contábil (DT-07): quando o fato econômico ocorreu, não quando foi
+    /// registrado (<see cref="Entity.CreatedAt"/>). Base de ano/trimestre em orçamento/demonstrações.</summary>
+    public DateOnly AccountingDate { get; set; }
+
     // Dimensões gerenciais (Onda 1). Default aplicado quando não informado (RF-FIN-143).
     public Guid? CostCenterId { get; set; }
     public Guid? ProjectId { get; set; }

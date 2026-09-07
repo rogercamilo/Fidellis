@@ -11,7 +11,9 @@ namespace Fidellis.IntegrationTests;
 /// <summary>Segregação com/sem restrição + DMPL (Onda 4 inc.4.1).</summary>
 public class SegregationDmplTests
 {
-    private static readonly int Year = DateTimeOffset.UtcNow.Year;
+    // Competência fixa (DT-07/DT-13): período histórico determinístico.
+    private const int Year = 2025;
+    private static readonly DateOnly D = new(Year, 6, 15);
 
     private static TenantDbContext TDb(string db)
     {
@@ -37,8 +39,8 @@ public class SegregationDmplTests
             tdb.Transactions.Add(t);
             var pair = kind == "credit" ? ChartOfAccounts.Receivable : ChartOfAccounts.Bank;
             tdb.AccountingEntries.AddRange(
-                new AccountingEntry { TransactionId = t.Id, LedgerAccountId = acc[ledgerCode], Ledger = "x", Debit = kind == "debit" ? amount : 0, Credit = kind == "credit" ? amount : 0 },
-                new AccountingEntry { TransactionId = t.Id, LedgerAccountId = acc[pair], Ledger = "x", Debit = kind == "credit" ? amount : 0, Credit = kind == "debit" ? amount : 0 });
+                new AccountingEntry { TransactionId = t.Id, LedgerAccountId = acc[ledgerCode], Ledger = "x", Debit = kind == "debit" ? amount : 0, Credit = kind == "credit" ? amount : 0, AccountingDate = D },
+                new AccountingEntry { TransactionId = t.Id, LedgerAccountId = acc[pair], Ledger = "x", Debit = kind == "credit" ? amount : 0, Credit = kind == "debit" ? amount : 0, AccountingDate = D });
         }
 
         Post(1000m, "credit", ChartOfAccounts.Revenue, free.Id);

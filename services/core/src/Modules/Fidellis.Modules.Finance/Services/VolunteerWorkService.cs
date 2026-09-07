@@ -57,11 +57,12 @@ public sealed class VolunteerWorkService(TenantDbContext db, ChartOfAccountsSeed
             CostCenterId = costCenterId,
             ProjectId = projectId,
             FundId = fundId,
+            AccountingDate = performedOn, // competência (DT-07): data da prestação do serviço
         };
         db.Transactions.Add(transaction);
         db.AccountingEntries.AddRange(
-            new AccountingEntry { TransactionId = transaction.Id, LedgerAccountId = expense.Id, Ledger = expense.Name, Debit = fairValue, Credit = 0 },
-            new AccountingEntry { TransactionId = transaction.Id, LedgerAccountId = revenue.Id, Ledger = revenue.Name, Debit = 0, Credit = fairValue });
+            new AccountingEntry { TransactionId = transaction.Id, LedgerAccountId = expense.Id, Ledger = expense.Name, Debit = fairValue, Credit = 0, AccountingDate = performedOn },
+            new AccountingEntry { TransactionId = transaction.Id, LedgerAccountId = revenue.Id, Ledger = revenue.Name, Debit = 0, Credit = fairValue, AccountingDate = performedOn });
 
         work.TransactionId = transaction.Id;
         await db.SaveChangesAsync(ct);

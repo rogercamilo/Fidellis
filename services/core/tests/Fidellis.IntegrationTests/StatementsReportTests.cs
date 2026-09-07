@@ -11,7 +11,9 @@ namespace Fidellis.IntegrationTests;
 /// <summary>Demonstrações ITG 2002 (Onda 4 inc.4.0): balancete, DRP e Balanço Patrimonial.</summary>
 public class StatementsReportTests
 {
-    private static readonly int Year = DateTimeOffset.UtcNow.Year;
+    // Competência fixa (DT-07/DT-13): período histórico determinístico, não "ano corrente".
+    private const int Year = 2025;
+    private static readonly DateOnly D = new(Year, 6, 15);
 
     private static TenantDbContext TDb(string db)
     {
@@ -31,10 +33,10 @@ public class StatementsReportTests
         var tExp = new Transaction { AccountId = Guid.NewGuid(), Kind = "debit", Amount = 300m, Description = "Despesa" };
         tdb.Transactions.AddRange(tRev, tExp);
         tdb.AccountingEntries.AddRange(
-            new AccountingEntry { TransactionId = tRev.Id, LedgerAccountId = acc[ChartOfAccounts.Receivable], Ledger = "Recebível", Debit = 1000m, Credit = 0 },
-            new AccountingEntry { TransactionId = tRev.Id, LedgerAccountId = acc[ChartOfAccounts.Revenue], Ledger = "Receita", Debit = 0, Credit = 1000m },
-            new AccountingEntry { TransactionId = tExp.Id, LedgerAccountId = acc[ChartOfAccounts.Expense], Ledger = "Despesa", Debit = 300m, Credit = 0 },
-            new AccountingEntry { TransactionId = tExp.Id, LedgerAccountId = acc[ChartOfAccounts.Bank], Ledger = "Banco", Debit = 0, Credit = 300m });
+            new AccountingEntry { TransactionId = tRev.Id, LedgerAccountId = acc[ChartOfAccounts.Receivable], Ledger = "Recebível", Debit = 1000m, Credit = 0, AccountingDate = D },
+            new AccountingEntry { TransactionId = tRev.Id, LedgerAccountId = acc[ChartOfAccounts.Revenue], Ledger = "Receita", Debit = 0, Credit = 1000m, AccountingDate = D },
+            new AccountingEntry { TransactionId = tExp.Id, LedgerAccountId = acc[ChartOfAccounts.Expense], Ledger = "Despesa", Debit = 300m, Credit = 0, AccountingDate = D },
+            new AccountingEntry { TransactionId = tExp.Id, LedgerAccountId = acc[ChartOfAccounts.Bank], Ledger = "Banco", Debit = 0, Credit = 300m, AccountingDate = D });
         await tdb.SaveChangesAsync();
         return tdb;
     }
