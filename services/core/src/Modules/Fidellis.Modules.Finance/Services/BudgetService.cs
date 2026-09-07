@@ -69,10 +69,11 @@ public sealed class BudgetService(TenantDbContext db)
         var budgets = await db.Budgets.Where(b => b.Active && b.Year == year).ToListAsync(ct);
         if (budgets.Count == 0) return [];
 
-        var start = new DateTimeOffset(year, 1, 1, 0, 0, 0, TimeSpan.Zero);
-        var end = start.AddYears(1);
+        // Competência (DT-07): realizado por data contábil do lançamento, não por CreatedAt.
+        var start = new DateOnly(year, 1, 1);
+        var end = new DateOnly(year + 1, 1, 1);
         var txs = await db.Transactions
-            .Where(t => t.CreatedAt >= start && t.CreatedAt < end)
+            .Where(t => t.AccountingDate >= start && t.AccountingDate < end)
             .Select(t => new { t.Kind, t.Amount, t.CostCenterId, t.ProjectId, t.FundId })
             .ToListAsync(ct);
 

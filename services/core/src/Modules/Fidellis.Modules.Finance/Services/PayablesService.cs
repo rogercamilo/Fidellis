@@ -145,6 +145,8 @@ public sealed class PayablesService(TenantDbContext db, IClock? clock = null, Ch
             account = new Account { OrganizationId = payable.OrganizationId, Name = "Conta principal" };
             db.Accounts.Add(account);
         }
+        // Competência (DT-07): a despesa é reconhecida na data do pagamento.
+        var date = DateOnly.FromDateTime(now.UtcDateTime);
         var transaction = new Transaction
         {
             AccountId = account.Id,
@@ -154,11 +156,12 @@ public sealed class PayablesService(TenantDbContext db, IClock? clock = null, Ch
             CostCenterId = payable.CostCenterId,
             ProjectId = payable.ProjectId,
             FundId = payable.FundId,
+            AccountingDate = date,
         };
         db.Transactions.Add(transaction);
         db.AccountingEntries.AddRange(
-            new AccountingEntry { TransactionId = transaction.Id, LedgerAccountId = expense.Id, Ledger = expense.Name, Debit = payable.Amount, Credit = 0 },
-            new AccountingEntry { TransactionId = transaction.Id, LedgerAccountId = bank.Id, Ledger = bank.Name, Debit = 0, Credit = payable.Amount });
+            new AccountingEntry { TransactionId = transaction.Id, LedgerAccountId = expense.Id, Ledger = expense.Name, Debit = payable.Amount, Credit = 0, AccountingDate = date },
+            new AccountingEntry { TransactionId = transaction.Id, LedgerAccountId = bank.Id, Ledger = bank.Name, Debit = 0, Credit = payable.Amount, AccountingDate = date });
 
         await db.SaveChangesAsync(ct);
         return payable;

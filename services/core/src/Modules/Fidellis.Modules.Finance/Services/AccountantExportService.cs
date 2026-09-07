@@ -14,15 +14,16 @@ public sealed class AccountantExportService(TenantDbContext db, StatementsServic
 {
     public async Task<string> LedgerCsvAsync(int year, CancellationToken ct = default)
     {
-        var start = new DateTimeOffset(year, 1, 1, 0, 0, 0, TimeSpan.Zero);
-        var end = start.AddYears(1);
+        // Competência (DT-07): recorte e ordenação por data contábil do lançamento.
+        var start = new DateOnly(year, 1, 1);
+        var end = new DateOnly(year + 1, 1, 1);
 
         var rows = await (
             from e in db.AccountingEntries
             join t in db.Transactions on e.TransactionId equals t.Id
-            where e.CreatedAt >= start && e.CreatedAt < end
-            orderby e.CreatedAt
-            select new { e.CreatedAt, e.LedgerAccountId, e.Debit, e.Credit, t.Description })
+            where e.AccountingDate >= start && e.AccountingDate < end
+            orderby e.AccountingDate
+            select new { e.AccountingDate, e.LedgerAccountId, e.Debit, e.Credit, t.Description })
             .ToListAsync(ct);
         var accounts = await db.LedgerAccounts.ToDictionaryAsync(a => a.Id, a => a, ct);
 
@@ -31,7 +32,7 @@ public sealed class AccountantExportService(TenantDbContext db, StatementsServic
         foreach (var r in rows)
         {
             var acc = r.LedgerAccountId is { } id && accounts.TryGetValue(id, out var a) ? a : null;
-            sb.Append(r.CreatedAt.UtcDateTime.ToString("yyyy-MM-dd")).Append(';')
+            sb.Append(r.AccountingDate.ToString("yyyy-MM-dd")).Append(';')
               .Append(acc?.Code ?? "").Append(';')
               .Append(Csv(acc?.Name ?? "")).Append(';')
               .Append(Money(r.Debit)).Append(';')

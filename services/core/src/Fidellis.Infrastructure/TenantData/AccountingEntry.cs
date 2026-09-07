@@ -15,4 +15,8 @@ public sealed class AccountingEntry : Entity
 
     public required decimal Debit { get; set; }
     public required decimal Credit { get; set; }
+
+    /// <summary>Data de competência contábil (DT-07): a base de agregação por ano/trimestre das
+    /// demonstrações, independente de <see cref="Entity.CreatedAt"/> (quando o registro foi gravado).</summary>
+    public DateOnly AccountingDate { get; set; }
 }

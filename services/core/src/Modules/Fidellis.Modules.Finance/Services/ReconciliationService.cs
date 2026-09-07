@@ -29,6 +29,8 @@ public sealed class ReconciliationService(
     {
         var account = await EnsureAccountAsync(donation.OrganizationId, ct);
 
+        // Competência (DT-07): data do pagamento da doação.
+        var date = DateOnly.FromDateTime((donation.PaidAt ?? clock.UtcNow).UtcDateTime);
         var transaction = new Transaction
         {
             AccountId = account.Id,
@@ -38,13 +40,14 @@ public sealed class ReconciliationService(
             CostCenterId = donation.CostCenterId,
             ProjectId = donation.ProjectId,
             FundId = donation.FundId,
+            AccountingDate = date,
         };
         db.Transactions.Add(transaction);
 
         var (cash, revenue) = await LedgerPairAsync(ct);
         db.AccountingEntries.AddRange(
-            new AccountingEntry { TransactionId = transaction.Id, LedgerAccountId = cash.Id, Ledger = cash.Name, Debit = donation.Amount, Credit = 0 },
-            new AccountingEntry { TransactionId = transaction.Id, LedgerAccountId = revenue.Id, Ledger = revenue.Name, Debit = 0, Credit = donation.Amount });
+            new AccountingEntry { TransactionId = transaction.Id, LedgerAccountId = cash.Id, Ledger = cash.Name, Debit = donation.Amount, Credit = 0, AccountingDate = date },
+            new AccountingEntry { TransactionId = transaction.Id, LedgerAccountId = revenue.Id, Ledger = revenue.Name, Debit = 0, Credit = donation.Amount, AccountingDate = date });
 
         await AddTreasuryAsync(donation, "inflow", ct);
 
@@ -86,6 +89,8 @@ public sealed class ReconciliationService(
         donation.Status = newStatus;
 
         var account = await EnsureAccountAsync(donation.OrganizationId, ct);
+        // Competência (DT-07): o estorno é fato do momento em que ocorre.
+        var date = DateOnly.FromDateTime(clock.UtcNow.UtcDateTime);
         var transaction = new Transaction
         {
             AccountId = account.Id,
@@ -95,14 +100,15 @@ public sealed class ReconciliationService(
             CostCenterId = donation.CostCenterId,
             ProjectId = donation.ProjectId,
             FundId = donation.FundId,
+            AccountingDate = date,
         };
         db.Transactions.Add(transaction);
 
         var (cash, revenue) = await LedgerPairAsync(ct);
         // Inverso da conciliação: debita Receita, credita Banco.
         db.AccountingEntries.AddRange(
-            new AccountingEntry { TransactionId = transaction.Id, LedgerAccountId = revenue.Id, Ledger = revenue.Name, Debit = donation.Amount, Credit = 0 },
-            new AccountingEntry { TransactionId = transaction.Id, LedgerAccountId = cash.Id, Ledger = cash.Name, Debit = 0, Credit = donation.Amount });
+            new AccountingEntry { TransactionId = transaction.Id, LedgerAccountId = revenue.Id, Ledger = revenue.Name, Debit = donation.Amount, Credit = 0, AccountingDate = date },
+            new AccountingEntry { TransactionId = transaction.Id, LedgerAccountId = cash.Id, Ledger = cash.Name, Debit = 0, Credit = donation.Amount, AccountingDate = date });
 
         await AddTreasuryAsync(donation, "outflow", ct);
 

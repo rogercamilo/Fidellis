@@ -46,9 +46,13 @@ aberto/parciais com doador identificado e enfileira lembretes na **outbox** — 
 `ContactOptOut`/e-mail. Plugado no `BillingWorker` (antes do dispatch). Templates
 `receivable_due_soon`/`receivable_overdue`.
 
-### DT-07 — Competência = `transaction.CreatedAt`
-Sem data contábil dedicada; lançamentos datados em "agora". Ano/trimestre (orçamento, demonstrações,
-transparência) dependem disso — sem lançamento retroativo nem reclassificação de competência.
+### DT-07 — Competência dedicada (data contábil) · ✅ resolvido
+Antes o ano/trimestre saía de `CreatedAt` ("agora"), sem lançamento retroativo. **Correção:** campo
+**`AccountingDate`** (competência) em `Transaction` e `AccountingEntry`, preenchido na origem —
+doação=`PaidAt`, despesa=data do pagamento, voluntariado=`PerformedOn`, estorno=data do fato.
+**Demonstrações** (balancete, DRP, Balanço, DMPL, transparência), **orçamento** (realizado) e
+**export do contador** passam a agregar por `AccountingDate`. DDL retrocompatível (backfill de
+`created_at`). Habilita competência histórica/retroativa.
 
 ### DT-08 — Conciliação: casamento só 1:1 exato; CNAB baseline
 Sugere apenas match exato de valor+data (±3 dias), 1 linha ↔ 1 título; sem baixa parcial, N:1 ou
@@ -68,9 +72,10 @@ O rate limiter é middleware, só verificável manualmente; sem teste de integra
 ### DT-12 — Assinatura HMAC do webhook com header presumido
 Assumido `X-Hub-Signature-256`/`X-Hub-Signature`; o mecanismo real do Pagar.me precisa ser confirmado.
 
-### DT-13 — Testes date-sensitive
-Vários usam "ano/trimestre corrente" porque `Transaction.CreatedAt` tem setter protegido; não dá para
-testar períodos históricos.
+### DT-13 — Testes date-sensitive · ✅ resolvido
+Resolvido junto com o DT-07: com `AccountingDate` (setter público), os testes de demonstrações,
+transparência, orçamento e DMPL passam a fixar **períodos históricos determinísticos** (ex.: 2025),
+sem depender de "ano/trimestre corrente".
 
 ### DT-14 — Demonstrações não escopadas por unidade
 Agregam o tenant inteiro; sem BP/DRP por unidade da rede.

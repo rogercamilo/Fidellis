@@ -11,7 +11,9 @@ namespace Fidellis.IntegrationTests;
 /// <summary>MROSC + exportação para o contador (Onda 4 inc.4.3).</summary>
 public class MroscExportTests
 {
-    private static readonly int Year = DateTimeOffset.UtcNow.Year;
+    // Competência fixa (DT-07/DT-13): período histórico determinístico.
+    private const int Year = 2025;
+    private static readonly DateOnly D = new(Year, 6, 15);
 
     private static TenantDbContext TDb(string db)
     {
@@ -52,8 +54,8 @@ public class MroscExportTests
         var t = new Transaction { AccountId = Guid.NewGuid(), Kind = "credit", Amount = 100m, Description = "Doação" };
         tdb.Transactions.Add(t);
         tdb.AccountingEntries.AddRange(
-            new AccountingEntry { TransactionId = t.Id, LedgerAccountId = acc[ChartOfAccounts.Receivable], Ledger = "Recebível", Debit = 100m, Credit = 0 },
-            new AccountingEntry { TransactionId = t.Id, LedgerAccountId = acc[ChartOfAccounts.Revenue], Ledger = "Receita", Debit = 0, Credit = 100m });
+            new AccountingEntry { TransactionId = t.Id, LedgerAccountId = acc[ChartOfAccounts.Receivable], Ledger = "Recebível", Debit = 100m, Credit = 0, AccountingDate = D },
+            new AccountingEntry { TransactionId = t.Id, LedgerAccountId = acc[ChartOfAccounts.Revenue], Ledger = "Receita", Debit = 0, Credit = 100m, AccountingDate = D });
         await tdb.SaveChangesAsync();
 
         var csv = await new AccountantExportService(tdb, new StatementsService(tdb)).LedgerCsvAsync(Year);
