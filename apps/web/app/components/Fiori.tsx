@@ -1,7 +1,42 @@
 'use client';
 
 import Link from 'next/link';
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+
+/** Tradução dos status técnicos para português claro (requisito: usuários não-técnicos). */
+const STATUS_PT: Record<string, { label: string; kind: 'ok' | 'warn' | 'err' | 'muted' }> = {
+  paid: { label: 'Pago', kind: 'ok' },
+  pending: { label: 'Pendente', kind: 'warn' },
+  failed: { label: 'Falhou', kind: 'err' },
+  canceled: { label: 'Cancelado', kind: 'muted' },
+  expired: { label: 'Expirado', kind: 'muted' },
+  refunded: { label: 'Estornado', kind: 'muted' },
+  active: { label: 'Ativa', kind: 'ok' },
+  past_due: { label: 'Em atraso', kind: 'err' },
+  sent: { label: 'Enviado', kind: 'ok' },
+  queued: { label: 'Na fila', kind: 'warn' },
+  skipped: { label: 'Ignorado', kind: 'muted' },
+  awaiting_approval: { label: 'Aguardando aprovação', kind: 'warn' },
+  approved: { label: 'Aprovado', kind: 'ok' },
+  rejected: { label: 'Rejeitado', kind: 'err' },
+  open: { label: 'Em aberto', kind: 'warn' },
+  partial: { label: 'Parcial', kind: 'warn' },
+  received: { label: 'Recebido', kind: 'ok' },
+  matched: { label: 'Conciliado', kind: 'ok' },
+  unmatched: { label: 'Não conciliado', kind: 'warn' },
+  ignored: { label: 'Ignorado', kind: 'muted' },
+  draft: { label: 'Rascunho', kind: 'warn' },
+  closed: { label: 'Fechado', kind: 'muted' },
+  recorrente: { label: 'Recorrente', kind: 'ok' },
+  ativo: { label: 'Ativo', kind: 'ok' },
+  inativo: { label: 'Inativo', kind: 'err' },
+};
+
+/** Badge de status com rótulo em português. */
+export function StatusBadge({ status }: { status: string }) {
+  const s = STATUS_PT[status] ?? { label: status, kind: 'muted' as const };
+  return <span className={`badge ${s.kind}`}>{s.label}</span>;
+}
 
 /** Cabeçalho de página dinâmica (List Report): título + subtítulo em linguagem clara + ações globais. */
 export function PageHeader({
@@ -104,6 +139,55 @@ export function AnchorBar({ items }: { items: { id: string; label: string }[] })
       {items.map((it, i) => (
         <a key={it.id} href={`#${it.id}`} className={`anchor${i === 0 ? ' active' : ''}`}>{it.label}</a>
       ))}
+    </div>
+  );
+}
+
+/** Tour de boas-vindas no primeiro acesso (padrão SAP "Start the tour"). */
+export function GuidedTour({
+  steps,
+}: { steps: { title: string; body: string }[] }) {
+  const [i, setI] = useState(-1); // -1 = convite; 0..n = passos
+
+  useEffect(() => {
+    if (!localStorage.getItem('fidellis.tour.v1')) setI(-1);
+    else setI(-2); // -2 = já visto, não mostra
+  }, []);
+
+  function done() { localStorage.setItem('fidellis.tour.v1', '1'); setI(-2); }
+  if (i === -2) return null;
+
+  const invite = i === -1;
+  const step = invite ? null : steps[i];
+  const last = i === steps.length - 1;
+
+  return (
+    <div className="tour-overlay">
+      <div className="tour-card rise" role="dialog" aria-modal="true">
+        <button className="tour-x" aria-label="Fechar" onClick={done}>×</button>
+        {invite ? (
+          <>
+            <h3>Bem-vindo ao Fidellis</h3>
+            <p className="muted">Quer um tour rápido para conhecer como gerir sua organização por aqui? Leva menos de 1 minuto.</p>
+            <div className="tour-actions">
+              <button className="btn btn-primary btn-sm" onClick={() => setI(0)}>Fazer o tour</button>
+              <button className="btn btn-ghost btn-sm" onClick={done}>Agora não</button>
+            </div>
+          </>
+        ) : step ? (
+          <>
+            <div className="tour-step">Passo {i + 1} de {steps.length}</div>
+            <h3>{step.title}</h3>
+            <p className="muted">{step.body}</p>
+            <div className="tour-actions">
+              <button className="btn btn-primary btn-sm" onClick={() => (last ? done() : setI(i + 1))}>
+                {last ? 'Concluir' : 'Próximo'}
+              </button>
+              <button className="btn btn-ghost btn-sm" onClick={done}>Pular</button>
+            </div>
+          </>
+        ) : null}
+      </div>
     </div>
   );
 }

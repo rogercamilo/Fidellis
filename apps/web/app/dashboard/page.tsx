@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { GuidedTour } from '../components/Fiori';
 import {
   listMyOrganizations, listReceipts, reportingOverview,
   type LoginResult, type Organization, type ReceiptSummary, type ReportingOverview,
@@ -103,6 +104,14 @@ export default function DashboardPage() {
           </div>
         </section>
       ))}
+
+      <GuidedTour
+        steps={[
+          { title: 'Navegue por módulos', body: 'Use o menu à esquerda para acessar Financeiro, Contabilidade, Gestão e as Configurações da sua organização.' },
+          { title: 'Comece pelos indicadores', body: 'Os blocos no topo mostram os números-chave. Clique em um aplicativo para abrir a tela correspondente.' },
+          { title: 'Tudo em linguagem simples', body: 'Cada tela explica o que faz logo abaixo do título. Você não precisa ser contador para operar o Fidellis.' },
+        ]}
+      />
     </>
   );
 }

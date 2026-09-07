@@ -1,20 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AnchorBar, Fact, ObjectHeader, ObjectSection } from '../../../components/Fiori';
+import { AnchorBar, Fact, ObjectHeader, ObjectSection, StatusBadge } from '../../../components/Fiori';
 import {
   anonymizeDonor, exportDonor, getDonor, optOutDonor,
   type DonorDetail, type LoginResult,
 } from '../../../lib/api';
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-function badgeFor(status: string): string {
-  if (status === 'paid' || status === 'active' || status === 'sent') return 'ok';
-  if (status === 'failed' || status === 'past_due') return 'err';
-  if (status === 'canceled' || status === 'skipped' || status === 'expired') return 'muted';
-  return 'warn';
-}
 
 export default function DonorDetailPage({ params }: { params: { id: string } }) {
   const { id } = params;
@@ -118,7 +111,7 @@ export default function DonorDetailPage({ params }: { params: { id: string } }) 
                 {data.recurring.map((r) => (
                   <tr key={r.id}>
                     <td>{brl(r.amount)} <span className="muted">/ dia {r.dayOfMonth}</span></td>
-                    <td><span className={`badge ${badgeFor(r.status)}`}>{r.status}</span></td>
+                    <td><StatusBadge status={r.status} /></td>
                     <td className="num muted">{new Date(r.nextChargeAt).toLocaleDateString('pt-BR')}</td>
                   </tr>
                 ))}
@@ -140,7 +133,7 @@ export default function DonorDetailPage({ params }: { params: { id: string } }) 
                   <tr key={d.id}>
                     <td className="muted">{new Date(d.createdAt).toLocaleDateString('pt-BR')}</td>
                     <td>{d.method}</td>
-                    <td><span className={`badge ${badgeFor(d.status)}`}>{d.status}</span></td>
+                    <td><StatusBadge status={d.status} /></td>
                     <td className="num">{brl(d.amount)}</td>
                   </tr>
                 ))}
@@ -164,7 +157,7 @@ export default function DonorDetailPage({ params }: { params: { id: string } }) 
                     <td>{m.channel}</td>
                     <td>{m.eventType}</td>
                     <td className="muted">{m.subject ?? '—'}</td>
-                    <td><span className={`badge ${badgeFor(m.status)}`}>{m.status}</span></td>
+                    <td><StatusBadge status={m.status} /></td>
                   </tr>
                 ))}
               </tbody>

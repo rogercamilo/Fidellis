@@ -149,6 +149,11 @@ code, .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums;
   font-weight: 700;
   font-size: 0.95rem;
 }
+.shell-sep { color: var(--color-text-faint); font-size: 1rem; }
+.shell-title { font-weight: 600; font-size: 0.95rem; color: var(--color-text); white-space: nowrap; }
+.shell-title span { color: var(--color-text-faint); font-weight: 400; }
+@media (max-width: 700px) { .shell-sep, .shell-title, .shellbar-search { display: none; } }
+
 .shellbar-search {
   flex: 1;
   max-width: 460px;
@@ -438,6 +443,16 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--c
 .obj-section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; margin-bottom: 0.5rem; }
 .obj-section h2 { font-size: 1.05rem; margin: 0; }
 .obj-section-sub { color: var(--color-text-muted); font-size: 0.85rem; margin: 0.1rem 0 0; }
+
+/* ---------- Guided tour (padrão SAP "Start the tour") ---------- */
+.tour-overlay { position: fixed; inset: 0; background: rgba(29, 45, 62, 0.28); display: grid; place-items: center; z-index: 100; padding: 1rem; }
+.tour-card { position: relative; width: 100%; max-width: 400px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--r-lg); box-shadow: var(--shadow-lg); padding: 1.5rem; }
+.tour-card h3 { margin: 0 0 0.4rem; font-size: 1.15rem; }
+.tour-card p { margin: 0 0 1.1rem; font-size: 0.9rem; line-height: 1.55; }
+.tour-x { position: absolute; top: 0.6rem; right: 0.7rem; background: none; border: none; font-size: 1.3rem; line-height: 1; color: var(--color-text-faint); cursor: pointer; }
+.tour-x:hover { color: var(--color-text); }
+.tour-step { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--color-primary); margin-bottom: 0.3rem; }
+.tour-actions { display: flex; gap: 0.5rem; }
 
 /* ---------- Print ---------- */
 @media print { .no-print { display: none !important; } body { background: #fff; } }

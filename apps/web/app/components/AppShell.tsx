@@ -62,6 +62,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isActive = (href: string) =>
     href === '/dashboard' ? pathname === href : pathname.startsWith(href);
 
+  // Título do app atual no shell bar (detalhe SAP Fiori): melhor correspondência da rota.
+  const allItems = NAV.flatMap((g) => g.items);
+  const current =
+    allItems
+      .filter((it) => (it.href === '/dashboard' ? pathname === it.href : pathname.startsWith(it.href)))
+      .sort((a, b) => b.href.length - a.href.length)[0]?.label ?? 'Início';
+
   return (
     <div className="app">
       <header className="shellbar">
@@ -69,6 +76,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Link href="/dashboard" className="shellbar-brand" style={{ textDecoration: 'none' }}>
           <span className="mark">F</span> Fidellis
         </Link>
+        <span className="shell-sep" aria-hidden>›</span>
+        <span className="shell-title">{current} <span aria-hidden>⌄</span></span>
         <div className="shellbar-search" aria-hidden>
           <span>⌕</span> Buscar aplicativos, contas, doadores…
         </div>
