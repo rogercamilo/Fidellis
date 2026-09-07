@@ -53,6 +53,7 @@ public static class FinanceModule
         services.AddScoped<VolunteerWorkService>();
         services.AddScoped<MroscReportService>();
         services.AddScoped<AccountantExportService>();
+        services.AddScoped<Security.TeamService>();
         services.AddScoped<Notifications.INotifier, Notifications.OutboxNotifier>();
         return services;
     }
@@ -302,6 +303,9 @@ public static class FinanceModule
 
         // Demonstrações contábeis ITG 2002 (balancete, DRP, Balanço Patrimonial).
         app.MapReports();
+
+        // Equipe/papéis financeiros (RBAC — DT-04).
+        app.MapFinanceTeam();
 
         return app;
     }

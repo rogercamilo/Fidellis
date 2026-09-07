@@ -541,3 +541,12 @@ export const createBudget = (t: string, body: { year: number; kind: string; amou
   authSend<Budget>(t, 'POST', '/api/finance/budgets', body, 'criar orçamento');
 export const reviseBudget = (t: string, id: string, body: { amount: number }) =>
   authSend<Budget>(t, 'POST', `/api/finance/budgets/${id}/revise`, body, 'revisar orçamento');
+
+// ---- Equipe / papéis financeiros (DT-04) ----
+
+export interface TeamMember { userId: string; email: string; displayName: string | null; role: string }
+
+export const listTeam = (t: string) => authGet<TeamMember[]>(t, '/api/finance/team', 'equipe');
+export const teamRoles = (t: string) => authGet<string[]>(t, '/api/finance/team/roles', 'papéis');
+export const setMemberRole = (t: string, userId: string, role: string) =>
+  authSend<{ userId: string; role: string }>(t, 'PUT', `/api/finance/team/${userId}/role`, { role }, 'atribuir papel');
