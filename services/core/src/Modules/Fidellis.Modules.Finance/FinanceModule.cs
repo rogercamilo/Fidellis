@@ -51,6 +51,8 @@ public static class FinanceModule
         services.AddScoped<BudgetService>();
         services.AddScoped<StatementsService>();
         services.AddScoped<VolunteerWorkService>();
+        services.AddScoped<MroscReportService>();
+        services.AddScoped<AccountantExportService>();
         services.AddScoped<Notifications.INotifier, Notifications.OutboxNotifier>();
         return services;
     }

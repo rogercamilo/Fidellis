@@ -64,6 +64,20 @@ public static class ReportsEndpoints
             catch (ArgumentException ex) { return Results.BadRequest(new { error = ex.Message }); }
         });
 
+        // ---- Prestação de contas MROSC (RF-FIN-163) ----
+        app.MapGet("/api/finance/mrosc/{projectId:guid}", async (Guid projectId, MroscReportService svc, CancellationToken ct) =>
+            await svc.ReportAsync(projectId, ct) is { } r ? Results.Ok(r) : Results.NotFound())
+            .WithTags("Finance/Reports");
+
+        // ---- Exportação para o contador (RF-FIN-165, CSV) ----
+        app.MapGet("/api/finance/export/ledger", async (int year, AccountantExportService export, CancellationToken ct) =>
+            Results.Text(await export.LedgerCsvAsync(year, ct), "text/csv; charset=utf-8"))
+            .WithTags("Finance/Reports");
+
+        app.MapGet("/api/finance/export/trial-balance", async (int year, AccountantExportService export, CancellationToken ct) =>
+            Results.Text(await export.TrialBalanceCsvAsync(year, ct), "text/csv; charset=utf-8"))
+            .WithTags("Finance/Reports");
+
         return app;
     }
 }
