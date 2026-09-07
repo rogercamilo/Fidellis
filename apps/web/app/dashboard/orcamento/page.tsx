@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ListCard, PageHeader } from '../../components/Fiori';
 import { Panel } from '../../components/Panel';
 import {
   budgetActual, createBudget, listCostCenters, listFunds, reviseBudget,
@@ -69,12 +70,10 @@ export default function OrcamentoPage() {
 
   return (
     <>
-      <div className="page-head rise">
-        <div>
-          <h1>Orçamento</h1>
-          <p className="subtitle">Previsto × realizado por dimensão (competência). Revisões preservam o histórico.</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Orçamento"
+        subtitle="Compare o que foi planejado com o que foi realizado, por centro de custo e fundo. Revisões preservam o histórico."
+      />
 
       {error && <p className="error-text">{error}</p>}
 
@@ -118,9 +117,9 @@ export default function OrcamentoPage() {
           </form>
         </Panel>
 
-        <Panel title={`Previsto × realizado — ${year}`} flush>
+        <ListCard label={`Previsto × realizado — ${year}`} count={rows.length}>
           {rows.length === 0 ? (
-            <p className="muted" style={{ padding: '1rem' }}>Nenhum orçamento para o ano.</p>
+            <p className="muted" style={{ padding: '1.25rem' }}>Nenhum orçamento para o ano. Adicione o primeiro ao lado.</p>
           ) : (
             <table className="table">
               <thead><tr><th>Dimensão</th><th>Tipo</th><th className="num">Previsto</th><th className="num">Realizado</th><th></th></tr></thead>
@@ -140,7 +139,7 @@ export default function OrcamentoPage() {
               </tbody>
             </table>
           )}
-        </Panel>
+        </ListCard>
       </div>
     </>
   );
