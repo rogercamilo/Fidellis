@@ -263,6 +263,17 @@ export async function trialBalance(token: string): Promise<TrialBalance> {
   return res.json() as Promise<TrialBalance>;
 }
 
+// ---- Plano de contas + razão (extrato por conta) ----
+
+export interface LedgerAccount { id: string; code: string; name: string; type: string; normalBalance: string; postable: boolean; parentId: string | null }
+export interface LedgerEntry { date: string; debit: number; credit: number; description: string | null; balance: number }
+export interface LedgerView { accountId: string; balance: number; lines: LedgerEntry[] }
+
+export const listLedgerAccounts = (token: string) =>
+  authGet<LedgerAccount[]>(token, '/api/accounting/accounts', 'plano de contas');
+export const accountLedger = (token: string, accountId: string) =>
+  authGet<LedgerView>(token, `/api/accounting/ledger?accountId=${accountId}`, 'razão');
+
 // ---- CRM (doadores) ----
 
 export interface DonorSummary {
