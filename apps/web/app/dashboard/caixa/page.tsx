@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FinanceNav } from '../../components/FinanceNav';
 import { Panel } from '../../components/Panel';
 import {
   closeCashSession, depositCashSession, listCashSessions, listTreasuryAccounts, openCashSession,
@@ -75,8 +74,6 @@ export default function CaixaPage() {
           <p className="subtitle">Coleta/oferta em espécie: abrir sessão, fechar com dupla conferência e depositar no banco.</p>
         </div>
       </div>
-
-      <FinanceNav />
 
       {error && <p className="error-text">{error}</p>}
 

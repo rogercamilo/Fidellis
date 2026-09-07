@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { FinanceNav } from '../../components/FinanceNav';
 import { Panel } from '../../components/Panel';
 import {
   createCategory, createCostCenter, createDonorType, createFund,
@@ -102,8 +101,6 @@ export default function ConfiguracoesPage() {
           <p className="subtitle">Nomenclatura, dimensões gerenciais, tipos de doador e rubricas do plano de contas.</p>
         </div>
       </div>
-
-      <FinanceNav />
 
       {error && <p className="error-text">{error}</p>}
 

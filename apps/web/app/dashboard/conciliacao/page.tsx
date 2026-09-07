@@ -1,7 +1,6 @@
 'use client';
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
-import { FinanceNav } from '../../components/FinanceNav';
 import { Panel } from '../../components/Panel';
 import {
   ignoreLine, importStatement, lineSuggestions, listStatements, listTreasuryAccounts, matchLine, statementLines,
@@ -98,8 +97,6 @@ export default function ConciliacaoPage() {
           <p className="subtitle">Importe o extrato (OFX/CNAB) e case as linhas com recebíveis e contas a pagar.</p>
         </div>
       </div>
-
-      <FinanceNav />
 
       {error && <p className="error-text">{error}</p>}
 

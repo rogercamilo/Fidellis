@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { FinanceNav } from '../../components/FinanceNav';
 import { Panel } from '../../components/Panel';
 import {
   closePeriod, listPeriods, reopenPeriod,
@@ -60,8 +59,6 @@ export default function FechamentoPage() {
           <p className="subtitle">Fecha o mês bloqueando lançamentos retroativos. Reabertura somente por admin (com auditoria).</p>
         </div>
       </div>
-
-      <FinanceNav />
 
       {error && <p className="error-text">{error}</p>}
 

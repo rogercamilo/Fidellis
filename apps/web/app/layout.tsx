@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import { Fraunces, IBM_Plex_Mono, IBM_Plex_Sans } from 'next/font/google';
+import { Fraunces, IBM_Plex_Mono, Inter } from 'next/font/google';
 import './globals.css';
 
+// Fraunces: display editorial (títulos, valores). Inter: UI. IBM Plex Mono: dados/números.
 const display = Fraunces({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
@@ -10,10 +11,10 @@ const display = Fraunces({
   display: 'swap',
 });
 
-const sans = IBM_Plex_Sans({
+const sans = Inter({
   subsets: ['latin'],
-  weight: ['300', '400', '500', '600', '700'],
-  variable: '--font-plex',
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-inter',
   display: 'swap',
 });
 
@@ -25,9 +26,9 @@ const mono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Fidellis — Doações para o terceiro setor religioso',
+  title: 'Fidellis — Gestão para instituições do terceiro setor',
   description:
-    'Plataforma de captação de dízimos, ofertas e campanhas com assinatura de 0% de taxa sobre as doações.',
+    'ERP de gestão administrativa para organizações do terceiro setor: finanças, prestação de contas e governança em uma plataforma.',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

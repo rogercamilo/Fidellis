@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FinanceNav } from '../../components/FinanceNav';
 import { Panel } from '../../components/Panel';
 import {
   approvePayable, createPayable, createPayee, listApprovalTiers, listPayables, listPayees,
@@ -99,8 +98,6 @@ export default function PagarPage() {
           <p className="subtitle">Credores, títulos e alçadas de aprovação (segregação de funções + dupla assinatura).</p>
         </div>
       </div>
-
-      <FinanceNav />
 
       {error && <p className="error-text">{error}</p>}
       {!canWrite && <p className="muted" style={{ marginBottom: '0.5rem' }}>Perfil somente-leitura: ações de escrita ocultadas.</p>}

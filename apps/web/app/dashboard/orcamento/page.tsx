@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FinanceNav } from '../../components/FinanceNav';
 import { Panel } from '../../components/Panel';
 import {
   budgetActual, createBudget, listCostCenters, listFunds, reviseBudget,
@@ -76,8 +75,6 @@ export default function OrcamentoPage() {
           <p className="subtitle">Previsto × realizado por dimensão (competência). Revisões preservam o histórico.</p>
         </div>
       </div>
-
-      <FinanceNav />
 
       {error && <p className="error-text">{error}</p>}
 
