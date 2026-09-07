@@ -5,7 +5,8 @@ public sealed record MessageContext(
     string DonorName,
     string? OrgName = null,
     decimal? Amount = null,
-    string? ReceiptNumber = null);
+    string? ReceiptNumber = null,
+    DateOnly? DueDate = null);
 
 public sealed record RenderedMessage(string Subject, string Body);
 
@@ -16,6 +17,8 @@ public static class MessageTemplates
     public const string PaymentFailed = "payment_failed";
     public const string PastDue = "past_due";
     public const string Reactivation = "reactivation";
+    public const string ReceivableDueSoon = "receivable_due_soon";
+    public const string ReceivableOverdue = "receivable_overdue";
 
     private static string Brl(decimal v) => v.ToString("C", new System.Globalization.CultureInfo("pt-BR"));
 
@@ -46,6 +49,19 @@ public static class MessageTemplates
                 "Que tal voltar a apoiar nossa missão?",
                 $"Olá, {name}!\n\nFaz um tempo desde sua última doação para {org}. Sua ajuda faz diferença — " +
                 "que tal retomar sua contribuição? Ficaremos felizes em tê-lo(a) de volta.\n\nUm abraço,\nEquipe Fidellis"),
+
+            ReceivableDueSoon => new RenderedMessage(
+                "Lembrete: sua contribuição está próxima do vencimento",
+                $"Olá, {name}!\n\nPassando para lembrar da sua contribuição de {Brl(ctx.Amount ?? 0)} para {org}" +
+                (ctx.DueDate is { } d1 ? $", com vencimento em {d1:dd/MM/yyyy}" : string.Empty) +
+                ". Contamos com você — muito obrigado pelo apoio!\n\nCom gratidão,\nEquipe Fidellis"),
+
+            ReceivableOverdue => new RenderedMessage(
+                "Lembrete: contribuição em aberto",
+                $"Olá, {name}.\n\nConsta em aberto sua contribuição de {Brl(ctx.Amount ?? 0)} para {org}" +
+                (ctx.DueDate is { } d2 ? $", com vencimento em {d2:dd/MM/yyyy}" : string.Empty) +
+                ". Se você já efetuou o pagamento, por favor desconsidere esta mensagem.\n\n" +
+                "Qualquer dúvida, estamos à disposição.\n\nEquipe Fidellis"),
 
             _ => new RenderedMessage("Fidellis", $"Olá, {name}."),
         };
