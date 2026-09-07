@@ -2,7 +2,7 @@
 
 > Inventário dos débitos técnicos acumulados nas Ondas 1–4 do módulo Finance. Mantido atualizado à
 > medida que forem resolvidos. Severidade: 🔴 alto (afeta correção/uso real) · 🟠 médio · 🟡 baixo.
-> Última revisão: 2026-09-07.
+> Última revisão: 2026-09-07 (DT-05).
 
 ## 🔴 Alto impacto
 
@@ -35,9 +35,15 @@ auditoria) que definem o papel na `catalog.memberships` (alimenta o claim `role`
 front, painel **"Equipe e papéis"** em Configurações (admin). Agora o RBAC e as alçadas são exercidos
 de verdade (junto com o DT-01).
 
-### DT-05 — Migrações EF versionadas (ADR-0002)
-Ainda usamos DDL idempotente no `SchemaProvisioner`, reaplicada a todos os tenants no startup. Frágil
-conforme a base cresce (sem histórico/rollback de schema).
+### DT-05 — Migrações EF versionadas (ADR-0002) · ✅ resolvido
+Antes: DDL idempotente no `SchemaProvisioner`, reaplicada a todos os tenants no startup, sem
+histórico/rollback. **Correção:** modelo do `TenantDbContext` agora **schemaless** + um
+`TenantSearchPathInterceptor` que fixa o `search_path` no `t_<slug>` do request; uma **única base de
+migrações** serve a todos os tenants, com histórico (`__ef_migrations_history`) por schema. O
+`EfSchemaProvisioner` migra o `catalog` e cada tenant e **adota** schemas legados (carimba a baseline
+como aplicada antes de migrar o resto). Validado em Postgres (Docker): adoção dos tenants existentes,
+criação de tenant novo do zero e rollback (Down). A DDL legada segue como fallback via
+`SCHEMA_STRATEGY=ddl`. **Resta (evolução):** remover o fallback DDL após validação em produção.
 
 ### DT-06 — Régua de cobrança de AR (RF-FIN-102) · ✅ resolvido
 Só o **aging** havia sido entregue. **Correção:** `ReceivablesReminderService` varre títulos em
