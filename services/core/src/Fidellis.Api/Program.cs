@@ -37,6 +37,7 @@ builder.Services.AddInfrastructure(new InfrastructureOptions
     ReactivationDays = int.TryParse(config["REACTIVATION_DAYS"], out var rd) ? rd : 90,
     AppSecret = jwtSecret,
     AppBaseUrl = config["APP_BASE_URL"] ?? "http://localhost:3000",
+    SchemaStrategy = config["SCHEMA_STRATEGY"] ?? "migrations",
 });
 
 builder.Services

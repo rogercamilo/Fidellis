@@ -19,10 +19,10 @@ mais de uma instituição). As opções usuais são: (a) banco por tenant, (b) *
 - **`t_<slug>` (por tenant):** `organizations` (hierarquia Rede→Unidade), `accounts`, `transactions`,
   `accounting_entries`, `donations`.
 
-Resolução em runtime: o core lê o claim `tenant` do JWT (`ITenantContext`), e o `TenantDbContext`
-usa `HasDefaultSchema(t_<slug>)` com o **modelo compilado cacheado por schema**
-(`IModelCacheKeyFactory`). O provisionamento cria o schema e as tabelas via DDL idempotente
-(`SchemaProvisioner`).
+Resolução em runtime: o core lê o claim `tenant` do JWT (`ITenantContext`); o `TenantDbContext` tem
+modelo **schemaless** e um `TenantSearchPathInterceptor` fixa o `search_path` da conexão no
+`t_<slug>` do request. O provisionamento/evolução de schema usa **migrações EF versionadas** aplicadas
+por schema, com histórico (`__ef_migrations_history`) dentro de cada schema (`EfSchemaProvisioner`).
 
 ## Alternativas consideradas
 
@@ -38,5 +38,7 @@ usa `HasDefaultSchema(t_<slug>)` com o **modelo compilado cacheado por schema**
   global sem duplicar usuários; caminho natural para "consolidação da rede".
 - **Negativas / trade-offs:** migrações precisam rodar em N schemas; limite prático de milhares de
   schemas por banco (mitigável com sharding por cluster no futuro); cache de modelo por schema no EF.
-- **Roadmap:** migração de schema por versionamento (hoje o scaffold usa DDL idempotente), e um runner
-  que aplica migrações a todos os `t_<slug>`.
+- **Migrações (DT-05, entregue):** modelo schemaless + `search_path` por conexão + histórico por
+  schema; o `EfSchemaProvisioner` migra o `catalog` e cada `t_<slug>`, **adotando** schemas legados
+  (carimba a baseline como aplicada antes de migrar o que vier depois). A DDL idempotente
+  (`SchemaProvisioner`) permanece como fallback via `SCHEMA_STRATEGY=ddl`.

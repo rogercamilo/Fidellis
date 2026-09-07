@@ -57,7 +57,8 @@ public sealed class TenantDbContext(
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.HasDefaultSchema(Schema);
+        // Schemaless (DT-05): uma única base de migrações serve a todos os tenants; o schema alvo
+        // (t_<slug>) é escolhido em runtime via SET search_path (TenantSearchPathInterceptor).
 
         modelBuilder.Entity<Organization>(b =>
         {
@@ -341,5 +342,14 @@ public sealed class TenantDbContext(
             b.HasKey(x => x.Id);
             b.HasIndex(x => new { x.Year, x.Quarter });
         });
+
+        // Preserva o default do DDL legado: toda coluna created_at nasce com now() no servidor,
+        // de modo que um schema recém-criado por migração fique idêntico ao provisionado pela DDL.
+        foreach (var entity in modelBuilder.Model.GetEntityTypes())
+        {
+            var createdAt = entity.FindProperty(nameof(Organization.CreatedAt));
+            if (createdAt is not null)
+                createdAt.SetDefaultValueSql("now()");
+        }
     }
 }

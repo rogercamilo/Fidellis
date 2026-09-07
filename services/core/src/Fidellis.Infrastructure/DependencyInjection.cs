@@ -7,7 +7,6 @@ using Fidellis.Infrastructure.Persistence;
 using Fidellis.Infrastructure.Provisioning;
 using Fidellis.SharedKernel;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using StackExchange.Redis;
@@ -33,15 +32,28 @@ public static class DependencyInjection
         services.AddSingleton<IClock, SystemClock>();
 
         services.AddDbContext<CatalogDbContext>(o => o
-            .UseNpgsql(options.ConnectionString)
+            .UseNpgsql(options.ConnectionString, npg => npg
+                .MigrationsHistoryTable("__ef_migrations_history", CatalogDbContext.Schema))
             .UseSnakeCaseNamingConvention());
 
-        services.AddDbContext<TenantDbContext>(o => o
-            .UseNpgsql(options.ConnectionString)
-            .UseSnakeCaseNamingConvention()
-            .ReplaceService<IModelCacheKeyFactory, SchemaModelCacheKeyFactory>());
+        // Interceptor que aponta o search_path da conexão para o schema do tenant (DT-05).
+        services.AddScoped<TenantSearchPathInterceptor>();
 
-        services.AddSingleton<ISchemaProvisioner, SchemaProvisioner>();
+        // optionsLifetime scoped: o interceptor (scoped) é resolvido do provider do request, com o
+        // ITenantContext correto — senão o options singleton capturaria um tenant nulo.
+        services.AddDbContext<TenantDbContext>((sp, o) => o
+            // Histórico sem schema explícito: resolve no schema do tenant via search_path.
+            .UseNpgsql(options.ConnectionString, npg => npg
+                .MigrationsHistoryTable("__ef_migrations_history"))
+            .UseSnakeCaseNamingConvention()
+            .AddInterceptors(sp.GetRequiredService<TenantSearchPathInterceptor>()),
+            optionsLifetime: ServiceLifetime.Scoped);
+
+        // Provisionamento de schema: migrações EF versionadas (padrão) ou DDL idempotente (fallback).
+        if (string.Equals(options.SchemaStrategy, "ddl", StringComparison.OrdinalIgnoreCase))
+            services.AddSingleton<ISchemaProvisioner, SchemaProvisioner>();
+        else
+            services.AddSingleton<ISchemaProvisioner, EfSchemaProvisioner>();
 
         // Contabilidade: plano de contas + recibos (usados pela conciliação e pelo módulo Accounting).
         services.AddScoped<Accounting.ChartOfAccountsSeeder>();

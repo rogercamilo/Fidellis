@@ -41,4 +41,10 @@ public sealed class InfrastructureOptions
 
     /// <summary>URL base do web para montar links (ex.: link mágico no e-mail).</summary>
     public string AppBaseUrl { get; init; } = "http://localhost:3000";
+
+    /// <summary>
+    /// Estratégia de provisionamento de schema (DT-05): <c>migrations</c> (padrão) usa migrações EF
+    /// versionadas por schema; <c>ddl</c> mantém a DDL idempotente legada como fallback.
+    /// </summary>
+    public string SchemaStrategy { get; init; } = "migrations";
 }
