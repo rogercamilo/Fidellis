@@ -423,6 +423,8 @@ public sealed class SchemaProvisioner(
                 created_by     uuid,
                 created_at     timestamptz   NOT NULL DEFAULT now()
             );
+            -- DT-03: unidade responsável pela despesa.
+            ALTER TABLE "{schema}".payables ADD COLUMN IF NOT EXISTS organization_id uuid;
             CREATE INDEX IF NOT EXISTS ix_payables_status_due ON "{schema}".payables (status, due_date);
             CREATE INDEX IF NOT EXISTS ix_payables_payee ON "{schema}".payables (payee_id);
 

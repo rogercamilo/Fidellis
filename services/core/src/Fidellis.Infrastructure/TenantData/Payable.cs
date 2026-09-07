@@ -9,6 +9,9 @@ namespace Fidellis.Infrastructure.TenantData;
 /// </summary>
 public sealed class Payable : Entity
 {
+    /// <summary>Unidade responsável pela despesa (DT-03). Base p/ escopo do fluxo de caixa e conta contábil.</summary>
+    public Guid OrganizationId { get; set; }
+
     public required Guid PayeeId { get; set; }
     public Guid? CategoryId { get; set; }
     public required string Description { get; set; }

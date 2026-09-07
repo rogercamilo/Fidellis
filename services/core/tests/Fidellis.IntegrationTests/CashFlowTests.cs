@@ -30,7 +30,8 @@ public class CashFlowTests
 
         await treasury.CreateAccountAsync(org, "Banco", "bank", 1000m);                 // saldo inicial 1000
         tdb.Receivables.Add(new Receivable { OrganizationId = org, Amount = 300m, DueDate = new DateOnly(2026, 6, 1), Status = "open" });   // +300 (dentro de 30d)
-        tdb.Payables.Add(new Payable { PayeeId = Guid.NewGuid(), Description = "Luz", Amount = 200m, DueDate = new DateOnly(2026, 6, 5), Status = "approved" }); // -200 (dentro de 30d)
+        tdb.Payables.Add(new Payable { OrganizationId = org, PayeeId = Guid.NewGuid(), Description = "Luz", Amount = 200m, DueDate = new DateOnly(2026, 6, 5), Status = "approved" }); // -200 (dentro de 30d)
+        tdb.Payables.Add(new Payable { OrganizationId = Guid.NewGuid(), PayeeId = Guid.NewGuid(), Description = "Outra unidade", Amount = 999m, DueDate = new DateOnly(2026, 6, 5), Status = "approved" }); // outra unidade → fora do escopo
         await tdb.SaveChangesAsync();
 
         var svc = new CashFlowService(tdb, treasury, clock);
@@ -39,7 +40,7 @@ public class CashFlowTests
         var d30 = projection.First(p => p.HorizonDays == 30);
         Assert.Equal(1000m, d30.Opening);
         Assert.Equal(300m, d30.ExpectedInflows);
-        Assert.Equal(200m, d30.ExpectedOutflows);
+        Assert.Equal(200m, d30.ExpectedOutflows);   // só o da unidade (DT-03); 999 de outra unidade fica de fora
         Assert.Equal(1100m, d30.Projected); // 1000 + 300 - 200
     }
 
