@@ -1,14 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getReceipt, type LoginResult, type ReceiptDetail } from '../../lib/api';
+import { downloadReceiptPdf, getReceipt, type LoginResult, type ReceiptDetail } from '../../lib/api';
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 export default function ReceiptPage({ params }: { params: { id: string } }) {
   const { id } = params;
   const [receipt, setReceipt] = useState<ReceiptDetail | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     const raw = sessionStorage.getItem('fidellis.session');
@@ -16,11 +18,24 @@ export default function ReceiptPage({ params }: { params: { id: string } }) {
       setError('Sessão não encontrada. Faça login.');
       return;
     }
-    const token = (JSON.parse(raw) as LoginResult).accessToken;
-    getReceipt(token, id)
+    const t = (JSON.parse(raw) as LoginResult).accessToken;
+    setToken(t);
+    getReceipt(t, id)
       .then(setReceipt)
       .catch((e) => setError(e instanceof Error ? e.message : 'Erro.'));
   }, [id]);
+
+  async function onDownloadPdf() {
+    if (!token || !receipt) return;
+    setDownloading(true);
+    try {
+      await downloadReceiptPdf(token, receipt.id, receipt.number);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erro ao baixar o PDF.');
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   if (error) return <main className="container"><p className="error-text">{error}</p></main>;
   if (!receipt) return <main className="container"><p className="muted">Carregando…</p></main>;
@@ -28,7 +43,10 @@ export default function ReceiptPage({ params }: { params: { id: string } }) {
   return (
     <main style={{ maxWidth: 680, margin: '0 auto', padding: '2rem 1.25rem' }}>
       <div className="no-print" style={{ display: 'flex', gap: '0.6rem', marginBottom: '1.25rem' }}>
-        <button className="btn btn-primary" onClick={() => window.print()}>Imprimir / Salvar PDF</button>
+        <button className="btn btn-primary" onClick={onDownloadPdf} disabled={downloading}>
+          {downloading ? 'Gerando…' : 'Baixar PDF'}
+        </button>
+        <button className="btn btn-ghost" onClick={() => window.print()}>Imprimir</button>
         <a className="btn btn-ghost" href="/dashboard/recibos">Voltar</a>
       </div>
 

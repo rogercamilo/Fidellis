@@ -1,5 +1,7 @@
+using Fidellis.Infrastructure.Accounting;
 using Fidellis.Infrastructure.Organizations;
 using Fidellis.Infrastructure.Persistence;
+using Fidellis.Infrastructure.Storage;
 using Fidellis.Infrastructure.TenantData;
 using Fidellis.SharedKernel;
 using Microsoft.AspNetCore.Builder;
@@ -156,6 +158,29 @@ public static class AccountingModule
                 r.Id, r.Number, r.OrganizationId, organizationName = orgName,
                 r.DonorName, donorDocument = r.DonorDocument, r.Amount, r.IssuedAt,
             });
+        });
+
+        // PDF do recibo: serve do storage se já arquivado; senão gera (QuestPDF), arquiva quando há
+        // storage real (R2/MinIO) e retorna os bytes. Sem storage configurado, gera sempre sob demanda.
+        group.MapGet("/receipts/{id:guid}/pdf", async (
+            Guid id, ITenantContext tenant, TenantDbContext db,
+            ReceiptPdfService pdf, IObjectStorage storage, CancellationToken ct) =>
+        {
+            if (!tenant.HasTenant) return Results.BadRequest(new { error = "Nenhum tenant no request." });
+            var r = await db.Receipts.FirstOrDefaultAsync(x => x.Id == id, ct);
+            if (r is null) return Results.NotFound();
+
+            var key = $"receipts/{tenant.SchemaName}/{r.Id}.pdf";
+            var bytes = await storage.GetAsync(key, ct);
+            if (bytes is null)
+            {
+                var orgName = await db.Organizations.Where(o => o.Id == r.OrganizationId).Select(o => o.Name).FirstOrDefaultAsync(ct);
+                bytes = pdf.Render(new ReceiptData(r.Number, orgName, r.DonorName, r.DonorDocument, r.Amount, r.IssuedAt));
+                if (storage.Enabled) await storage.PutAsync(key, bytes, "application/pdf", ct);
+            }
+
+            var fileName = $"recibo-{r.Number.Replace('/', '-')}.pdf";
+            return Results.File(bytes, "application/pdf", fileName);
         });
 
         return app;

@@ -38,7 +38,14 @@ builder.Services.AddInfrastructure(new InfrastructureOptions
     AppSecret = jwtSecret,
     AppBaseUrl = config["APP_BASE_URL"] ?? "http://localhost:3000",
     SchemaStrategy = config["SCHEMA_STRATEGY"] ?? "migrations",
+    StorageEndpoint = ResolveStorageEndpoint(config),
+    StorageAccessKey = config["R2_ACCESS_KEY_ID"],
+    StorageSecret = config["R2_SECRET_ACCESS_KEY"],
+    StorageBucket = config["R2_BUCKET"],
 });
+
+// Licença QuestPDF (Community): grátis p/ ONGs e empresas < US$1M/ano.
+QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
 
 builder.Services
     .AddTenantModule()
@@ -105,6 +112,11 @@ await using (var scope = app.Services.CreateAsyncScope())
     {
         logger.LogWarning(ex, "Não foi possível garantir o schema catalog no startup (Postgres indisponível?).");
     }
+
+    // Garante o bucket de recibos (best-effort) quando o storage S3/R2 está configurado.
+    if (scope.ServiceProvider.GetRequiredService<Fidellis.Infrastructure.Storage.IObjectStorage>()
+        is Fidellis.Infrastructure.Storage.S3ObjectStorage s3)
+        await s3.EnsureBucketAsync();
 }
 
 app.UseCors();
@@ -170,6 +182,16 @@ static string? NormalizeRedis(string? url)
     return url.StartsWith("redis://", StringComparison.OrdinalIgnoreCase)
         ? url["redis://".Length..].TrimEnd('/')
         : url;
+}
+
+// Endpoint do storage S3/R2: usa R2_ENDPOINT se definido (ex.: MinIO local); senão deriva de
+// R2_ACCOUNT_ID (https://<acct>.r2.cloudflarestorage.com). Vazio → storage desligado.
+static string? ResolveStorageEndpoint(IConfiguration config)
+{
+    var endpoint = config["R2_ENDPOINT"];
+    if (!string.IsNullOrWhiteSpace(endpoint)) return endpoint;
+    var account = config["R2_ACCOUNT_ID"];
+    return string.IsNullOrWhiteSpace(account) ? null : $"https://{account}.r2.cloudflarestorage.com";
 }
 
 // Parseia "1,3,5" -> [1,3,5]; vazio/ inválido usa a agenda padrão.
