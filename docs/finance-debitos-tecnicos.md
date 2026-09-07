@@ -63,8 +63,12 @@ Decisão consciente (D5); arquivos grandes trafegam como string no corpo JSON. M
 
 ## 🟡 Baixo impacto / evoluções conhecidas
 
-### DT-10 — Snapshot/assinatura de demonstrações (RF-FIN-173)
-Demonstrações on-the-fly; sem versão congelada nem workflow de aprovação/assinatura da prestação de contas.
+### DT-10 — Snapshot/assinatura de demonstrações (RF-FIN-173) · ✅ resolvido
+Antes só havia o rascunho on-the-fly. **Correção:** `StatementSnapshotService` **congela** o período
+(DRP, Balanço, DFC, segregação, DMPL) num payload JSON com **hash SHA-256** e fluxo **draft → approved**.
+A aprovação exige **papel de governança** (admin/conselho fiscal) e **segregação** (quem gera não
+aprova); uma vez aprovado é imutável e auditado. Entidade `statement_snapshots` + endpoints
+`/api/finance/reports/snapshots` (listar, obter, gerar, aprovar).
 
 ### DT-11 — Rate limiting e idempotência sem teste E2E
 O rate limiter é middleware, só verificável manualmente; sem teste de integração.
