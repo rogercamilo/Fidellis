@@ -54,9 +54,14 @@ doação=`PaidAt`, despesa=data do pagamento, voluntariado=`PerformedOn`, estorn
 **export do contador** passam a agregar por `AccountingDate`. DDL retrocompatível (backfill de
 `created_at`). Habilita competência histórica/retroativa.
 
-### DT-08 — Conciliação: casamento só 1:1 exato; CNAB baseline
-Sugere apenas match exato de valor+data (±3 dias), 1 linha ↔ 1 título; sem baixa parcial, N:1 ou
-heurística. O parser CNAB é layout-base Febraban (posições fixas), sem configuração por banco.
+### DT-08 — Conciliação: casamento 1:1 exato; CNAB baseline · ✅ matching resolvido (CNAB fica p/ evoluir)
+**Correção (matching):** a linha do extrato passa a ter `MatchedAmount` — casamento com **baixa
+parcial**, **N:1** (uma linha quita vários títulos, chamando `match` em sequência) e **1:N** (vários
+lançamentos quitam um título, baixa acumulada). A linha fica `partial` enquanto sobra saldo e
+`matched` ao consumir |valor|. O `SuggestAsync` sugere candidatos **exatos e parciais** (campo
+`Kind`), ordenando exatos primeiro. Endpoint `match` aceita `amount` opcional. DDL retrocompatível
+(`matched_amount`). **Resta (evolução consciente):** parser **CNAB configurável por banco** — exige
+layouts/homologação reais de cada banco; o parser atual segue o baseline Febraban (posições fixas).
 
 ### DT-09 — Import de extrato via string JSON (não multipart)
 Decisão consciente (D5); arquivos grandes trafegam como string no corpo JSON. Multipart fica p/ evoluir.

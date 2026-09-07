@@ -26,7 +26,7 @@ public static class StatementEndpoints
 
         g.MapGet("/{id:guid}/lines", async (Guid id, TenantDbContext db, CancellationToken ct) =>
             Results.Ok(await db.BankStatementLines.Where(l => l.StatementId == id).OrderBy(l => l.PostedAt)
-                .Select(l => new StatementLineDto(l.Id, l.FitId, l.PostedAt, l.Amount, l.Memo, l.Status, l.MatchedType, l.MatchedId)).ToListAsync(ct)));
+                .Select(l => new StatementLineDto(l.Id, l.FitId, l.PostedAt, l.Amount, l.Memo, l.Status, l.MatchedType, l.MatchedId, l.MatchedAmount)).ToListAsync(ct)));
 
         g.MapPost("/import", async (
             ImportStatementRequest req, StatementImportService import, ITenantContext tenant, CancellationToken ct) =>
@@ -52,8 +52,8 @@ public static class StatementEndpoints
         {
             try
             {
-                var line = await match.MatchAsync(id, req.Type, req.Id, ct);
-                return Results.Ok(new { id = line.Id, status = line.Status, matchedType = line.MatchedType, matchedId = line.MatchedId });
+                var line = await match.MatchAsync(id, req.Type, req.Id, req.Amount, ct);
+                return Results.Ok(new { id = line.Id, status = line.Status, matchedType = line.MatchedType, matchedId = line.MatchedId, matchedAmount = line.MatchedAmount });
             }
             catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
         });
@@ -72,8 +72,8 @@ public static class StatementEndpoints
     }
 }
 
-public sealed record MatchLineRequest(string Type, Guid Id);
+public sealed record MatchLineRequest(string Type, Guid Id, decimal? Amount = null);
 
 public sealed record StatementDto(Guid Id, Guid AccountId, string Format, string? Reference, DateTimeOffset ImportedAt);
-public sealed record StatementLineDto(Guid Id, string? FitId, DateOnly PostedAt, decimal Amount, string? Memo, string Status, string? MatchedType, Guid? MatchedId);
+public sealed record StatementLineDto(Guid Id, string? FitId, DateOnly PostedAt, decimal Amount, string? Memo, string Status, string? MatchedType, Guid? MatchedId, decimal MatchedAmount);
 public sealed record ImportStatementRequest(Guid AccountId, string Content, string? Format = null, string? Reference = null);

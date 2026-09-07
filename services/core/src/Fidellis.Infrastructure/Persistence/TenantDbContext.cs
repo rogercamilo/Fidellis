@@ -316,6 +316,7 @@ public sealed class TenantDbContext(
             b.HasKey(x => x.Id);
             b.HasIndex(x => new { x.StatementId, x.Status });
             b.Property(x => x.Amount).HasPrecision(18, 2);
+            b.Property(x => x.MatchedAmount).HasPrecision(18, 2);
         });
 
         modelBuilder.Entity<Budget>(b =>

@@ -512,12 +512,14 @@ public sealed class SchemaProvisioner(
                 posted_at    date          NOT NULL,
                 amount       numeric(18,2) NOT NULL,
                 memo         varchar(200),
-                status       varchar(12)   NOT NULL DEFAULT 'unmatched',  -- unmatched | matched | ignored
+                status       varchar(12)   NOT NULL DEFAULT 'unmatched',  -- unmatched | partial | matched | ignored
                 matched_type varchar(12),
                 matched_id   uuid,
                 created_at   timestamptz   NOT NULL DEFAULT now()
             );
             CREATE INDEX IF NOT EXISTS ix_bank_lines ON "{schema}".bank_statement_lines (statement_id, status);
+            -- Baixa parcial / N:1 / 1:N (DT-08): valor já casado da linha.
+            ALTER TABLE "{schema}".bank_statement_lines ADD COLUMN IF NOT EXISTS matched_amount numeric(18,2) NOT NULL DEFAULT 0;
 
             -- Orçamento (Onda 3 inc.3.3): previsto por dimensão/ano.
             CREATE TABLE IF NOT EXISTS "{schema}".budgets (
