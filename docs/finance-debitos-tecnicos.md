@@ -39,8 +39,12 @@ de verdade (junto com o DT-01).
 Ainda usamos DDL idempotente no `SchemaProvisioner`, reaplicada a todos os tenants no startup. Frágil
 conforme a base cresce (sem histórico/rollback de schema).
 
-### DT-06 — Régua de cobrança de AR (RF-FIN-102)
-Só o **aging** foi entregue; faltam **lembretes** (outbox/CRM) de recebíveis a vencer/vencidos.
+### DT-06 — Régua de cobrança de AR (RF-FIN-102) · ✅ resolvido
+Só o **aging** havia sido entregue. **Correção:** `ReceivablesReminderService` varre títulos em
+aberto/parciais com doador identificado e enfileira lembretes na **outbox** — "a vencer" (janela de
+3 dias, 1 único toque) e "vencido" (no máx. 1/mês, dedupe por título + competência). Respeita
+`ContactOptOut`/e-mail. Plugado no `BillingWorker` (antes do dispatch). Templates
+`receivable_due_soon`/`receivable_overdue`.
 
 ### DT-07 — Competência = `transaction.CreatedAt`
 Sem data contábil dedicada; lançamentos datados em "agora". Ano/trimestre (orçamento, demonstrações,

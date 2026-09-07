@@ -64,6 +64,9 @@ public sealed class BillingWorker(
                 var reactivationDays = sp.GetRequiredService<InfrastructureOptions>().ReactivationDays;
                 await sp.GetRequiredService<ReactivationScanner>().EnqueueInactiveAsync(reactivationDays, ct);
 
+                // Régua de Contas a Receber: lembretes de títulos a vencer/vencidos (DT-06).
+                await sp.GetRequiredService<ReceivablesReminderService>().EnqueueRemindersAsync(ct);
+
                 await sp.GetRequiredService<MessageDispatcher>().DispatchQueuedAsync(ct: ct);
             }
             catch (Exception ex)

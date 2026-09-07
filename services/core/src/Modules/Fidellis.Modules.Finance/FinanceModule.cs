@@ -42,6 +42,7 @@ public static class FinanceModule
         services.AddScoped<TreasuryService>();
         services.AddScoped<CashFlowService>();
         services.AddScoped<ReceivablesService>();
+        services.AddScoped<ReceivablesReminderService>();
         services.AddScoped<PayablesService>();
         services.AddScoped<ApprovalService>();
         services.AddScoped<CashSessionService>();
