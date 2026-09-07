@@ -75,12 +75,12 @@ public class AccountingTests
         await Processor(tdb, new FixedClock(T0)).ProcessAsync(
             new PagarmeWebhookEvent("hook_1", "charge.paid", "or_1", "ch_1", "paid"), "{}");
 
-        // Lançamentos nas contas do plano (RECEIVABLE/REVENUE), balanceados.
-        var receivable = await tdb.LedgerAccounts.FirstAsync(a => a.Code == ChartOfAccounts.Receivable);
+        // Lançamentos balanceados: a doação recebida entra no Banco (ativo) / Receita (DT-02).
+        var bank = await tdb.LedgerAccounts.FirstAsync(a => a.Code == ChartOfAccounts.Bank);
         var revenue = await tdb.LedgerAccounts.FirstAsync(a => a.Code == ChartOfAccounts.Revenue);
         var entries = await tdb.AccountingEntries.ToListAsync();
         Assert.Equal(2, entries.Count);
-        Assert.Contains(entries, e => e.LedgerAccountId == receivable.Id && e.Debit == 100m);
+        Assert.Contains(entries, e => e.LedgerAccountId == bank.Id && e.Debit == 100m);
         Assert.Contains(entries, e => e.LedgerAccountId == revenue.Id && e.Credit == 100m);
         Assert.Equal(entries.Sum(e => e.Debit), entries.Sum(e => e.Credit));
 
