@@ -19,28 +19,29 @@ public static class ReportsEndpoints
     {
         var g = app.MapGroup("/api/finance/reports").WithTags("Finance/Reports");
 
-        g.MapGet("/trial-balance", async (int year, StatementsService s, CancellationToken ct) =>
+        // organizationId opcional (DT-14): recorte por unidade da rede; ausente = consolidado.
+        g.MapGet("/trial-balance", async (int year, Guid? organizationId, StatementsService s, CancellationToken ct) =>
         {
-            var lines = await s.TrialBalanceAsync(year, ct);
-            return Results.Ok(new { year, totalDebit = lines.Sum(l => l.Debit), totalCredit = lines.Sum(l => l.Credit), accounts = lines });
+            var lines = await s.TrialBalanceAsync(year, organizationId, ct);
+            return Results.Ok(new { year, organizationId, totalDebit = lines.Sum(l => l.Debit), totalCredit = lines.Sum(l => l.Credit), accounts = lines });
         });
 
-        g.MapGet("/income", async (int year, StatementsService s, CancellationToken ct) =>
-            Results.Ok(await s.IncomeAsync(year, ct)));
+        g.MapGet("/income", async (int year, Guid? organizationId, StatementsService s, CancellationToken ct) =>
+            Results.Ok(await s.IncomeAsync(year, organizationId, ct)));
 
-        g.MapGet("/balance-sheet", async (int year, StatementsService s, CancellationToken ct) =>
-            Results.Ok(await s.BalanceSheetAsync(year, ct)));
+        g.MapGet("/balance-sheet", async (int year, Guid? organizationId, StatementsService s, CancellationToken ct) =>
+            Results.Ok(await s.BalanceSheetAsync(year, organizationId, ct)));
 
         // Segregação com/sem restrição (RF-FIN-161) + DMPL.
-        g.MapGet("/income-segregated", async (int year, StatementsService s, CancellationToken ct) =>
-            Results.Ok(await s.IncomeSegregatedAsync(year, ct)));
+        g.MapGet("/income-segregated", async (int year, Guid? organizationId, StatementsService s, CancellationToken ct) =>
+            Results.Ok(await s.IncomeSegregatedAsync(year, organizationId, ct)));
 
-        g.MapGet("/dmpl", async (int year, StatementsService s, CancellationToken ct) =>
-            Results.Ok(await s.DmplAsync(year, ct)));
+        g.MapGet("/dmpl", async (int year, Guid? organizationId, StatementsService s, CancellationToken ct) =>
+            Results.Ok(await s.DmplAsync(year, organizationId, ct)));
 
         // DFC (método direto) — Onda 4 inc.4.2.
-        g.MapGet("/cashflow", async (int year, StatementsService s, CancellationToken ct) =>
-            Results.Ok(await s.CashFlowAsync(year, ct)));
+        g.MapGet("/cashflow", async (int year, Guid? organizationId, StatementsService s, CancellationToken ct) =>
+            Results.Ok(await s.CashFlowAsync(year, organizationId, ct)));
 
         // ---- Trabalho voluntário a valor justo (RF-FIN-162) ----
         var vw = app.MapGroup("/api/finance/volunteer-work").WithTags("Finance/Reports").AddEndpointFilter<FinanceWriteFilter>();
