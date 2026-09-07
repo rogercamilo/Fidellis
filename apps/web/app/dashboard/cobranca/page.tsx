@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { PageHeader, StatusBadge } from '../../components/Fiori';
 import { OrganizationPicker } from '../../components/OrganizationPicker';
 import { Panel } from '../../components/Panel';
 import { createDonation, getDonation, getFinanceSettings, type DonationCheckout, type LoginResult } from '../../lib/api';
@@ -71,16 +72,12 @@ export default function CobrancaPage() {
     }, 3000);
   }
 
-  const statusBadge = status === 'paid' ? 'ok' : status === 'failed' ? 'err' : 'warn';
-
   return (
     <>
-      <div className="page-head rise">
-        <div>
-          <h1>Nova {label.toLowerCase()}</h1>
-          <p className="subtitle">Gere uma cobrança avulsa por PIX ou boleto — confirmação e recibo automáticos.</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Cobrança"
+        subtitle={`Gere uma cobrança avulsa (${label.toLowerCase()}) por PIX ou boleto — confirmação e recibo automáticos.`}
+      />
 
       <div className="grid cols-2 rise rise-2" style={{ alignItems: 'start' }}>
         {!checkout ? (
@@ -124,7 +121,7 @@ export default function CobrancaPage() {
             </form>
           </Panel>
         ) : checkout.method === 'boleto' ? (
-          <Panel title="Boleto" actions={<span className={`badge ${statusBadge}`}>{status}</span>}>
+          <Panel title="Boleto" actions={<StatusBadge status={status} />}>
             <div style={{ display: 'grid', gap: '0.75rem' }}>
               <div className="field">
                 <label>Linha digitável</label>
@@ -143,7 +140,7 @@ export default function CobrancaPage() {
             </div>
           </Panel>
         ) : (
-          <Panel title="Cobrança PIX" actions={<span className={`badge ${statusBadge}`}>{status}</span>}>
+          <Panel title="Cobrança PIX" actions={<StatusBadge status={status} />}>
             <div style={{ display: 'grid', placeItems: 'center', gap: '0.75rem' }}>
               {checkout.qrCodeUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
