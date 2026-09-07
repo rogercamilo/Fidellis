@@ -1,22 +1,25 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { Panel } from '../../components/Panel';
+import { useEffect, useMemo, useState } from 'react';
+import { FilterBar, FilterChips, ListCard, PageHeader } from '../../components/Fiori';
 import { listDonors, type DonorSummary, type LoginResult } from '../../lib/api';
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 function situacaoBadge(s: string): string {
-  if (s === 'recorrente') return 'ok';
-  if (s === 'ativo') return 'ok';
+  if (s === 'recorrente' || s === 'ativo') return 'ok';
   if (s === 'inativo') return 'err';
   return 'muted';
 }
 
+type Situacao = 'todos' | 'recorrente' | 'ativo' | 'inativo';
+
 export default function DoadoresPage() {
   const [items, setItems] = useState<DonorSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [situacao, setSituacao] = useState<Situacao>('todos');
+  const [q, setQ] = useState('');
 
   useEffect(() => {
     const raw = sessionStorage.getItem('fidellis.session');
@@ -27,51 +30,80 @@ export default function DoadoresPage() {
       .catch((e) => setError(e instanceof Error ? e.message : 'Erro.'));
   }, []);
 
+  const filtered = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    return items.filter((d) => {
+      const okS = situacao === 'todos' || d.situacao === situacao;
+      const okQ = !term || d.name.toLowerCase().includes(term) || (d.email ?? '').toLowerCase().includes(term);
+      return okS && okQ;
+    });
+  }, [items, situacao, q]);
+
   return (
     <>
-      <div className="page-head rise">
-        <div>
-          <h1>Doadores</h1>
-          <p className="subtitle">CRM 360º — histórico, situação e relacionamento por doador.</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Doadores"
+        subtitle="Pessoas e empresas que apoiam sua organização — histórico e situação de cada uma."
+      />
 
-      <div className="rise rise-2">
-        <Panel title="Base de doadores" actions={<span className="muted">{items.length} total</span>} flush>
-          {error && <p className="error-text" style={{ padding: '1rem' }}>{error}</p>}
-          {items.length === 0 ? (
-            <p className="muted" style={{ padding: '1rem' }}>Nenhum doador ainda.</p>
-          ) : (
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Doador</th>
-                  <th>Situação</th>
-                  <th className="num">Doações</th>
-                  <th className="num">Total</th>
-                  <th className="num">Última</th>
-                  <th></th>
+      <FilterBar>
+        <FilterChips
+          value={situacao}
+          onChange={setSituacao}
+          options={[
+            { value: 'todos', label: 'Todos' },
+            { value: 'recorrente', label: 'Recorrentes' },
+            { value: 'ativo', label: 'Ativos' },
+            { value: 'inativo', label: 'Inativos' },
+          ]}
+        />
+        <div className="grow" />
+        <input
+          className="filter-search"
+          placeholder="Buscar por nome ou e-mail…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+      </FilterBar>
+
+      <ListCard label="Doadores" count={filtered.length}>
+        {error && <p className="error-text" style={{ padding: '1rem' }}>{error}</p>}
+        {filtered.length === 0 ? (
+          <p className="muted" style={{ padding: '1.25rem' }}>
+            {items.length === 0
+              ? 'Nenhum doador ainda. Assim que uma doação for registrada, o doador aparece aqui.'
+              : 'Nenhum doador corresponde ao filtro.'}
+          </p>
+        ) : (
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Doador</th>
+                <th>Situação</th>
+                <th className="num">Doações</th>
+                <th className="num">Total doado</th>
+                <th className="num">Última doação</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((d) => (
+                <tr key={d.id}>
+                  <td>
+                    {d.name}
+                    {d.email && <div className="muted mono" style={{ fontSize: '0.76rem' }}>{d.email}</div>}
+                  </td>
+                  <td><span className={`badge ${situacaoBadge(d.situacao)}`}>{d.situacao}</span></td>
+                  <td className="num">{d.donations}</td>
+                  <td className="num">{brl(d.totalPaid)}</td>
+                  <td className="num muted">{d.lastPaidAt ? new Date(d.lastPaidAt).toLocaleDateString('pt-BR') : '—'}</td>
+                  <td className="num"><Link className="btn btn-ghost btn-sm" href={`/dashboard/doadores/${d.id}`}>Abrir</Link></td>
                 </tr>
-              </thead>
-              <tbody>
-                {items.map((d) => (
-                  <tr key={d.id}>
-                    <td>
-                      {d.name}
-                      {d.email && <div className="muted mono" style={{ fontSize: '0.76rem' }}>{d.email}</div>}
-                    </td>
-                    <td><span className={`badge ${situacaoBadge(d.situacao)}`}>{d.situacao}</span></td>
-                    <td className="num">{d.donations}</td>
-                    <td className="num">{brl(d.totalPaid)}</td>
-                    <td className="num muted">{d.lastPaidAt ? new Date(d.lastPaidAt).toLocaleDateString('pt-BR') : '—'}</td>
-                    <td className="num"><Link className="btn btn-ghost btn-sm" href={`/dashboard/doadores/${d.id}`}>abrir</Link></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </Panel>
-      </div>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </ListCard>
     </>
   );
 }

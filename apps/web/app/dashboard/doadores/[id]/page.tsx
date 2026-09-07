@@ -1,15 +1,10 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { Panel } from '../../../components/Panel';
+import { AnchorBar, Fact, ObjectHeader, ObjectSection } from '../../../components/Fiori';
 import {
-  anonymizeDonor,
-  exportDonor,
-  getDonor,
-  optOutDonor,
-  type DonorDetail,
-  type LoginResult,
+  anonymizeDonor, exportDonor, getDonor, optOutDonor,
+  type DonorDetail, type LoginResult,
 } from '../../../lib/api';
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -33,14 +28,10 @@ export default function DonorDetailPage({ params }: { params: { id: string } }) 
     if (!raw) return;
     const t = (JSON.parse(raw) as LoginResult).accessToken;
     setToken(t);
-    getDonor(t, id)
-      .then(setData)
-      .catch((e) => setError(e instanceof Error ? e.message : 'Erro.'));
+    getDonor(t, id).then(setData).catch((e) => setError(e instanceof Error ? e.message : 'Erro.'));
   }, [id]);
 
-  async function reload() {
-    if (token) setData(await getDonor(token, id));
-  }
+  async function reload() { if (token) setData(await getDonor(token, id)); }
 
   async function onExport() {
     if (!token) return;
@@ -48,66 +39,81 @@ export default function DonorDetailPage({ params }: { params: { id: string } }) 
     const blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = `doador-${id}.json`;
-    a.click();
+    a.href = url; a.download = `doador-${id}.json`; a.click();
     URL.revokeObjectURL(url);
     setNotice('Dados exportados.');
   }
-
   async function onAnonymize() {
     if (!token || !confirm('Anonimizar os dados pessoais deste doador? Esta ação é irreversível.')) return;
-    await anonymizeDonor(token, id);
-    setNotice('Doador anonimizado.');
-    await reload();
+    await anonymizeDonor(token, id); setNotice('Doador anonimizado.'); await reload();
   }
-
   async function onOptOut() {
     if (!token) return;
-    await optOutDonor(token, id);
-    setNotice('Doador marcado como opt-out.');
-    await reload();
+    await optOutDonor(token, id); setNotice('Doador marcado como opt-out.'); await reload();
   }
 
-  if (error) return <Panel title="Doador"><p className="error-text">{error}</p></Panel>;
-  if (!data) return <Panel title="Doador"><p className="muted">Carregando…</p></Panel>;
+  if (error) return <div className="obj-header"><p className="error-text">{error}</p></div>;
+  if (!data) return <div className="obj-header"><p className="muted">Carregando…</p></div>;
 
-  const total = data.donations.filter((d) => d.status === 'paid').reduce((s, d) => s + d.amount, 0);
+  const paid = data.donations.filter((d) => d.status === 'paid');
+  const total = paid.reduce((s, d) => s + d.amount, 0);
+  const activeRecurring = data.recurring.filter((r) => r.status === 'active').length;
 
   return (
     <>
-      <div className="page-head rise">
-        <div>
-          <p className="muted" style={{ margin: 0 }}><Link href="/dashboard/doadores">← Doadores</Link></p>
-          <h1>{data.donor.name}</h1>
-          <p className="subtitle">{data.donor.email ?? 'sem e-mail'} · {data.donor.document ?? 'sem documento'}</p>
-        </div>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <button className="btn btn-ghost btn-sm" onClick={onExport}>Exportar dados</button>
-          <button className="btn btn-ghost btn-sm" onClick={onOptOut}>Opt-out</button>
-          <button className="btn btn-ghost btn-sm" onClick={onAnonymize}>Anonimizar</button>
-        </div>
-      </div>
+      <ObjectHeader
+        backHref="/dashboard/doadores"
+        backLabel="Doadores"
+        title={data.donor.name}
+        subtitle={`${data.donor.email ?? 'sem e-mail'} · ${data.donor.document ?? 'sem documento'}`}
+        actions={
+          <>
+            <button className="btn btn-ghost btn-sm" onClick={onExport}>Exportar dados</button>
+            <button className="btn btn-ghost btn-sm" onClick={onOptOut}>Opt-out de contato</button>
+            <button className="btn btn-ghost btn-sm" onClick={onAnonymize}>Anonimizar</button>
+          </>
+        }
+        facts={
+          <>
+            <Fact label="Total doado">{brl(total)}</Fact>
+            <Fact label="Doações pagas">{paid.length}</Fact>
+            <Fact label="Recorrências ativas">{activeRecurring}</Fact>
+            <Fact label="Telefone">{data.donor.phone ?? '—'}</Fact>
+          </>
+        }
+      />
+
       {notice && <p className="badge ok" style={{ marginBottom: '1rem' }}>{notice}</p>}
 
-      <div className="grid cols-2 rise rise-2" style={{ alignItems: 'start' }}>
-        <Panel title="Perfil">
-          <dl className="kv">
-            <dt>Nome</dt><dd>{data.donor.name}</dd>
-            <dt>E-mail</dt><dd className="mono">{data.donor.email ?? '—'}</dd>
-            <dt>Documento</dt><dd className="mono">{data.donor.document ?? '—'}</dd>
-            <dt>Telefone</dt><dd className="mono">{data.donor.phone ?? '—'}</dd>
-            <dt>Total doado</dt><dd>{brl(total)}</dd>
-            <dt>Doações</dt><dd>{data.donations.filter((d) => d.status === 'paid').length}</dd>
-          </dl>
-        </Panel>
+      <AnchorBar
+        items={[
+          { id: 'perfil', label: 'Perfil' },
+          { id: 'recorrencias', label: 'Recorrências' },
+          { id: 'historico', label: 'Histórico de doações' },
+          { id: 'mensagens', label: 'Relacionamento' },
+        ]}
+      />
 
-        <Panel title="Recorrências" flush>
+      <ObjectSection id="perfil" title="Perfil" sub="Dados cadastrais do doador." delay={3}>
+        <div className="panel">
+          <div className="panel-body">
+            <dl className="kv">
+              <dt>Nome</dt><dd>{data.donor.name}</dd>
+              <dt>E-mail</dt><dd className="mono">{data.donor.email ?? '—'}</dd>
+              <dt>Documento</dt><dd className="mono">{data.donor.document ?? '—'}</dd>
+              <dt>Telefone</dt><dd className="mono">{data.donor.phone ?? '—'}</dd>
+            </dl>
+          </div>
+        </div>
+      </ObjectSection>
+
+      <ObjectSection id="recorrencias" title="Recorrências" sub="Dízimos e apoios mensais deste doador." delay={4}>
+        <div className="panel">
           {data.recurring.length === 0 ? (
-            <p className="muted" style={{ padding: '1rem' }}>Nenhuma recorrência.</p>
+            <p className="muted" style={{ padding: '1.25rem' }}>Nenhuma recorrência ativa.</p>
           ) : (
             <table className="table">
-              <thead><tr><th>Valor / dia</th><th>Status</th><th className="num">Próxima</th></tr></thead>
+              <thead><tr><th>Valor / dia</th><th>Status</th><th className="num">Próxima cobrança</th></tr></thead>
               <tbody>
                 {data.recurring.map((r) => (
                   <tr key={r.id}>
@@ -119,13 +125,13 @@ export default function DonorDetailPage({ params }: { params: { id: string } }) 
               </tbody>
             </table>
           )}
-        </Panel>
-      </div>
+        </div>
+      </ObjectSection>
 
-      <div style={{ marginTop: '1rem' }} className="rise rise-3">
-        <Panel title="Histórico de doações" flush>
+      <ObjectSection id="historico" title="Histórico de doações" sub="Todas as doações registradas para este doador." delay={4}>
+        <div className="panel">
           {data.donations.length === 0 ? (
-            <p className="muted" style={{ padding: '1rem' }}>Sem doações.</p>
+            <p className="muted" style={{ padding: '1.25rem' }}>Sem doações registradas.</p>
           ) : (
             <table className="table">
               <thead><tr><th>Data</th><th>Método</th><th>Status</th><th className="num">Valor</th></tr></thead>
@@ -141,13 +147,13 @@ export default function DonorDetailPage({ params }: { params: { id: string } }) 
               </tbody>
             </table>
           )}
-        </Panel>
-      </div>
+        </div>
+      </ObjectSection>
 
-      <div style={{ marginTop: '1rem' }} className="rise rise-4">
-        <Panel title="Mensagens (régua)" flush>
+      <ObjectSection id="mensagens" title="Relacionamento" sub="Mensagens da régua (agradecimento, cobrança, reativação)." delay={4}>
+        <div className="panel">
           {data.messages.length === 0 ? (
-            <p className="muted" style={{ padding: '1rem' }}>Nenhuma mensagem enviada ainda.</p>
+            <p className="muted" style={{ padding: '1.25rem' }}>Nenhuma mensagem enviada ainda.</p>
           ) : (
             <table className="table">
               <thead><tr><th>Data</th><th>Canal</th><th>Evento</th><th>Assunto</th><th>Status</th></tr></thead>
@@ -164,8 +170,8 @@ export default function DonorDetailPage({ params }: { params: { id: string } }) 
               </tbody>
             </table>
           )}
-        </Panel>
-      </div>
+        </div>
+      </ObjectSection>
     </>
   );
 }

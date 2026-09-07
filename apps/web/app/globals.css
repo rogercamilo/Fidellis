@@ -387,5 +387,57 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--c
 .rise-5 { animation-delay: 0.16s; }
 @media (prefers-reduced-motion: reduce) { .rise { animation: none; } }
 
+/* ============================================================
+   Floorplans SAP Fiori — List Report & Object Page
+   ============================================================ */
+
+/* Filter bar (variante + filtros), como "Standard / No filters active" */
+.filterbar {
+  display: flex; align-items: center; gap: 0.85rem; flex-wrap: wrap;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r);
+  padding: 0.6rem 1rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow-sm);
+}
+.filter-variant { font-weight: 600; color: var(--color-primary); font-size: 0.95rem; }
+.filterbar .fb-sep { width: 1px; align-self: stretch; background: var(--color-border); }
+.filter-chips { display: inline-flex; gap: 0.35rem; flex-wrap: wrap; }
+.chip {
+  border: 1px solid var(--color-border-strong); background: var(--color-surface);
+  color: var(--color-text-muted); border-radius: 999px; padding: 0.28rem 0.7rem;
+  font-size: 0.8rem; font-weight: 500; cursor: pointer; transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.chip:hover { border-color: var(--color-primary); color: var(--color-primary); }
+.chip.active { background: var(--color-primary-soft); color: var(--color-primary); border-color: var(--color-primary); }
+.filterbar .grow { margin-left: auto; }
+.filter-search { min-width: 220px; }
+
+/* Toolbar de tabela (título + contagem à esquerda, ações à direita) */
+.obj-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.7rem 1rem; border-bottom: 1px solid var(--color-border); }
+.obj-count { font-weight: 600; font-size: 0.98rem; }
+.obj-count .n { color: var(--color-text-muted); font-weight: 400; }
+
+/* Object Page: header com fatos + âncoras + seções */
+.obj-header { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--r); box-shadow: var(--shadow-sm); padding: 1rem 1.25rem; margin-bottom: 1rem; }
+.obj-back { font-size: 0.82rem; }
+.obj-header h1 { margin: 0.35rem 0 0.1rem; }
+.obj-headrow { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; flex-wrap: wrap; }
+.obj-facts { display: flex; flex-wrap: wrap; gap: 1.1rem 2.5rem; margin-top: 1rem; }
+.fact { display: flex; flex-direction: column; gap: 0.2rem; }
+.fact .fact-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-faint); }
+.fact .fact-value { font-weight: 600; font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+
+.anchorbar { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--color-border); margin-bottom: 1.1rem; overflow-x: auto; }
+.anchor { padding: 0.6rem 0.9rem; font-size: 0.88rem; font-weight: 500; color: var(--color-text-muted); border-bottom: 2px solid transparent; white-space: nowrap; }
+.anchor:hover { color: var(--color-text); text-decoration: none; }
+.anchor.active { color: var(--color-primary); border-bottom-color: var(--color-primary); font-weight: 600; }
+
+.obj-section { margin-bottom: 1.25rem; scroll-margin-top: calc(var(--shellbar-h) + 1rem); }
+.obj-section-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; margin-bottom: 0.5rem; }
+.obj-section h2 { font-size: 1.05rem; margin: 0; }
+.obj-section-sub { color: var(--color-text-muted); font-size: 0.85rem; margin: 0.1rem 0 0; }
+
 /* ---------- Print ---------- */
 @media print { .no-print { display: none !important; } body { background: #fff; } }
