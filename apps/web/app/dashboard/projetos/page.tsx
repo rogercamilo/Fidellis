@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { PageHeader } from '../../components/Fiori';
 import { OrganizationPicker } from '../../components/OrganizationPicker';
 import { Panel } from '../../components/Panel';
 import {
@@ -82,12 +83,10 @@ export default function ProjetosPage() {
 
   return (
     <>
-      <div className="page-head rise">
-        <div>
-          <h1>Projetos & Voluntariado</h1>
-          <p className="subtitle">Prestação de contas de parcerias (MROSC) e trabalho voluntário a valor justo (ITG 2002).</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Projetos & voluntariado"
+        subtitle="Prestação de contas de parcerias (convênios/editais) e registro do trabalho voluntário a valor justo."
+      />
 
       {error && <p className="error-text">{error}</p>}
 

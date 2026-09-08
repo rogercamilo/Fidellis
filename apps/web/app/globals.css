@@ -444,6 +444,11 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--c
 .obj-section h2 { font-size: 1.05rem; margin: 0; }
 .obj-section-sub { color: var(--color-text-muted); font-size: 0.85rem; margin: 0.1rem 0 0; }
 
+/* ---------- Tree table (hierarquia Rede→Unidade) ---------- */
+.tree-toggle { background: none; border: none; cursor: pointer; color: var(--color-text-muted); font-size: 0.7rem; width: 16px; height: 16px; line-height: 1; display: inline-grid; place-items: center; border-radius: 3px; }
+.tree-toggle:hover { background: var(--color-surface-2); color: var(--color-primary); }
+.tree-spacer { display: inline-block; width: 16px; }
+
 /* ---------- Guided tour (padrão SAP "Start the tour") ---------- */
 .tour-overlay { position: fixed; inset: 0; background: rgba(29, 45, 62, 0.28); display: grid; place-items: center; z-index: 100; padding: 1rem; }
 .tour-card { position: relative; width: 100%; max-width: 400px; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--r-lg); box-shadow: var(--shadow-lg); padding: 1.5rem; }

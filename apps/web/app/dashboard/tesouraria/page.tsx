@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { PageHeader } from '../../components/Fiori';
 import { OrganizationPicker } from '../../components/OrganizationPicker';
 import { Panel } from '../../components/Panel';
 import {
@@ -76,12 +77,10 @@ export default function TesourariaPage() {
 
   return (
     <>
-      <div className="page-head rise">
-        <div>
-          <h1>Tesouraria</h1>
-          <p className="subtitle">Contas e caixas, saldo consolidado da rede e fluxo de caixa projetado.</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Tesouraria"
+        subtitle="Contas e caixas, saldo consolidado da rede e projeção de fluxo de caixa."
+      />
 
       {error && <p className="error-text">{error}</p>}
 
@@ -113,7 +112,7 @@ export default function TesourariaPage() {
                     <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#64717e' }} axisLine={{ stroke: '#dde2e8' }} tickLine={false} />
                     <YAxis tickFormatter={(v) => brlShort(Number(v))} tick={{ fontSize: 12, fill: '#64717e' }} axisLine={false} tickLine={false} width={54} />
                     <Tooltip formatter={(v: number | string) => brl(Number(v))} contentStyle={{ borderRadius: 8, border: '1px solid #dde2e8' }} />
-                    <Bar dataKey="projected" name="Projetado" fill="#2f6fb0" radius={[4, 4, 0, 0]} maxBarSize={64} />
+                    <Bar dataKey="projected" name="Projetado" fill="#0070f2" radius={[4, 4, 0, 0]} maxBarSize={64} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

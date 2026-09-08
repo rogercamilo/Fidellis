@@ -13,6 +13,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { ListCard, PageHeader, TreeTable, type TreeRow } from '../../components/Fiori';
 import { Panel } from '../../components/Panel';
 import {
   reportingByUnit,
@@ -31,7 +32,7 @@ const monthLabel = (m: string) => {
   return `${mo}/${y.slice(2)}`;
 };
 
-const PIE_COLORS = ['#d8a531', '#2f6fb0', '#2f9e6b', '#c98a1e', '#8a5cd8', '#d0483c'];
+const PIE_COLORS = ['#0070f2', '#30914c', '#e76500', '#8a5cd8', '#0057d2', '#d20a0a'];
 
 export default function RelatoriosPage() {
   const [overview, setOverview] = useState<ReportingOverview | null>(null);
@@ -53,12 +54,10 @@ export default function RelatoriosPage() {
 
   return (
     <>
-      <div className="page-head rise">
-        <div>
-          <h1>Relatórios</h1>
-          <p className="subtitle">Dashboards e consolidação da rede (Rede→Unidade).</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Relatórios"
+        subtitle="Visão geral da arrecadação e consolidação por unidade (matriz e filiais da sua rede)."
+      />
 
       {error && <p className="error-text">{error}</p>}
 
@@ -98,7 +97,7 @@ export default function RelatoriosPage() {
                   labelStyle={{ color: '#16212c' }}
                   contentStyle={{ borderRadius: 8, border: '1px solid #dde2e8', fontFamily: 'var(--font-sans)' }}
                 />
-                <Bar dataKey="total" fill="#d8a531" radius={[4, 4, 0, 0]} maxBarSize={48} />
+                <Bar dataKey="total" fill="#0070f2" radius={[4, 4, 0, 0]} maxBarSize={48} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -123,33 +122,28 @@ export default function RelatoriosPage() {
           )}
         </Panel>
 
-        <Panel title="Consolidação por unidade" flush>
+        <ListCard label="Consolidação por unidade" count={units.length}>
           {units.length === 0 ? (
-            <p className="muted" style={{ padding: '1rem' }}>Nenhuma unidade visível.</p>
+            <p className="muted" style={{ padding: '1.25rem' }}>Nenhuma unidade visível.</p>
           ) : (
-            <table className="table">
-              <thead>
-                <tr><th>Unidade</th><th className="num">Doações</th><th className="num">Total</th></tr>
-              </thead>
-              <tbody>
-                {units.map((u) => (
-                  <tr key={u.organizationId}>
-                    <td>{u.parentId && <span className="muted">↳ </span>}{u.name}</td>
-                    <td className="num">{u.count}</td>
-                    <td className="num">{brl(u.total)}</td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
+            <TreeTable
+              headers={[{ label: 'Unidade' }, { label: 'Doações', num: true }, { label: 'Total', num: true }]}
+              rows={units.map<TreeRow>((u) => ({
+                id: u.organizationId,
+                parentId: u.parentId,
+                label: u.name,
+                cells: [u.count, brl(u.total)],
+              }))}
+              footer={
                 <tr>
-                  <td>Consolidado</td>
+                  <td>Consolidado da rede</td>
                   <td className="num">{units.reduce((s, u) => s + u.count, 0)}</td>
                   <td className="num">{brl(units.reduce((s, u) => s + u.total, 0))}</td>
                 </tr>
-              </tfoot>
-            </table>
+              }
+            />
           )}
-        </Panel>
+        </ListCard>
       </div>
     </>
   );

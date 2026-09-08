@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { PageHeader } from '../../components/Fiori';
 import { Panel } from '../../components/Panel';
 import {
   accountLedger, listLedgerAccounts, trialBalance,
@@ -38,17 +39,15 @@ export default function ContabilidadePage() {
 
   return (
     <>
-      <div className="page-head rise">
-        <div>
-          <h1>Contabilidade</h1>
-          <p className="subtitle">Balancete e razão (extrato por conta) das suas unidades.</p>
-        </div>
-        {tb && tb.accounts.length > 0 && (
+      <PageHeader
+        title="Contabilidade"
+        subtitle="Balancete de verificação e razão (extrato de cada conta) consolidados das suas unidades."
+        actions={tb && tb.accounts.length > 0 ? (
           <span className={`badge ${balanced ? 'ok' : 'err'}`}>
             {balanced ? 'Débitos = Créditos' : 'Desbalanceado'}
           </span>
-        )}
-      </div>
+        ) : undefined}
+      />
 
       {error && <p className="error-text">{error}</p>}
 

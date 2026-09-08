@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { PageHeader } from '../../components/Fiori';
 import { Panel } from '../../components/Panel';
 import {
   createCategory, createCostCenter, createDonorType, createFund,
@@ -95,12 +96,10 @@ export default function ConfiguracoesPage() {
 
   return (
     <>
-      <div className="page-head rise">
-        <div>
-          <h1>Configurações financeiras</h1>
-          <p className="subtitle">Nomenclatura, dimensões gerenciais, tipos de doador e rubricas do plano de contas.</p>
-        </div>
-      </div>
+      <PageHeader
+        title="Configurações"
+        subtitle="Nomenclatura, dimensões gerenciais (centros de custo, fundos), tipos de doador e rubricas do plano de contas."
+      />
 
       {error && <p className="error-text">{error}</p>}
 

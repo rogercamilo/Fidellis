@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { PageHeader } from '../../components/Fiori';
 import { Panel } from '../../components/Panel';
 import {
   approveSnapshot, exportLedgerCsv, exportTrialBalanceCsv, generateSnapshot, listMyOrganizations,
@@ -94,27 +95,27 @@ export default function DemonstracoesPage() {
 
   return (
     <>
-      <div className="page-head rise">
-        <div>
-          <h1>Demonstrações</h1>
-          <p className="subtitle">DRE, Balanço, DFC e DMPL (ITG 2002) por exercício e unidade.</p>
-        </div>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
-          <div className="field" style={{ margin: 0 }}>
-            <label htmlFor="dm-year">Exercício</label>
-            <select id="dm-year" value={year} onChange={(e) => setYear(Number(e.target.value))}>
-              {years.map((y) => <option key={y} value={y}>{y}</option>)}
-            </select>
+      <PageHeader
+        title="Demonstrações"
+        subtitle="Resultado (DRE), Balanço, Fluxo de Caixa e Mutações do PL por exercício e unidade — no padrão ITG 2002."
+        actions={
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
+            <div className="field" style={{ margin: 0 }}>
+              <label htmlFor="dm-year">Exercício</label>
+              <select id="dm-year" value={year} onChange={(e) => setYear(Number(e.target.value))}>
+                {years.map((y) => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+            <div className="field" style={{ margin: 0 }}>
+              <label htmlFor="dm-org">Unidade</label>
+              <select id="dm-org" value={org} onChange={(e) => setOrg(e.target.value)}>
+                <option value="">Consolidado (rede)</option>
+                {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+              </select>
+            </div>
           </div>
-          <div className="field" style={{ margin: 0 }}>
-            <label htmlFor="dm-org">Unidade</label>
-            <select id="dm-org" value={org} onChange={(e) => setOrg(e.target.value)}>
-              <option value="">Consolidado (rede)</option>
-              {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-            </select>
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       {error && <p className="error-text">{error}</p>}
 

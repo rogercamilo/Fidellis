@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 /** Tradução dos status técnicos para português claro (requisito: usuários não-técnicos). */
 const STATUS_PT: Record<string, { label: string; kind: 'ok' | 'warn' | 'err' | 'muted' }> = {
@@ -189,6 +189,58 @@ export function GuidedTour({
         ) : null}
       </div>
     </div>
+  );
+}
+
+/** Tabela em árvore (SAP tree table): hierarquia Rede→Unidade com expandir/recolher. */
+export type TreeRow = { id: string; parentId: string | null; label: ReactNode; cells: ReactNode[] };
+
+export function TreeTable({
+  headers, rows, footer,
+}: { headers: { label: string; num?: boolean }[]; rows: TreeRow[]; footer?: ReactNode }) {
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const ids = useMemo(() => new Set(rows.map((r) => r.id)), [rows]);
+  const childrenOf = useMemo(() => {
+    const m = new Map<string, TreeRow[]>();
+    rows.forEach((r) => {
+      const key = r.parentId && ids.has(r.parentId) ? r.parentId : '__root__';
+      (m.get(key) ?? m.set(key, []).get(key)!).push(r);
+    });
+    return m;
+  }, [rows, ids]);
+
+  const toggle = (id: string) =>
+    setCollapsed((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  const render = (r: TreeRow, depth: number): ReactNode => {
+    const kids = childrenOf.get(r.id) ?? [];
+    const open = !collapsed.has(r.id);
+    return (
+      <Fragment key={r.id}>
+        <tr>
+          <td>
+            <span style={{ paddingLeft: `${depth * 1.25}rem`, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+              {kids.length > 0 ? (
+                <button className="tree-toggle" onClick={() => toggle(r.id)} aria-label={open ? 'Recolher' : 'Expandir'}>{open ? '▾' : '▸'}</button>
+              ) : (
+                <span className="tree-spacer" />
+              )}
+              {r.label}
+            </span>
+          </td>
+          {r.cells.map((c, i) => <td key={i} className={headers[i + 1]?.num ? 'num' : undefined}>{c}</td>)}
+        </tr>
+        {open && kids.map((k) => render(k, depth + 1))}
+      </Fragment>
+    );
+  };
+
+  return (
+    <table className="table">
+      <thead><tr>{headers.map((h, i) => <th key={i} className={h.num ? 'num' : undefined}>{h.label}</th>)}</tr></thead>
+      <tbody>{(childrenOf.get('__root__') ?? []).map((r) => render(r, 0))}</tbody>
+      {footer && <tfoot>{footer}</tfoot>}
+    </table>
   );
 }
 
