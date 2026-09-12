@@ -11,6 +11,12 @@ public sealed class Tenant : Entity
     public string Plan { get; set; } = "trial";
     public string Status { get; set; } = "active";
 
+    /// <summary>
+    /// Marca quando o onboarding em duas etapas (D-01) foi concluído/pulado. Dirige o banner de
+    /// "monte sua equipe" na UI; a saída do bootstrap em si é derivada da contagem de aprovadores.
+    /// </summary>
+    public DateTimeOffset? OnboardingCompletedAt { get; set; }
+
     public static Tenant Create(string slug, string name)
     {
         var normalized = slug.Trim().ToLowerInvariant();

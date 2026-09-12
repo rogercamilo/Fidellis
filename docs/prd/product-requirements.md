@@ -15,9 +15,28 @@ As plataformas atuais **cobram taxa por transação**, são fracas em **hierarqu
 
 ## 2. Público-alvo (ICP)
 
+O público se descreve por **dois eixos ortogonais** — a hierarquia de rede (onde o dinheiro é
+consolidado) e a governança interna de cada unidade (quem opera e quem aprova). Confundi-los foi o erro
+da 1ª leitura; o modelo de governança e o remapeamento de papéis/alçadas são detalhados no
+[parecer do terceiro setor](parecer-finance-terceiro-setor.md) (§2 e decisão **D-02**), que é a fonte de
+verdade sobre o assunto.
+
+**Eixo 1 — Hierarquia de rede (segmentos):**
 - **Redes:** dioceses, institutos, congregações que consolidam várias unidades.
 - **Unidades:** paróquias, casas/comunidades, obras sociais.
-- **Papéis:** gestor de rede, gestor de unidade, tesoureiro/contador, secretaria, e o **doador**.
+
+**Eixo 2 — Governança interna (como o público realmente se organiza):** nunca uma pessoa só — **sempre
+uma equipe voluntária sob um conselho**. Os papéis (vocabulário **customizável por tenant**) são:
+- **Coordenador** — está à frente da equipe financeira/contábil no dia a dia.
+- **Conselheiro responsável** — responde pela equipe perante o conselho.
+- **Moderador/presidente do conselho** — aprovação de alçada alta.
+- **Conselho fiscal** — **fiscaliza** (somente-leitura); não autoriza pagamentos.
+- **Contador** — escritório **terceirizado**; recebe o rascunho, valida e assina (somente-leitura no sistema).
+- **Doador** — **membro** (dízimo/oferta) ou **não-membro/apoiador** (doação pública ou anônima).
+
+> O vocabulário corporativo anterior (gestor de rede/unidade, secretaria) fica **superado** por este
+> mapa: "gestão" corresponde a coordenador/conselheiro na governança de conselho, e a alçada de rede é
+> uma dimensão da consolidação (Eixo 1), não um cargo.
 
 ## 3. Análise competitiva
 

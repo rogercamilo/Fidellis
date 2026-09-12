@@ -579,6 +579,67 @@ export const teamRoles = (t: string) => authGet<string[]>(t, '/api/finance/team/
 export const setMemberRole = (t: string, userId: string, role: string) =>
   authSend<{ userId: string; role: string }>(t, 'PUT', `/api/finance/team/${userId}/role`, { role }, 'atribuir papel');
 
+// ---- Convites de membro + estado de bootstrap (D-01) ----
+
+export interface Invitation { id: string; email: string; role: string; status: string; expiresAt: string; createdAt: string }
+export interface BootstrapStatus { onboardingCompletedAt: string | null; approverCount: number; teamReady: boolean; inBootstrap: boolean }
+export interface InviteResult { outcome: 'MemberAdded' | 'Invited' | 'AlreadyMember'; invitation: Invitation | null }
+
+export const listInvitations = (t: string) => authGet<Invitation[]>(t, '/api/finance/team/invitations', 'convites');
+export const bootstrapStatus = (t: string) => authGet<BootstrapStatus>(t, '/api/finance/team/bootstrap', 'estado da equipe');
+export const createInvite = (t: string, body: { email: string; role: string }) =>
+  authSend<InviteResult>(t, 'POST', '/api/finance/team/invitations', body, 'convidar membro');
+export const resendInvite = (t: string, id: string) =>
+  authSend<Invitation>(t, 'POST', `/api/finance/team/invitations/${id}/resend`, {}, 'reenviar convite');
+export const revokeInvite = (t: string, id: string) =>
+  authSend<{ id: string; status: string }>(t, 'DELETE', `/api/finance/team/invitations/${id}`, undefined, 'revogar convite');
+export const completeOnboarding = (t: string) =>
+  authSend<BootstrapStatus>(t, 'POST', '/api/finance/team/onboarding/complete', {}, 'concluir onboarding');
+
+/** Rótulos amigáveis dos papéis (governança de conselho). Cobre chaves atuais e as da D-02. */
+export const ROLE_LABELS: Record<string, string> = {
+  admin: 'Administrador',
+  treasurer: 'Coordenador (tesouraria)',
+  coordinator: 'Coordenador',
+  manager: 'Conselheiro responsável',
+  council_officer: 'Conselheiro responsável',
+  council_chair: 'Moderador / presidente',
+  fiscal_council: 'Conselho fiscal',
+  accountant: 'Contador',
+  member: 'Membro',
+};
+export const roleLabel = (role: string) => ROLE_LABELS[role] ?? role;
+
+// ---- Aceite público de convite (BFF direto; token no path) ----
+
+export interface InvitationInfo { email: string; tenantName: string; role: string }
+export interface AcceptInvitationResult {
+  user: { id: string; email: string; displayName: string | null };
+  accessToken: string;
+  refreshToken: string;
+  activeTenant: string;
+  tenant: { slug: string; name: string; role: string };
+}
+
+export async function getInvitation(token: string): Promise<InvitationInfo> {
+  const res = await fetch(`${BFF_URL}/invitations/${encodeURIComponent(token)}`);
+  if (!res.ok) throw new Error('Convite inválido ou expirado.');
+  return res.json() as Promise<InvitationInfo>;
+}
+
+export async function acceptInvitation(token: string, password: string, displayName?: string): Promise<AcceptInvitationResult> {
+  const res = await fetch(`${BFF_URL}/invitations/${encodeURIComponent(token)}/accept`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ password, displayName }),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { message?: string };
+    throw new Error(body.message ?? `Falha ao aceitar o convite (${res.status}).`);
+  }
+  return res.json() as Promise<AcceptInvitationResult>;
+}
+
 // =====================================================================
 // Demonstrações contábeis (Onda 4) — DRE/DRP, Balanço, DFC, DMPL, segregação.
 // Endpoints aceitam organizationId opcional (DT-14): ausente = consolidado da rede.
