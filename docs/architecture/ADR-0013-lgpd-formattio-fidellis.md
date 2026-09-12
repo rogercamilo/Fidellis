@@ -88,6 +88,10 @@ armazenamento: ao surfacar a arrecadação **dentro do portal de formação**, o
   ciente · minimização revisada contra o dicionário de dados (D-10) · plano de retenção/erasure do elo ·
   eventos de auditoria mapeados · **contrato de auth server-to-server (credencial por tenant) definido** ·
   regra de offboarding do vínculo definida (✔ ver abaixo — pausa/encerra com aviso).
+- **Progresso (2026-09-12):** auditoria do Formattio **concluída** (esquema + código — ver
+  [planilha](../prd/d10-formattio-audit-worksheet.md)) e **RIPD rascunhado**
+  ([ripd-formattio-fidellis.md](ripd-formattio-fidellis.md)). Falta validação **jurídica/DPO** do RIPD +
+  base legal do cruzamento → então este ADR passa a **Aceito**.
 
 ## Ciclo de vida do vínculo (offboarding) — decidido
 
