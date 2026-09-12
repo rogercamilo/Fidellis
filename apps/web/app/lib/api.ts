@@ -303,6 +303,7 @@ export interface DonorSummary {
   email?: string | null;
   document?: string | null;
   phone?: string | null;
+  isMember: boolean;
   totalPaid: number;
   donations: number;
   lastPaidAt?: string | null;
@@ -310,7 +311,7 @@ export interface DonorSummary {
 }
 
 export interface DonorDetail {
-  donor: { id: string; name: string; email?: string | null; document?: string | null; phone?: string | null };
+  donor: { id: string; name: string; email?: string | null; document?: string | null; phone?: string | null; isMember: boolean };
   donations: { id: string; amount: number; status: string; method: string; createdAt: string; paidAt?: string | null }[];
   recurring: { id: string; amount: number; dayOfMonth: number; status: string; nextChargeAt: string }[];
   messages: { id: string; channel: string; eventType: string; status: string; subject?: string | null; createdAt: string; sentAt?: string | null }[];
@@ -393,6 +394,16 @@ async function authPost(token: string, path: string, label: string): Promise<voi
 export const anonymizeDonor = (token: string, id: string) => authPost(token, `/api/crm/donors/${id}/anonymize`, 'anonimizar');
 export const optOutDonor = (token: string, id: string) => authPost(token, `/api/crm/donors/${id}/opt-out`, 'opt-out');
 
+/** Marca/desmarca um doador como membro da comunidade (#75) — habilita dízimo/oferta no portal. */
+export async function setDonorMember(token: string, id: string, isMember: boolean): Promise<void> {
+  const res = await fetch(`${BFF_URL}/api/crm/donors/${id}/member`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+    body: JSON.stringify({ isMember }),
+  });
+  if (!res.ok) throw new Error(`Falha ao atualizar membro (${res.status}).`);
+}
+
 // ---- Portal público do doador ----
 
 export interface PublicOrg {
@@ -402,9 +413,43 @@ export interface PublicOrg {
 }
 
 export interface PortalData {
-  donor: { name: string; email: string | null };
+  donor: { name: string; email: string | null; isMember: boolean };
   donations: { id: string; amount: number; status: string; method: string; createdAt: string; paidAt?: string | null }[];
   receipts: { id: string; number: string; amount: number; issuedAt: string }[];
+}
+
+// ---- Autoatendimento do membro no portal (#75): autenticado pelo token do link mágico ----
+
+export async function memberGive(
+  tenant: string, token: string,
+  input: { organizationId: string; amount: number; entryType: EntryType; method?: string },
+): Promise<DonationCheckout> {
+  const res = await fetch(`${BFF_URL}/api/public/${tenant}/member/give`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ token, ...input }),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? `Falha ao contribuir (${res.status}).`);
+  }
+  return res.json() as Promise<DonationCheckout>;
+}
+
+export async function memberPledge(
+  tenant: string, token: string,
+  input: { organizationId: string; amount: number; dayOfMonth: number },
+): Promise<{ id: string; amount: number; dayOfMonth: number; status: string; nextChargeAt: string }> {
+  const res = await fetch(`${BFF_URL}/api/public/${tenant}/member/pledge`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ token, ...input }),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? `Falha ao assinar dízimo (${res.status}).`);
+  }
+  return res.json() as Promise<{ id: string; amount: number; dayOfMonth: number; status: string; nextChargeAt: string }>;
 }
 
 export async function publicOrganizations(tenant: string): Promise<PublicOrg[]> {

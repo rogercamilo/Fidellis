@@ -149,6 +149,7 @@ public static class DonationsModule
                 return new
                 {
                     id = donor.Id, name = donor.Name, email = donor.Email, document = donor.Document, phone = donor.Phone,
+                    isMember = donor.IsMember,
                     totalPaid = paid.Sum(x => x.Amount), donations = paid.Count, lastPaidAt = last, situacao,
                 };
             }).OrderByDescending(x => x.totalPaid).ToList();
@@ -181,7 +182,7 @@ public static class DonationsModule
 
             return Results.Ok(new
             {
-                donor = new { donor.Id, donor.Name, donor.Email, donor.Document, donor.Phone, donor.ContactOptOut, donor.AnonymizedAt },
+                donor = new { donor.Id, donor.Name, donor.Email, donor.Document, donor.Phone, donor.IsMember, donor.ContactOptOut, donor.AnonymizedAt },
                 donations,
                 recurring,
                 messages,
@@ -243,6 +244,19 @@ public static class DonationsModule
             return Results.Ok(new { optOut = true });
         });
 
+        // Marca/desmarca o doador como MEMBRO da comunidade (#75) — habilita dízimo/oferta self-service.
+        crm.MapPost("/donors/{id:guid}/member", async (
+            Guid id, SetMemberRequest req, ITenantContext tenant, TenantDbContext db, IAuditLog audit, CancellationToken ct) =>
+        {
+            if (!tenant.HasTenant) return Results.BadRequest(new { error = "Nenhum tenant no request." });
+            var donor = await db.Donors.FirstOrDefaultAsync(d => d.Id == id, ct);
+            if (donor is null) return Results.NotFound();
+            donor.IsMember = req.IsMember;
+            await db.SaveChangesAsync(ct);
+            await audit.RecordAsync(req.IsMember ? "donor.marked_member" : "donor.unmarked_member", "donor", id.ToString());
+            return Results.Ok(new { id, isMember = donor.IsMember });
+        });
+
         // ---- Público (portal do doador; tenant pelo path) ----
         var pub = app.MapGroup("/api/public/{tenant}").WithTags("Public");
 
@@ -284,7 +298,7 @@ public static class DonationsModule
                 return Results.Unauthorized();
 
             var donorId = valid.Value.DonorId;
-            var donor = await db.Donors.Where(d => d.Id == donorId).Select(d => new { d.Name, d.Email }).FirstOrDefaultAsync(ct);
+            var donor = await db.Donors.Where(d => d.Id == donorId).Select(d => new { d.Name, d.Email, d.IsMember }).FirstOrDefaultAsync(ct);
             if (donor is null) return Results.NotFound();
 
             var donations = await db.Donations.Where(d => d.DonorId == donorId)
@@ -317,3 +331,5 @@ public sealed record CreateOrganizationRequest(string Name, Guid? ParentId = nul
 public sealed record AddMemberRequest(Guid? UserId = null, string? Role = null);
 
 public sealed record MagicLinkRequest(string Email);
+
+public sealed record SetMemberRequest(bool IsMember);

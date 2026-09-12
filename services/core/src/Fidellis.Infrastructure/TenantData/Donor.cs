@@ -16,6 +16,13 @@ public sealed class Donor : Entity
     /// <summary>LGPD: quando os dados pessoais foram anonimizados (erasure).</summary>
     public DateTimeOffset? AnonymizedAt { get; set; }
 
+    /// <summary>
+    /// Membro da comunidade (#75): marcado pelo tenant (coordenador/admin). Habilita o autoatendimento de
+    /// dízimo/oferta no portal (só membro — D-06). Nativo do Fidellis; a origem federada do Formattio
+    /// (D-10/#80), quando existir, também marca este campo. Não é dado sensível por si.
+    /// </summary>
+    public bool IsMember { get; set; }
+
     // Configurabilidade/CRM (Onda 1). Jornada apoiador→recorrente (RF-FIN-182).
     public Guid? DonorTypeId { get; set; }
 
