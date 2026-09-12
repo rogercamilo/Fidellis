@@ -81,7 +81,7 @@ public sealed class CashSessionService(TenantDbContext db, TreasuryService treas
             var label = string.IsNullOrWhiteSpace(session.EventLabel) ? "Coleta em espécie" : $"Coleta — {session.EventLabel}";
             foreach (var line in entryLines)
             {
-                var entry = new Donation
+                var entry = new Entry
                 {
                     OrganizationId = account.OrganizationId,
                     Amount = line.Amount,
@@ -95,7 +95,7 @@ public sealed class CashSessionService(TenantDbContext db, TreasuryService treas
                     ProjectId = line.ProjectId,
                     FundId = line.FundId ?? defaultFund,
                 };
-                db.Donations.Add(entry);
+                db.Entries.Add(entry);
                 await reconciliation.PostEntryAsync(entry, account, ChartOfAccounts.Cash, ct);
             }
         }

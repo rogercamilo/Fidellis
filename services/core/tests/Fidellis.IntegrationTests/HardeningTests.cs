@@ -77,7 +77,7 @@ public class HardeningTests
         var second = await checkout.CreateAsync(cmd);
 
         Assert.Equal(first.DonationId, second.DonationId);
-        Assert.Equal(1, await tdb.Donations.CountAsync());
+        Assert.Equal(1, await tdb.Entries.CountAsync());
         Assert.Equal(1, gateway.PixCalls);   // não criou novo pedido no PSP
     }
 
@@ -92,6 +92,6 @@ public class HardeningTests
         var b = await checkout.CreateAsync(new CheckoutCommand(Guid.NewGuid(), 20m, "Bia", "bia@ex.com", "2", IdempotencyKey: "k2"));
 
         Assert.NotEqual(a.DonationId, b.DonationId);
-        Assert.Equal(2, await tdb.Donations.CountAsync());
+        Assert.Equal(2, await tdb.Entries.CountAsync());
     }
 }

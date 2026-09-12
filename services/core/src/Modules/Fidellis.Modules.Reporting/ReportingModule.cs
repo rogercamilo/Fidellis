@@ -32,7 +32,7 @@ public static class ReportingModule
             if (!tenant.HasTenant) return Results.BadRequest(new { error = "Nenhum tenant no request." });
             var visible = await VisibleOrgsAsync(user, db, ct);
 
-            var paid = await db.Donations
+            var paid = await db.Entries
                 .Where(d => d.Status == "paid" && visible.Contains(d.OrganizationId)
                     && (fromDate == null || d.PaidAt >= fromDate) && (toDate == null || d.PaidAt <= toDate))
                 .Select(d => new { d.Amount, d.Method, d.DonorId })
@@ -66,7 +66,7 @@ public static class ReportingModule
             if (!tenant.HasTenant) return Results.BadRequest(new { error = "Nenhum tenant no request." });
             var visible = await VisibleOrgsAsync(user, db, ct);
 
-            var paid = await db.Donations
+            var paid = await db.Entries
                 .Where(d => d.Status == "paid" && d.PaidAt != null && visible.Contains(d.OrganizationId))
                 .Select(d => new { d.PaidAt, d.Amount })
                 .ToListAsync(ct);
@@ -89,7 +89,7 @@ public static class ReportingModule
                 .Select(o => new { o.Id, o.Name, o.ParentId })
                 .ToListAsync(ct);
 
-            var paid = await db.Donations
+            var paid = await db.Entries
                 .Where(d => d.Status == "paid" && visible.Contains(d.OrganizationId)
                     && (fromDate == null || d.PaidAt >= fromDate) && (toDate == null || d.PaidAt <= toDate))
                 .Select(d => new { d.OrganizationId, d.Amount })

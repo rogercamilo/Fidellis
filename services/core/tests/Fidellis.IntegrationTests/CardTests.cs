@@ -56,7 +56,7 @@ public class CardTests
         Assert.Equal("card", result.Method);
         Assert.Equal("paid", result.Status);
 
-        var d = await tdb.Donations.SingleAsync();
+        var d = await tdb.Entries.SingleAsync();
         Assert.Equal("paid", d.Status);
         Assert.Equal("4242", d.CardLast4);
         Assert.NotNull(d.PaidAt);
@@ -91,7 +91,7 @@ public class CardTests
             new ReceiptService(tdb, clock), new OutboxNotifier(tdb, new MessageOutbox(tdb)), clock,
             NullLogger<WebhookProcessor>.Instance);
 
-        tdb.Donations.Add(new Donation
+        tdb.Entries.Add(new Entry
         {
             OrganizationId = Guid.NewGuid(), Amount = 100m, Method = "card", Status = "pending",
             PspChargeId = "ch_1", DonorName = "Ana",
@@ -99,12 +99,12 @@ public class CardTests
         await tdb.SaveChangesAsync();
 
         await processor.ProcessAsync(new PagarmeWebhookEvent("h1", "charge.paid", "or_1", "ch_1", "paid"), "{}");
-        Assert.Equal("paid", (await tdb.Donations.SingleAsync()).Status);
+        Assert.Equal("paid", (await tdb.Entries.SingleAsync()).Status);
         Assert.Null((await tdb.Receipts.SingleAsync()).CanceledAt);
 
         await processor.ProcessAsync(new PagarmeWebhookEvent("h2", "charge.refunded", "or_1", "ch_1", "refunded"), "{}");
 
-        var d = await tdb.Donations.SingleAsync();
+        var d = await tdb.Entries.SingleAsync();
         Assert.Equal("refunded", d.Status);
         Assert.Equal(4, await tdb.AccountingEntries.CountAsync()); // 2 da conciliação + 2 da reversão
         var receipt = await tdb.Receipts.SingleAsync();

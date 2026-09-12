@@ -56,8 +56,8 @@ public class MessagingTests
         var tdb = TDb($"msg_{Guid.NewGuid()}");
         var donor = new Donor { Name = "Ana", Email = "ana@x.org" };
         tdb.Donors.Add(donor);
-        var donation = new Donation { OrganizationId = Guid.NewGuid(), Amount = 80m, Method = "pix", Status = "paid", DonorId = donor.Id };
-        tdb.Donations.Add(donation);
+        var donation = new Entry { OrganizationId = Guid.NewGuid(), Amount = 80m, Method = "pix", Status = "paid", DonorId = donor.Id };
+        tdb.Entries.Add(donation);
         await tdb.SaveChangesAsync();
 
         await new OutboxNotifier(tdb, new MessageOutbox(tdb)).DonationPaidAsync(donation, "2026/000009");
@@ -120,7 +120,7 @@ public class MessagingTests
         var tdb = TDb($"msg_{Guid.NewGuid()}");
         var donor = new Donor { Name = "Léo", Email = "leo@x.org" };
         tdb.Donors.Add(donor);
-        tdb.Donations.Add(new Donation
+        tdb.Entries.Add(new Entry
         {
             OrganizationId = Guid.NewGuid(), Amount = 30m, Method = "pix", Status = "paid",
             DonorId = donor.Id, PaidAt = T0.AddDays(-200),

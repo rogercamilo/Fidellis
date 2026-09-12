@@ -66,7 +66,7 @@ public sealed class RecurringBillingService(
         var created = 0;
         foreach (var r in due)
         {
-            var hasOpen = await db.Donations.AnyAsync(
+            var hasOpen = await db.Entries.AnyAsync(
                 d => d.RecurringDonationId == r.Id && d.Status == "pending", ct);
             if (hasOpen) continue;
 
@@ -77,7 +77,7 @@ public sealed class RecurringBillingService(
                 continue;
             }
 
-            var cycle = new Donation
+            var cycle = new Entry
             {
                 OrganizationId = r.OrganizationId,
                 Amount = r.Amount,
@@ -90,7 +90,7 @@ public sealed class RecurringBillingService(
                 DueAt = now.AddSeconds(options.CycleExpirySeconds),
                 EntryType = r.EntryType, // ciclo herda o tipo do compromisso (D-06/D-07)
             };
-            db.Donations.Add(cycle);
+            db.Entries.Add(cycle);
 
             var label = settings?.LabelFor(r.EntryType) ?? "Contribuição";
             await checkout.CreatePixChargeAsync(cycle, donor, $"{label} recorrente", ct);
@@ -110,7 +110,7 @@ public sealed class RecurringBillingService(
     public async Task<int> RunDunningAsync(CancellationToken ct = default)
     {
         var now = clock.UtcNow;
-        var expired = await db.Donations
+        var expired = await db.Entries
             .Where(d => d.RecurringDonationId != null && d.Status == "pending"
                         && d.ExpiresAt != null && d.ExpiresAt < now)
             .ToListAsync(ct);

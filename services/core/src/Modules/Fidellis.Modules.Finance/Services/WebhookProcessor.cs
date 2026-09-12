@@ -66,7 +66,7 @@ public sealed class WebhookProcessor(
 
     private async Task ConfirmPaymentAsync(string chargeId, CancellationToken ct)
     {
-        var donation = await db.Donations.FirstOrDefaultAsync(d => d.PspChargeId == chargeId, ct);
+        var donation = await db.Entries.FirstOrDefaultAsync(d => d.PspChargeId == chargeId, ct);
         if (donation is null)
         {
             logger.LogWarning("Nenhuma doação para a cobrança {ChargeId}.", chargeId);
@@ -92,7 +92,7 @@ public sealed class WebhookProcessor(
 
     private async Task MarkFailedAsync(string chargeId, CancellationToken ct)
     {
-        var donation = await db.Donations.FirstOrDefaultAsync(d => d.PspChargeId == chargeId, ct);
+        var donation = await db.Entries.FirstOrDefaultAsync(d => d.PspChargeId == chargeId, ct);
         if (donation is not null && donation.Status != "paid")
             donation.Status = "failed";
     }
@@ -100,7 +100,7 @@ public sealed class WebhookProcessor(
     /// <summary>Estorno/chargeback (RF-FIN-022): reverte a conciliação e cancela o recibo.</summary>
     private async Task MarkReversedAsync(string chargeId, string newStatus, string reason, CancellationToken ct)
     {
-        var donation = await db.Donations.FirstOrDefaultAsync(d => d.PspChargeId == chargeId, ct);
+        var donation = await db.Entries.FirstOrDefaultAsync(d => d.PspChargeId == chargeId, ct);
         if (donation is null)
         {
             logger.LogWarning("Estorno sem doação para a cobrança {ChargeId}.", chargeId);

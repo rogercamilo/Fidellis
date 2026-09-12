@@ -25,7 +25,7 @@ public sealed class ReconciliationService(
     /// lançamentos de partida dobrada, emite o recibo, enfileira o agradecimento e — se for ciclo
     /// recorrente — zera o dunning e reagenda a próxima cobrança.
     /// </summary>
-    public async Task PostPaidAsync(Donation donation, CancellationToken ct = default)
+    public async Task PostPaidAsync(Entry donation, CancellationToken ct = default)
     {
         var account = await EnsureAccountAsync(donation.OrganizationId, ct);
 
@@ -82,7 +82,7 @@ public sealed class ReconciliationService(
     /// Reverte uma doação conciliada (estorno/chargeback — RF-FIN-022): muda o status, lança a
     /// partida dobrada inversa e cancela o recibo. No-op se a doação não estava <c>paid</c>.
     /// </summary>
-    public async Task ReverseAsync(Donation donation, string newStatus, string reason, CancellationToken ct = default)
+    public async Task ReverseAsync(Entry donation, string newStatus, string reason, CancellationToken ct = default)
     {
         if (donation.Status != "paid")
             return;
@@ -129,7 +129,7 @@ public sealed class ReconciliationService(
     /// Não faz <c>SaveChanges</c> — quem chama persiste.
     /// </summary>
     public async Task PostEntryAsync(
-        Donation entry, TreasuryAccount treasuryAccount, string assetLedgerCode, CancellationToken ct = default)
+        Entry entry, TreasuryAccount treasuryAccount, string assetLedgerCode, CancellationToken ct = default)
     {
         var account = await EnsureAccountAsync(entry.OrganizationId, ct);
         var date = DateOnly.FromDateTime((entry.PaidAt ?? clock.UtcNow).UtcDateTime);
@@ -200,7 +200,7 @@ public sealed class ReconciliationService(
     }
 
     /// <summary>Movimento de tesouraria na conta bancária da unidade (integra razão ↔ tesouraria — DT-02).</summary>
-    private async Task AddTreasuryAsync(Donation donation, string kind, CancellationToken ct)
+    private async Task AddTreasuryAsync(Entry donation, string kind, CancellationToken ct)
     {
         var bank = await db.TreasuryAccounts
             .FirstOrDefaultAsync(a => a.OrganizationId == donation.OrganizationId && a.Kind == "bank" && a.Active, ct);

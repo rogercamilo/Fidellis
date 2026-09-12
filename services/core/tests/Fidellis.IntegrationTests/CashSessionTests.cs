@@ -67,8 +67,8 @@ public class CashSessionTests
         var s = await sessions.OpenAsync(caixa.Id, Guid.NewGuid(), "Culto");
         await sessions.CloseAsync(s.Id, 500m, Guid.NewGuid());
 
-        // D-05: a coleta vira entrada de 1ª classe — Donation (source=cash, paid) + partida dobrada.
-        var entry = await tdb.Donations.SingleAsync();
+        // D-05: a coleta vira entrada de 1ª classe — Entry (source=cash, paid) + partida dobrada.
+        var entry = await tdb.Entries.SingleAsync();
         Assert.Equal("cash", entry.Source);
         Assert.Equal(EntryTypes.Offering, entry.EntryType);           // agregada default = oferta (D-06)
         Assert.Equal("paid", entry.Status);
@@ -93,7 +93,7 @@ public class CashSessionTests
             new CashEntryLine(EntryTypes.Offering, 100m),
         });
 
-        var entries = await tdb.Donations.ToListAsync();
+        var entries = await tdb.Entries.ToListAsync();
         Assert.Equal(2, entries.Count);
         Assert.Contains(entries, e => e.EntryType == EntryTypes.Tithe && e.Amount == 200m);
         Assert.Contains(entries, e => e.EntryType == EntryTypes.Offering && e.Amount == 100m);

@@ -22,7 +22,7 @@ public sealed class TenantDbContext(
     public DbSet<Account> Accounts => Set<Account>();
     public DbSet<Transaction> Transactions => Set<Transaction>();
     public DbSet<AccountingEntry> AccountingEntries => Set<AccountingEntry>();
-    public DbSet<Donation> Donations => Set<Donation>();
+    public DbSet<Entry> Entries => Set<Entry>();
     public DbSet<Donor> Donors => Set<Donor>();
     public DbSet<Campaign> Campaigns => Set<Campaign>();
     public DbSet<PspRecipient> PspRecipients => Set<PspRecipient>();
@@ -131,7 +131,7 @@ public sealed class TenantDbContext(
             b.HasIndex(x => x.CreatedAt);
         });
 
-        modelBuilder.Entity<Donation>(b =>
+        modelBuilder.Entity<Entry>(b =>
         {
             b.ToTable("donations");
             b.HasKey(x => x.Id);

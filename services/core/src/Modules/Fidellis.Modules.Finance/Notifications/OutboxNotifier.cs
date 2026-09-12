@@ -11,7 +11,7 @@ namespace Fidellis.Modules.Finance.Notifications;
 /// </summary>
 public sealed class OutboxNotifier(TenantDbContext db, MessageOutbox outbox) : INotifier
 {
-    public Task ChargeCreatedAsync(RecurringDonation recurring, Donation cycle, CancellationToken ct = default)
+    public Task ChargeCreatedAsync(RecurringDonation recurring, Entry cycle, CancellationToken ct = default)
         => Task.CompletedTask; // cobrança gerada não é um toque da régua neste passo
 
     public Task PaymentFailedAsync(RecurringDonation recurring, int attempt, CancellationToken ct = default)
@@ -20,7 +20,7 @@ public sealed class OutboxNotifier(TenantDbContext db, MessageOutbox outbox) : I
     public Task PastDueAsync(RecurringDonation recurring, CancellationToken ct = default)
         => EnqueueForRecurringAsync(recurring, MessageTemplates.PastDue, $"pastdue:{recurring.Id}", ct);
 
-    public async Task DonationPaidAsync(Donation donation, string? receiptNumber, CancellationToken ct = default)
+    public async Task DonationPaidAsync(Entry donation, string? receiptNumber, CancellationToken ct = default)
     {
         if (donation.DonorId is not { } donorId) return;
         var donor = await db.Donors.FirstOrDefaultAsync(d => d.Id == donorId, ct);

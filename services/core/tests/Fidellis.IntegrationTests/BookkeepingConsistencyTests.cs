@@ -35,8 +35,8 @@ public class BookkeepingConsistencyTests
         var clock = new FixedClock(T0);
         var org = Guid.NewGuid();
 
-        var donation = new Donation { OrganizationId = org, Amount = 100m, Method = "pix", Status = "paid", PaidAt = T0, DonorName = "Ana" };
-        tdb.Donations.Add(donation);
+        var donation = new Entry { OrganizationId = org, Amount = 100m, Method = "pix", Status = "paid", PaidAt = T0, DonorName = "Ana" };
+        tdb.Entries.Add(donation);
         await tdb.SaveChangesAsync();
 
         await Recon(tdb, clock).PostPaidAsync(donation);
@@ -57,8 +57,8 @@ public class BookkeepingConsistencyTests
         var org = Guid.NewGuid();
         var bank = await treasury.CreateAccountAsync(org, "Banco", "bank", 0m);
 
-        var donation = new Donation { OrganizationId = org, Amount = 250m, Method = "pix", Status = "paid", PaidAt = T0, DonorName = "Ana" };
-        tdb.Donations.Add(donation);
+        var donation = new Entry { OrganizationId = org, Amount = 250m, Method = "pix", Status = "paid", PaidAt = T0, DonorName = "Ana" };
+        tdb.Entries.Add(donation);
         await tdb.SaveChangesAsync();
 
         await Recon(tdb, clock).PostPaidAsync(donation);

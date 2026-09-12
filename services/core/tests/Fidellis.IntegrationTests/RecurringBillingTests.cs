@@ -84,7 +84,7 @@ public class RecurringBillingTests
         var created = await Service(tdb, cdb, tenant, new FixedClock(T0)).RunBillingCycleAsync();
 
         Assert.Equal(1, created);
-        var cycle = await tdb.Donations.SingleAsync();
+        var cycle = await tdb.Entries.SingleAsync();
         Assert.Equal("pending", cycle.Status);
         Assert.NotNull(cycle.RecurringDonationId);
         Assert.Equal("ch_1", cycle.PspChargeId);
@@ -108,7 +108,7 @@ public class RecurringBillingTests
         Assert.Equal(EntryTypes.Donation, pledge.EntryType);
 
         await svc.RunBillingCycleAsync();
-        var cycle = await tdb.Donations.SingleAsync();
+        var cycle = await tdb.Entries.SingleAsync();
         Assert.Equal(EntryTypes.Donation, cycle.EntryType); // ciclo herda o tipo do compromisso
     }
 
@@ -125,7 +125,7 @@ public class RecurringBillingTests
             Status = "active", NextChargeAt = T0, Attempt = 0,
         };
         tdb.RecurringDonations.Add(r);
-        tdb.Donations.Add(new Donation
+        tdb.Entries.Add(new Entry
         {
             OrganizationId = r.OrganizationId, Amount = 100m, Method = "pix", Status = "pending",
             RecurringDonationId = r.Id, ExpiresAt = T0.AddMinutes(-1),
@@ -139,7 +139,7 @@ public class RecurringBillingTests
         Assert.Equal("active", updated.Status);
         Assert.Equal(1, updated.Attempt);
         Assert.Equal(T0.AddDays(1), updated.NextChargeAt);
-        Assert.Equal("expired", (await tdb.Donations.SingleAsync()).Status);
+        Assert.Equal("expired", (await tdb.Entries.SingleAsync()).Status);
     }
 
     [Fact]
@@ -155,7 +155,7 @@ public class RecurringBillingTests
             Status = "active", NextChargeAt = T0, Attempt = 3, // já esgotou D+1,D+3,D+5
         };
         tdb.RecurringDonations.Add(r);
-        tdb.Donations.Add(new Donation
+        tdb.Entries.Add(new Entry
         {
             OrganizationId = r.OrganizationId, Amount = 100m, Method = "pix", Status = "pending",
             RecurringDonationId = r.Id, ExpiresAt = T0.AddMinutes(-1),
@@ -179,7 +179,7 @@ public class RecurringBillingTests
             Status = "active", NextChargeAt = T0, Attempt = 2,
         };
         tdb.RecurringDonations.Add(r);
-        tdb.Donations.Add(new Donation
+        tdb.Entries.Add(new Entry
         {
             OrganizationId = r.OrganizationId, Amount = 100m, Method = "pix", Status = "pending",
             RecurringDonationId = r.Id, PspChargeId = "ch_1",
