@@ -482,7 +482,6 @@ export const createProject = (t: string, body: { code: string; name: string; fun
 // ---- Configuração (nomenclatura / tipos de doador / rubricas) ----
 
 export interface FinanceSettings {
-  recurringLabel: string; onetimeLabel: string;
   titheLabel: string; offeringLabel: string; donationLabel: string;
   advancedManagement: boolean;
 }

@@ -64,8 +64,9 @@ public class FinanceConfigTests
         await new FinanceConfigSeeder(tdb).EnsureDefaultsAsync();
 
         var settings = await tdb.FinanceSettings.SingleAsync();
-        Assert.Equal("Dízimo", settings.RecurringLabel);
-        Assert.Equal("Oferta", settings.OnetimeLabel);
+        Assert.Equal("Dízimo", settings.TitheLabel);
+        Assert.Equal("Oferta", settings.OfferingLabel);
+        Assert.Equal("Doação", settings.DonationLabel);
 
         var types = await tdb.DonorTypes.ToListAsync();
         Assert.Equal(2, types.Count);

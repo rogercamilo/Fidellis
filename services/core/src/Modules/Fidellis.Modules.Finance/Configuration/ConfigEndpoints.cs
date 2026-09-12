@@ -30,15 +30,11 @@ public static class ConfigEndpoints
             FinanceSettingsDto req, TenantDbContext db, ITenantContext tenant, IClock clock, CancellationToken ct) =>
         {
             if (!tenant.HasTenant) return Results.BadRequest(new { error = "Nenhum tenant no request." });
-            if (string.IsNullOrWhiteSpace(req.RecurringLabel) || string.IsNullOrWhiteSpace(req.OnetimeLabel))
-                return Results.BadRequest(new { error = "recurringLabel e onetimeLabel são obrigatórios." });
             if (string.IsNullOrWhiteSpace(req.TitheLabel) || string.IsNullOrWhiteSpace(req.OfferingLabel) || string.IsNullOrWhiteSpace(req.DonationLabel))
                 return Results.BadRequest(new { error = "titheLabel, offeringLabel e donationLabel são obrigatórios." });
 
             var s = await db.FinanceSettings.FirstOrDefaultAsync(ct);
             if (s is null) { s = new FinanceSettings(); db.FinanceSettings.Add(s); }
-            s.RecurringLabel = req.RecurringLabel.Trim();
-            s.OnetimeLabel = req.OnetimeLabel.Trim();
             s.TitheLabel = req.TitheLabel.Trim();
             s.OfferingLabel = req.OfferingLabel.Trim();
             s.DonationLabel = req.DonationLabel.Trim();
@@ -137,11 +133,10 @@ public static class ConfigEndpoints
     }
 
     private static FinanceSettingsDto ToDto(FinanceSettings s)
-        => new(s.RecurringLabel, s.OnetimeLabel, s.TitheLabel, s.OfferingLabel, s.DonationLabel, s.AdvancedManagement);
+        => new(s.TitheLabel, s.OfferingLabel, s.DonationLabel, s.AdvancedManagement);
 }
 
 public sealed record FinanceSettingsDto(
-    string RecurringLabel, string OnetimeLabel,
     string TitheLabel = "Dízimo", string OfferingLabel = "Oferta", string DonationLabel = "Doação",
     bool AdvancedManagement = false);
 public sealed record DonorTypeDto(Guid Id, string Name, bool IsRecurringDefault, bool Active);
