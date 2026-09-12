@@ -12,6 +12,9 @@ public static class ChartOfAccounts
     /// <summary>Receita: dízimos e ofertas (crédito).</summary>
     public const string Revenue = "4.1.1";
 
+    /// <summary>Caixa (dinheiro em espécie — débito na coleta do culto, D-05).</summary>
+    public const string Cash = "1.1.1";
+
     /// <summary>Banco (crédito no pagamento de despesas).</summary>
     public const string Bank = "1.1.2";
 

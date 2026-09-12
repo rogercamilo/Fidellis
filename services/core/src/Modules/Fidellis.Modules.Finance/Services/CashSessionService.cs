@@ -1,3 +1,4 @@
+using Fidellis.Infrastructure.Accounting;
 using Fidellis.Infrastructure.Persistence;
 using Fidellis.Infrastructure.TenantData;
 using Fidellis.SharedKernel;
@@ -8,9 +9,11 @@ namespace Fidellis.Modules.Finance.Services;
 /// <summary>
 /// Caixa físico (RF-FIN-132): abre uma sessão num caixa (conta de tesouraria <c>cash</c>), fecha com o
 /// valor conferido e a <b>dupla conferência</b> (2º responsável ≠ de quem abriu — decisão D6), e
-/// deposita (transferência do caixa para a conta bancária). Roda no schema do tenant.
+/// deposita (transferência do caixa para a conta bancária). No fechamento, a coleta em espécie vira uma
+/// <b>entrada de 1ª classe</b> (receita + dimensão + tesouraria — D-05), não só um saldo de caixa.
+/// Roda no schema do tenant.
 /// </summary>
-public sealed class CashSessionService(TenantDbContext db, TreasuryService treasury, IClock clock)
+public sealed class CashSessionService(TenantDbContext db, TreasuryService treasury, ReconciliationService reconciliation, IClock clock)
 {
     public async Task<CashSession> OpenAsync(Guid accountId, Guid openedBy, string? eventLabel, CancellationToken ct = default)
     {
@@ -44,15 +47,27 @@ public sealed class CashSessionService(TenantDbContext db, TreasuryService treas
         session.ClosedAt = clock.UtcNow;
         session.Status = "closed";
 
-        // A coleta em espécie entra no saldo do caixa.
+        // D-05: a coleta em espécie vira uma ENTRADA de 1ª classe (receita + dimensão + tesouraria),
+        // não só um saldo de caixa. Agregada pelo total conferido (Q2); débito no Caixa, crédito Receita;
+        // sem recibo (coleta anônima — Q3). O depósito posterior segue como transferência caixa→banco.
         if (countedAmount > 0)
-            db.TreasuryMovements.Add(new TreasuryMovement
+        {
+            var account = await db.TreasuryAccounts.FirstAsync(a => a.Id == session.AccountId, ct);
+            var entry = new Donation
             {
-                AccountId = session.AccountId,
-                Kind = "inflow",
+                OrganizationId = account.OrganizationId,
                 Amount = countedAmount,
-                Description = $"Coleta {session.EventLabel}".Trim(),
-            });
+                Method = "cash",
+                Source = "cash",
+                Status = "paid",
+                PaidAt = clock.UtcNow,
+                DonorName = string.IsNullOrWhiteSpace(session.EventLabel) ? "Coleta em espécie" : $"Coleta — {session.EventLabel}",
+                CostCenterId = await db.CostCenters.Where(c => c.IsDefault).Select(c => (Guid?)c.Id).FirstOrDefaultAsync(ct),
+                FundId = await db.Funds.Where(f => f.IsDefault).Select(f => (Guid?)f.Id).FirstOrDefaultAsync(ct),
+            };
+            db.Donations.Add(entry);
+            await reconciliation.PostEntryAsync(entry, account, ChartOfAccounts.Cash, ct);
+        }
 
         await db.SaveChangesAsync(ct);
         return session;

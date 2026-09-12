@@ -120,6 +120,59 @@ public sealed class ReconciliationService(
         }
     }
 
+    /// <summary>
+    /// Contabiliza uma entrada de 1ª classe já paga vinda de <b>caixa físico</b> ou <b>lançamento
+    /// manual</b> (D-05): partida dobrada (débito na conta de ativo <paramref name="assetLedgerCode"/> —
+    /// Caixa ou Banco — / crédito Receita), movimento de tesouraria na conta informada e recibo +
+    /// agradecimento <b>apenas quando há doador identificado</b> (recibo condicional). Reusa o mesmo
+    /// motor da conciliação do PSP, então a entrada aparece igual em relatórios, transparência e CRM.
+    /// Não faz <c>SaveChanges</c> — quem chama persiste.
+    /// </summary>
+    public async Task PostEntryAsync(
+        Donation entry, TreasuryAccount treasuryAccount, string assetLedgerCode, CancellationToken ct = default)
+    {
+        var account = await EnsureAccountAsync(entry.OrganizationId, ct);
+        var date = DateOnly.FromDateTime((entry.PaidAt ?? clock.UtcNow).UtcDateTime);
+        var transaction = new Transaction
+        {
+            AccountId = account.Id,
+            Amount = entry.Amount,
+            Kind = "credit",
+            Description = $"Entrada {entry.Id}",
+            CostCenterId = entry.CostCenterId,
+            ProjectId = entry.ProjectId,
+            FundId = entry.FundId,
+            AccountingDate = date,
+        };
+        db.Transactions.Add(transaction);
+
+        var (asset, revenue) = await LedgerPairAsync(assetLedgerCode, ct);
+        db.AccountingEntries.AddRange(
+            new AccountingEntry { TransactionId = transaction.Id, LedgerAccountId = asset.Id, Ledger = asset.Name, Debit = entry.Amount, Credit = 0, AccountingDate = date },
+            new AccountingEntry { TransactionId = transaction.Id, LedgerAccountId = revenue.Id, Ledger = revenue.Name, Debit = 0, Credit = entry.Amount, AccountingDate = date });
+
+        db.TreasuryMovements.Add(new TreasuryMovement
+        {
+            AccountId = treasuryAccount.Id,
+            Kind = "inflow",
+            Amount = entry.Amount,
+            Description = $"Entrada {entry.Id}",
+            DonationId = entry.Id,
+            OccurredAt = entry.PaidAt ?? clock.UtcNow,
+        });
+
+        // Recibo condicional (D-05 Q3): só quando há doador identificado (caixa anônimo não emite).
+        if (entry.DonorId is { } donorId)
+        {
+            var donor = await db.Donors.FirstOrDefaultAsync(d => d.Id == donorId, ct);
+            if (donor is not null)
+            {
+                var receipt = await receipts.GenerateForDonationAsync(entry, donor.Name, donor.Document, ct);
+                await notifier.DonationPaidAsync(entry, receipt.Number, ct);
+            }
+        }
+    }
+
     private async Task<Account> EnsureAccountAsync(Guid organizationId, CancellationToken ct)
     {
         var account = await db.Accounts.FirstOrDefaultAsync(a => a.OrganizationId == organizationId, ct);
@@ -132,14 +185,18 @@ public sealed class ReconciliationService(
     }
 
     // DT-02: a doação recebida entra no Caixa/Banco (ativo), não em "a receber" — assim o Balanço fecha
-    // (Ativo Banco = Receita − Despesa = superávit).
-    private async Task<(LedgerAccount Cash, LedgerAccount Revenue)> LedgerPairAsync(CancellationToken ct)
+    // (Ativo Banco = Receita − Despesa = superávit). A doação via PSP debita o Banco (default).
+    private Task<(LedgerAccount Asset, LedgerAccount Revenue)> LedgerPairAsync(CancellationToken ct)
+        => LedgerPairAsync(ChartOfAccounts.Bank, ct);
+
+    /// <summary>Par (ativo, receita) do razão para a partida dobrada — o ativo varia por origem (D-05).</summary>
+    private async Task<(LedgerAccount Asset, LedgerAccount Revenue)> LedgerPairAsync(string assetCode, CancellationToken ct)
     {
         await chartSeeder.EnsureDefaultAsync(ct);
         var accounts = await db.LedgerAccounts
-            .Where(a => a.Code == ChartOfAccounts.Bank || a.Code == ChartOfAccounts.Revenue)
+            .Where(a => a.Code == assetCode || a.Code == ChartOfAccounts.Revenue)
             .ToDictionaryAsync(a => a.Code, a => a, ct);
-        return (accounts[ChartOfAccounts.Bank], accounts[ChartOfAccounts.Revenue]);
+        return (accounts[assetCode], accounts[ChartOfAccounts.Revenue]);
     }
 
     /// <summary>Movimento de tesouraria na conta bancária da unidade (integra razão ↔ tesouraria — DT-02).</summary>
