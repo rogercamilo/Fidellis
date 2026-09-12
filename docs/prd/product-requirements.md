@@ -62,12 +62,12 @@ relacionamento com o doador que os concorrentes não priorizam.
 
 ## 5. Módulos do core
 
-| Módulo       | Responsabilidade                                                        | Status scaffold |
+| Módulo       | Responsabilidade                                                        | Status |
 | ------------ | ---------------------------------------------------------------------- | --------------- |
-| **Tenant**   | Registro/provisionamento de instituições (schema `catalog` + `t_<slug>`)| **Funcional** (criar/listar tenant, provisiona schema) |
-| **Donations**| Organizations, doações, **CRM 360º do doador** + régua de relacionamento | **Funcional** — CRM (histórico/situação) + outbox/e-mail (Resend) |
-| **Finance**  | Cobrança PIX (Pagar.me), webhook idempotente, conciliação, split, **recorrência + dunning** | **Funcional (PIX)** — checkout, webhook, partida dobrada, dízimo mensal + dunning |
-| **Accounting**| Plano de contas, razão/balancete, recibos automáticos                 | **Funcional** — plano de contas, partida dobrada, balancete consolidado, recibos |
+| **Tenant**   | Registro/provisionamento de instituições (schema `catalog` + `t_<slug>`); **onboarding em 2 etapas com convite de equipe/conselho** e estado de bootstrap (D-01) | **Funcional** — criar/listar tenant, provisiona schema; convites (`catalog.invitations`) + aceite público |
+| **Donations**| Organizations, entradas, **CRM 360º do doador** + régua de relacionamento; **portal de membro** (dízimo/oferta self-service) | **Funcional** — CRM + outbox/e-mail (Resend); marca membro; link mágico |
+| **Finance**  | Cobrança PIX (Pagar.me), webhook, conciliação, split, recorrência + dunning; **governança de conselho** (papéis/alçadas, D-02), **entradas de 1ª classe** (caixa/manual, D-05), **`entry_type`** dízimo/oferta/doação (D-06/D-07), **campanhas** (D-08), **gestão avançada** (D-09) | **Funcional** — entrada (`Entry`) agnóstica a canal; alçadas de conselho com override de bootstrap auditável |
+| **Accounting**| Plano de contas, razão/balancete, demonstrações ITG 2002, recibos automáticos | **Funcional** — partida dobrada, balancete/razão, demonstrações, recibos (PDF/R2) |
 | **Reporting**| Dashboards, série temporal, consolidação da rede                      | **Funcional** — overview, série mensal, consolidação por unidade (Recharts) |
 | **Audit**    | Trilha de auditoria + LGPD (export/anonimização/opt-out)              | **Funcional** — audit_log + LGPD; portal público do doador |
 
@@ -85,13 +85,32 @@ relacionamento com o doador que os concorrentes não priorizam.
 - **RF-07 Relatórios (roadmap):** dashboard por unidade e consolidado da rede; exportações.
 - **RF-08 Auditoria/LGPD:** trilha de ações sensíveis (`audit_log`) + direitos do titular
   (exportação, anonimização/erasure, opt-out de comunicação) + portal público do doador.
+- **RF-09 Onboarding equipe & conselho (D-01):** cadastro em 2 etapas — instituição → **convite de
+  membros por e-mail + papel** (e-mail existente vira membership; novo recebe link mágico 7d); **estado de
+  bootstrap** que destrava o 1º pagamento com aviso auditável até haver 2 aprovadores distintos.
+- **RF-10 Governança de conselho (D-02):** vocabulário de papéis `coordinator/council_officer/
+  council_chair/fiscal_council/accountant` + alçadas default de conselho; segregação **aprova ≠ lança**;
+  `admin` coringa **só em bootstrap** (grava `approval.bootstrap_override`); rótulos de papéis
+  **customizáveis por tenant**.
+- **RF-11 Entradas agnósticas a canal (D-05/D-06/D-07):** toda entrada nasce de 1ª classe (receita +
+  dimensão + tesouraria) — checkout, **caixa físico** (coleta discriminável por tipo) e **lançamento
+  manual**; `entry_type` (**dízimo/oferta/doação**) de 1ª classe; **doação recorrente do apoiador**.
+- **RF-12 Campanhas (D-08):** meta × arrecadado, janela, **página pública** de doação e **earmark** a
+  fundo restrito/projeto (ITG 2002) → prestação de contas por campanha.
+- **RF-13 Navegação por papel + IA Entradas/Saídas (D-03/D-04):** menu reorganizado (Entradas/Saídas/
+  Contabilidade/Prestação de contas/Organização), filtrado pelo papel, com landing por papel.
+- **RF-14 Gestão avançada (D-09):** modo ativável por tenant que oculta do público-base os pontos fora da
+  curva (convênios/MROSC, projetos; NF/faturamento reservado como futuro).
+- **RF-15 Portal do membro:** membro (nativo, marcado pelo tenant) autentica por link mágico e faz
+  **dízimo/oferta** (pontual) e **dízimo recorrente** por autoatendimento.
 
 ## 7. Requisitos não-funcionais
 
 - **Isolamento & LGPD:** dados por instituição isolados por schema; export/backup por tenant.
 - **Segurança:** hash Argon2; JWT assinado; segredos fora do versionamento; WAF/rate limiting na borda.
 - **Confiabilidade financeira:** idempotência de webhook (`payment_events`); reconsulta ao PSP como
-  fonte de verdade; conciliação PIX com partida dobrada. Recorrência/dunning no roadmap.
+  fonte de verdade; conciliação PIX com partida dobrada; recorrência/dunning entregues; guarda-corpos de
+  alçada não-desligáveis (mín. 1 assinatura, autoaprovação bloqueada, teto de 2 assinaturas).
 - **Observabilidade:** health `live`/`ready` em BFF e core; logs estruturados (roadmap: tracing).
 - **Performance:** cache/fila em Redis; front na borda (Cloudflare).
 - **Portabilidade:** monorepo com CI reprodutível (Node e .NET).
@@ -117,11 +136,42 @@ relacionamento com o doador que os concorrentes não priorizam.
    (`/portal/<tenant>`), trilha de auditoria e LGPD (export/anonimização/opt-out). **Entregue.**
    Ver [ADR-0012](../architecture/ADR-0012-donor-portal-audit-lgpd.md).
 
-> **Roadmap do PRD concluído (passos 1–6).** Evoluções futuras: WhatsApp real, PDF/R2 de recibos,
-> rate limiting no público, portal com login do doador, migrações EF versionadas (ADR-0002),
-> exportações/agendamento de relatórios.
+> **Roadmap inicial do PRD concluído (passos 1–6).**
 
-## 9. Fora de escopo do primeiro entregável
+### 8.1 Onda de governança & terceiro setor (parecer — D-01→D-09) — **entregue**
 
-Toda a lógica de negócio profunda dos módulos acima. O primeiro entregável é o **scaffold rodável +
-arquitetura documentada** (multi-tenant, auth, CI, ADRs).
+Derivada do [parecer do terceiro setor](parecer-finance-terceiro-setor.md) (specs `docs/prd/d0*.md`).
+Todas implementadas e mergeadas na `main`:
+
+- ✅ **D-01** Onboarding equipe & conselho (convites + bootstrap). `docs/prd/d01-onboarding-equipe-conselho.md`.
+- ✅ **D-02** Papéis e alçadas de conselho (aprova ≠ lança; override de bootstrap). `docs/prd/d02-...md`.
+- ✅ **D-03/D-04** IA Entradas/Saídas + navegação por papel + landing. `docs/prd/d03-d04-...md`.
+- ✅ **D-05** Caixa físico e lançamento manual como entrada de 1ª classe. `docs/prd/d05-...md`.
+- ✅ **D-06/D-07** `entry_type` de 1ª classe + doação recorrente do apoiador. `docs/prd/d06-...md`.
+- ✅ **D-08** Campanhas (earmark + meta × arrecadado + página pública). `docs/prd/d08-campanhas.md`.
+- ✅ **D-09** Modo "Gestão avançada" (convênios/MROSC/NF fora do núcleo). `docs/prd/d09-...md`.
+- ✅ **Portal do membro** (dízimo/oferta self-service) + débitos técnicos: rótulos de papéis por tenant,
+  remoção de rótulos legados, docs de vocabulário, refactor `Donation → Entry`.
+
+### 8.2 Integração Formattio (D-10/D-11) — **planejada, bloqueada por compliance**
+
+Adaptador **opcional de mão única** (importação) com **identidade federada**; regra confirmada
+"integração estabelecida ⇒ formando é membro". **Bloqueada** até a sequência: **auditoria do cadastro
+Formattio → RIPD → ADR-0013 (LGPD) aceito**. Ver [ADR-0013](../architecture/ADR-0013-lgpd-formattio-fidellis.md)
+e o [plano de auditoria](d10-formattio-audit-plan.md).
+
+### 8.3 Evoluções futuras
+
+WhatsApp real, rate limiting reforçado no público, portal com login/senha do doador, NF-e/faturamento
+(gestão avançada, sob demanda), exportações/agendamento de relatórios, entidade de entrada canônica com
+subtipos (hoje `Entry` reusada por origem).
+
+## 9. Fora de escopo (atual)
+
+O produto evoluiu bem além do scaffold inicial: o roadmap do PRD (§8, passos 1–6) e a onda de governança
+do parecer (§8.1, D-01→D-09) estão **entregues**. Permanecem **fora de escopo** por ora:
+
+- **NF-e / faturamento** — reservado como recurso de "gestão avançada" (D-09), sob demanda.
+- **Integração Formattio em produção** — depende da auditoria + RIPD + ADR-0013 (§8.2).
+- **Endowment / fundo patrimonial ativo, multi-moeda, folha de pagamento** — fora do núcleo.
+- **PIX Automático (mandato)** — o motor de recorrência já existe; o mandato do PSP entra quando disponível.
