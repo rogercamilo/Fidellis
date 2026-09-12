@@ -332,6 +332,7 @@ public sealed class SchemaProvisioner(
             -- Jornada apoiador→recorrente (RF-FIN-182).
             ALTER TABLE "{schema}".donors ADD COLUMN IF NOT EXISTS donor_type_id uuid;
             ALTER TABLE "{schema}".donors ADD COLUMN IF NOT EXISTS converted_at  timestamptz;
+            ALTER TABLE "{schema}".donors ADD COLUMN IF NOT EXISTS is_member     boolean NOT NULL DEFAULT false;
 
             -- Idempotência de criação de cobrança (RF-FIN-003).
             CREATE TABLE IF NOT EXISTS "{schema}".idempotency_keys (

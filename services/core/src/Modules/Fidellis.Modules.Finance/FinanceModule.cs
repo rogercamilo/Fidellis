@@ -3,6 +3,7 @@ using Fidellis.Infrastructure;
 using Fidellis.Infrastructure.Audit;
 using Fidellis.Infrastructure.Payments;
 using Fidellis.Infrastructure.Persistence;
+using Fidellis.Infrastructure.Security;
 using Fidellis.Infrastructure.TenantData;
 using Fidellis.Modules.Finance.Banking;
 using Fidellis.Modules.Finance.Budgeting;
@@ -266,6 +267,56 @@ public static class FinanceModule
             return c is { Active: true } ? Results.Ok(c) : Results.NotFound(new { error = "Campanha não encontrada." });
         });
 
+        // ---- Autoatendimento do MEMBRO (#75): autenticado por link mágico do doador (DonorMagicToken).
+        // Sendo membro (Donor.IsMember), libera dízimo/oferta (pontual) e dízimo recorrente — ao contrário
+        // do checkout anônimo, restrito a doação (gating D-06).
+        pub.MapPost("/member/give", async (
+            string tenant, MemberGiveRequest req, HttpRequest request,
+            CatalogDbContext catalog, ITenantContext tc, TenantDbContext db,
+            DonationCheckoutService checkout, InfrastructureOptions options, IAuditLog audit, CancellationToken ct) =>
+        {
+            if (!await PublicTenant.TryResolveAsync(catalog, tc, tenant, ct))
+                return Results.NotFound(new { error = "Instituição não encontrada." });
+            var member = await ResolveMemberAsync(db, req.Token, tenant, options, ct);
+            if (member is null)
+                return Results.Json(new { error = "Sessão de membro inválida ou expirada." }, statusCode: StatusCodes.Status401Unauthorized);
+            if (!member.IsMember)
+                return Results.Json(new { error = "Apenas membros dão dízimo/oferta." }, statusCode: StatusCodes.Status403Forbidden);
+            if (req.Amount <= 0)
+                return Results.BadRequest(new { error = "amount deve ser positivo." });
+
+            var entryType = EntryTypes.IsValid(req.EntryType) ? req.EntryType : EntryTypes.Offering;
+            var method = (req.Method ?? "pix").Trim().ToLowerInvariant();
+            if (method is not ("pix" or "boleto")) method = "pix"; // cartão exige tokenização no front
+            var result = await checkout.CreateAsync(new CheckoutCommand(
+                req.OrganizationId, req.Amount, member.Name, member.Email ?? "", member.Document ?? "",
+                IdempotencyKey: request.Headers["Idempotency-Key"].FirstOrDefault(), Method: method, EntryType: entryType), ct);
+            await audit.RecordAsync("member.give", "donation", result.DonationId.ToString());
+            return Results.Created($"/api/public/{tenant}/donations/{result.DonationId}", result);
+        });
+
+        pub.MapPost("/member/pledge", async (
+            string tenant, MemberPledgeRequest req,
+            CatalogDbContext catalog, ITenantContext tc, TenantDbContext db,
+            RecurringBillingService billing, InfrastructureOptions options, IAuditLog audit, CancellationToken ct) =>
+        {
+            if (!await PublicTenant.TryResolveAsync(catalog, tc, tenant, ct))
+                return Results.NotFound(new { error = "Instituição não encontrada." });
+            var member = await ResolveMemberAsync(db, req.Token, tenant, options, ct);
+            if (member is null)
+                return Results.Json(new { error = "Sessão de membro inválida ou expirada." }, statusCode: StatusCodes.Status401Unauthorized);
+            if (!member.IsMember)
+                return Results.Json(new { error = "Apenas membros assinam dízimo recorrente." }, statusCode: StatusCodes.Status403Forbidden);
+            if (req.Amount <= 0)
+                return Results.BadRequest(new { error = "amount deve ser positivo." });
+
+            var r = await billing.CreatePledgeAsync(
+                req.OrganizationId, member.Id, req.Amount, req.DayOfMonth, chargeToday: true, EntryTypes.Tithe, ct);
+            await audit.RecordAsync("member.pledge", "recurring_donation", r.Id.ToString());
+            return Results.Created($"/api/public/{tenant}/member/pledge/{r.Id}",
+                new { id = r.Id, amount = r.Amount, dayOfMonth = r.DayOfMonth, status = r.Status, nextChargeAt = r.NextChargeAt });
+        });
+
         // Receptor de webhook do Pagar.me — FORA da resolução de tenant por JWT.
         group.MapPost("/webhooks/pagarme", async (
             HttpRequest request,
@@ -349,6 +400,15 @@ public static class FinanceModule
     private static RecurringDto ToRecurringDto(RecurringDonation r)
         => new(r.Id, r.OrganizationId, r.Amount, r.DayOfMonth, r.Status, r.NextChargeAt, r.Attempt);
 
+    /// <summary>Resolve o doador a partir do link mágico (#75); null se o token é inválido ou de outro tenant.</summary>
+    private static async Task<Donor?> ResolveMemberAsync(
+        TenantDbContext db, string? token, string tenant, InfrastructureOptions options, CancellationToken ct)
+    {
+        var valid = DonorMagicToken.Validate(token ?? "", options.AppSecret, DateTimeOffset.UtcNow);
+        if (valid is null || valid.Value.Tenant != tenant.Trim().ToLowerInvariant()) return null;
+        return await db.Donors.FirstOrDefaultAsync(d => d.Id == valid.Value.DonorId, ct);
+    }
+
     private static bool WebhookAuthOk(HttpRequest request, string raw, InfrastructureOptions options)
     {
         // 1) Assinatura HMAC-SHA256 sobre o corpo bruto (RF-FIN-001): precede o Basic auth.
@@ -409,6 +469,13 @@ public sealed record CreateRecurringRequest(
     DonorInput Donor,
     bool? ChargeToday = null,
     string EntryType = EntryTypes.Tithe);
+
+// Autoatendimento do membro (#75): autenticado pelo Token (link mágico do doador).
+public sealed record MemberGiveRequest(
+    string Token, Guid OrganizationId, decimal Amount, string EntryType = EntryTypes.Offering, string Method = "pix");
+
+public sealed record MemberPledgeRequest(
+    string Token, Guid OrganizationId, decimal Amount, int DayOfMonth);
 
 public sealed record RecurringDto(
     Guid Id,
