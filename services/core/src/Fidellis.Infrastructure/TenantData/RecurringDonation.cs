@@ -14,6 +14,12 @@ public sealed class RecurringDonation : Entity
     public string Frequency { get; set; } = "monthly";
     public int DayOfMonth { get; set; } = 1;
 
+    /// <summary>
+    /// Tipo do compromisso recorrente (D-06/D-07): <c>tithe</c> (dízimo do membro, default) ou
+    /// <c>donation</c> (doação recorrente do apoiador não-membro). Os ciclos herdam este tipo.
+    /// </summary>
+    public string EntryType { get; set; } = EntryTypes.Tithe;
+
     /// <summary>active | paused | past_due | canceled.</summary>
     public string Status { get; set; } = "active";
 

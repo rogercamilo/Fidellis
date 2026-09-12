@@ -108,6 +108,8 @@ export interface CreateDonationInput {
   description?: string;
   /** 'pix' (default) | 'boleto'. Cartão depende da tokenização Pagar.me.js (futuro). */
   method?: string;
+  /** Tipo da entrada (D-06). Default 'donation'. */
+  entryType?: EntryType;
 }
 
 export interface DonationCheckout {
@@ -160,6 +162,8 @@ export interface CreateRecurringInput {
   amount: number;
   dayOfMonth: number;
   donor: { name: string; email?: string; document: string };
+  /** 'tithe' (dízimo, default) ou 'donation' (doação recorrente do apoiador — D-07). */
+  entryType?: EntryType;
 }
 
 export interface RecurringDonation {
@@ -477,7 +481,18 @@ export const createProject = (t: string, body: { code: string; name: string; fun
 
 // ---- Configuração (nomenclatura / tipos de doador / rubricas) ----
 
-export interface FinanceSettings { recurringLabel: string; onetimeLabel: string }
+export interface FinanceSettings {
+  recurringLabel: string; onetimeLabel: string;
+  titheLabel: string; offeringLabel: string; donationLabel: string;
+}
+
+/** Tipos de entrada (D-06): chaves técnicas estáveis + rótulo default (customizável por tenant). */
+export type EntryType = 'tithe' | 'offering' | 'donation';
+export const ENTRY_TYPES: { value: EntryType; label: string }[] = [
+  { value: 'tithe', label: 'Dízimo' },
+  { value: 'offering', label: 'Oferta' },
+  { value: 'donation', label: 'Doação' },
+];
 export interface DonorTypeItem { id: string; name: string; isRecurringDefault: boolean; active: boolean }
 export interface FinanceCategoryItem { id: string; kind: string; name: string; ledgerAccountId: string | null; active: boolean }
 
@@ -537,9 +552,12 @@ export interface ManualEntry { id: string; amount: number; source: string; statu
 
 export const createManualEntry = (
   t: string,
-  body: { treasuryAccountId: string; amount: number; donorName?: string; donorEmail?: string; donorDocument?: string; costCenterId?: string; projectId?: string; fundId?: string; occurredAt?: string },
+  body: { treasuryAccountId: string; amount: number; entryType?: EntryType; donorName?: string; donorEmail?: string; donorDocument?: string; costCenterId?: string; projectId?: string; fundId?: string; occurredAt?: string },
 ) => authSend<ManualEntry>(t, 'POST', '/api/finance/entries', body, 'lançar entrada');
-export const closeCashSession = (t: string, id: string, body: { countedAmount: number }) => authSend<CashSession>(t, 'POST', `/api/finance/cash-sessions/${id}/close`, body, 'fechar caixa');
+
+/** Linha discriminada da coleta de caixa (D-06): tipo + valor (+ dimensões opcionais). */
+export interface CashLine { entryType: EntryType; amount: number; costCenterId?: string; projectId?: string; fundId?: string }
+export const closeCashSession = (t: string, id: string, body: { countedAmount: number; lines?: CashLine[] }) => authSend<CashSession>(t, 'POST', `/api/finance/cash-sessions/${id}/close`, body, 'fechar caixa');
 export const depositCashSession = (t: string, id: string, body: { bankAccountId: string }) => authSend<{ id: string; depositedMovementId: string | null }>(t, 'POST', `/api/finance/cash-sessions/${id}/deposit`, body, 'depositar');
 
 // ---- Fechamento de período ----

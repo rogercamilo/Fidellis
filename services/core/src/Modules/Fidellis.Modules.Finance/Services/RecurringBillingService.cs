@@ -22,7 +22,8 @@ public sealed class RecurringBillingService(
     ILogger<RecurringBillingService> logger)
 {
     public async Task<RecurringDonation> CreatePledgeAsync(
-        Guid organizationId, Guid donorId, decimal amount, int dayOfMonth, bool chargeToday = true, CancellationToken ct = default)
+        Guid organizationId, Guid donorId, decimal amount, int dayOfMonth, bool chargeToday = true,
+        string entryType = EntryTypes.Tithe, CancellationToken ct = default)
     {
         if (amount <= 0) throw new ArgumentException("O valor deve ser positivo.");
         var now = clock.UtcNow;
@@ -35,6 +36,8 @@ public sealed class RecurringBillingService(
             DayOfMonth = Math.Clamp(dayOfMonth, 1, 31),
             Status = "active",
             NextChargeAt = chargeToday ? now : NextChargeDate(dayOfMonth, now),
+            // D-07: dízimo (membro) ou doação recorrente (apoiador não-membro).
+            EntryType = entryType is EntryTypes.Donation ? EntryTypes.Donation : EntryTypes.Tithe,
         };
         db.RecurringDonations.Add(recurring);
 
@@ -59,6 +62,7 @@ public sealed class RecurringBillingService(
             .Where(r => r.Status == "active" && r.NextChargeAt <= now)
             .ToListAsync(ct);
 
+        var settings = await db.FinanceSettings.FirstOrDefaultAsync(ct);
         var created = 0;
         foreach (var r in due)
         {
@@ -84,10 +88,12 @@ public sealed class RecurringBillingService(
                 RecurringDonationId = r.Id,
                 Attempt = r.Attempt,
                 DueAt = now.AddSeconds(options.CycleExpirySeconds),
+                EntryType = r.EntryType, // ciclo herda o tipo do compromisso (D-06/D-07)
             };
             db.Donations.Add(cycle);
 
-            await checkout.CreatePixChargeAsync(cycle, donor, "Dízimo/oferta recorrente", ct);
+            var label = settings?.LabelFor(r.EntryType) ?? "Contribuição";
+            await checkout.CreatePixChargeAsync(cycle, donor, $"{label} recorrente", ct);
             cycle.ExpiresAt ??= cycle.DueAt; // se o PSP não devolveu expiração, usa a nossa
 
             r.LastDonationId = cycle.Id;

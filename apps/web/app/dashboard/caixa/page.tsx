@@ -5,7 +5,7 @@ import { ListCard, PageHeader } from '../../components/Fiori';
 import { Panel } from '../../components/Panel';
 import {
   closeCashSession, createManualEntry, depositCashSession, listCashSessions, listTreasuryAccounts, openCashSession,
-  type CashSession, type LoginResult, type TreasuryAccount,
+  ENTRY_TYPES, type CashLine, type CashSession, type EntryType, type LoginResult, type TreasuryAccount,
 } from '../../lib/api';
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -23,11 +23,15 @@ export default function CaixaPage() {
   const [eventLabel, setEventLabel] = useState('');
   const [bankAccountId, setBankAccountId] = useState('');
 
-  // Lançamento manual de entrada (D-05).
+  // Lançamento manual de entrada (D-05/D-06).
   const [meAccountId, setMeAccountId] = useState('');
   const [meAmount, setMeAmount] = useState('');
+  const [meType, setMeType] = useState<EntryType>('donation');
   const [meDonor, setMeDonor] = useState('');
   const [meMsg, setMeMsg] = useState<string | null>(null);
+
+  // Fechamento de caixa com discriminação por tipo (D-06).
+  const [closing, setClosing] = useState<{ id: string; counted: string; tithe: string; offering: string; donation: string } | null>(null);
 
   const canLaunch = !role || LAUNCHER_ROLES.includes(role);
 
@@ -62,7 +66,7 @@ export default function CaixaPage() {
     if (!(value > 0)) return setError('Informe um valor positivo.');
     setError(null); setMeMsg(null);
     try {
-      await createManualEntry(token, { treasuryAccountId: meAccountId, amount: value, donorName: meDonor || undefined });
+      await createManualEntry(token, { treasuryAccountId: meAccountId, amount: value, entryType: meType, donorName: meDonor || undefined });
       setMeAmount(''); setMeDonor('');
       setMeMsg('Entrada registrada.');
       setTimeout(() => setMeMsg(null), 2500);
@@ -79,15 +83,28 @@ export default function CaixaPage() {
     catch (err) { setError(err instanceof Error ? err.message : 'Erro inesperado.'); }
   }
 
-  async function close(s: CashSession) {
-    if (!token) return;
-    const input = window.prompt('Valor conferido no fechamento (dupla conferência — feito por um 2º responsável):', '');
-    if (input === null) return;
-    const value = Number(input.replace(',', '.'));
-    if (!(value >= 0)) return setError('Valor inválido.');
+  async function submitClose(e: React.FormEvent) {
+    e.preventDefault();
+    if (!token || !closing) return;
+    const counted = Number(closing.counted.replace(',', '.'));
+    if (!(counted >= 0)) return setError('Valor conferido inválido.');
+    const num = (v: string) => Number((v || '').replace(',', '.')) || 0;
+    const raw: { entryType: EntryType; amount: number }[] = [
+      { entryType: 'tithe', amount: num(closing.tithe) },
+      { entryType: 'offering', amount: num(closing.offering) },
+      { entryType: 'donation', amount: num(closing.donation) },
+    ];
+    const lines: CashLine[] = raw.filter((l) => l.amount > 0);
+    if (lines.length > 0) {
+      const sum = lines.reduce((acc, l) => acc + l.amount, 0);
+      if (Math.abs(sum - counted) > 0.005) return setError('A soma da discriminação deve ser igual ao valor conferido.');
+    }
     setError(null);
-    try { await closeCashSession(token, s.id, { countedAmount: value }); await refresh(token); }
-    catch (err) { setError(err instanceof Error ? err.message : 'Erro inesperado.'); }
+    try {
+      await closeCashSession(token, closing.id, { countedAmount: counted, lines: lines.length ? lines : undefined });
+      setClosing(null);
+      await refresh(token);
+    } catch (err) { setError(err instanceof Error ? err.message : 'Erro inesperado.'); }
   }
 
   async function deposit(s: CashSession) {
@@ -106,6 +123,38 @@ export default function CaixaPage() {
       />
 
       {error && <p className="error-text">{error}</p>}
+
+      {closing && (
+        <div className="rise" style={{ marginBottom: '1rem' }}>
+          <Panel title="Fechar caixa (dupla conferência)" actions={<button className="btn btn-ghost btn-sm" onClick={() => setClosing(null)}>Cancelar</button>}>
+            <p className="muted" style={{ marginTop: 0 }}>
+              O fechamento é conferido por um 2º responsável. Informe o total conferido; opcionalmente
+              discrimine por tipo (a soma deve bater com o total). Em branco = uma oferta agregada.
+            </p>
+            <form onSubmit={submitClose}>
+              <div className="field" style={{ maxWidth: 220 }}>
+                <label htmlFor="cl-counted">Total conferido (R$)</label>
+                <input id="cl-counted" type="number" step="0.01" min="0" value={closing.counted} onChange={(e) => setClosing({ ...closing, counted: e.target.value })} required autoFocus />
+              </div>
+              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <div className="field" style={{ width: 160 }}>
+                  <label htmlFor="cl-tithe">Dízimo (opcional)</label>
+                  <input id="cl-tithe" type="number" step="0.01" min="0" value={closing.tithe} onChange={(e) => setClosing({ ...closing, tithe: e.target.value })} />
+                </div>
+                <div className="field" style={{ width: 160 }}>
+                  <label htmlFor="cl-off">Oferta (opcional)</label>
+                  <input id="cl-off" type="number" step="0.01" min="0" value={closing.offering} onChange={(e) => setClosing({ ...closing, offering: e.target.value })} />
+                </div>
+                <div className="field" style={{ width: 160 }}>
+                  <label htmlFor="cl-don">Doação (opcional)</label>
+                  <input id="cl-don" type="number" step="0.01" min="0" value={closing.donation} onChange={(e) => setClosing({ ...closing, donation: e.target.value })} />
+                </div>
+              </div>
+              <button className="btn btn-primary" type="submit">Confirmar fechamento</button>
+            </form>
+          </Panel>
+        </div>
+      )}
 
       <div className="grid cols-2 rise rise-2" style={{ alignItems: 'start' }}>
         <Panel title="Abrir sessão de caixa">
@@ -155,10 +204,16 @@ export default function CaixaPage() {
                   <label htmlFor="me-amt">Valor (R$)</label>
                   <input id="me-amt" type="number" step="0.01" min="0.01" value={meAmount} onChange={(e) => setMeAmount(e.target.value)} required />
                 </div>
-                <div className="field" style={{ flex: 1 }}>
-                  <label htmlFor="me-donor">Doador (opcional)</label>
-                  <input id="me-donor" placeholder="Nome — deixa em branco p/ anônimo" value={meDonor} onChange={(e) => setMeDonor(e.target.value)} />
+                <div className="field" style={{ width: 150 }}>
+                  <label htmlFor="me-type">Tipo</label>
+                  <select id="me-type" value={meType} onChange={(e) => setMeType(e.target.value as EntryType)}>
+                    {ENTRY_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  </select>
                 </div>
+              </div>
+              <div className="field">
+                <label htmlFor="me-donor">Doador (opcional — em branco = anônimo, sem recibo)</label>
+                <input id="me-donor" value={meDonor} onChange={(e) => setMeDonor(e.target.value)} />
               </div>
               <button className="btn btn-primary" type="submit">Lançar entrada</button>
             </form>
@@ -181,7 +236,7 @@ export default function CaixaPage() {
                     <td><span className={`badge ${s.status === 'open' ? 'warn' : s.depositedMovementId ? 'ok' : 'muted'}`}>{s.status === 'open' ? 'aberta' : s.depositedMovementId ? 'depositada' : 'fechada'}</span></td>
                     <td className="num">{s.countedAmount != null ? brl(s.countedAmount) : '—'}</td>
                     <td className="num" style={{ whiteSpace: 'nowrap' }}>
-                      {s.status === 'open' && <button className="btn btn-ghost btn-sm" onClick={() => close(s)}>Fechar</button>}
+                      {s.status === 'open' && <button className="btn btn-ghost btn-sm" onClick={() => setClosing({ id: s.id, counted: '', tithe: '', offering: '', donation: '' })}>Fechar</button>}
                       {s.status === 'closed' && !s.depositedMovementId && <button className="btn btn-primary btn-sm" onClick={() => deposit(s)}>Depositar</button>}
                     </td>
                   </tr>

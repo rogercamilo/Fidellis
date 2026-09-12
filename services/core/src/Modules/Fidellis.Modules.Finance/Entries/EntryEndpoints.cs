@@ -1,4 +1,5 @@
 using Fidellis.Infrastructure.Audit;
+using Fidellis.Infrastructure.TenantData;
 using Fidellis.Modules.Finance.Security;
 using Fidellis.Modules.Finance.Services;
 using Fidellis.SharedKernel;
@@ -29,7 +30,7 @@ public static class EntryEndpoints
             {
                 var e = await entries.CreateAsync(new ManualEntryCommand(
                     req.TreasuryAccountId, req.Amount, req.DonorName, req.DonorEmail, req.DonorDocument,
-                    req.CostCenterId, req.ProjectId, req.FundId, req.OccurredAt), ct);
+                    req.CostCenterId, req.ProjectId, req.FundId, req.OccurredAt, req.EntryType), ct);
                 await audit.RecordAsync("entry.manual_created", "donation", e.Id.ToString());
                 return Results.Created($"/api/finance/entries/{e.Id}",
                     new { id = e.Id, amount = e.Amount, source = e.Source, status = e.Status });
@@ -44,4 +45,4 @@ public static class EntryEndpoints
 public sealed record ManualEntryRequest(
     Guid TreasuryAccountId, decimal Amount, string? DonorName = null, string? DonorEmail = null,
     string? DonorDocument = null, Guid? CostCenterId = null, Guid? ProjectId = null, Guid? FundId = null,
-    DateTimeOffset? OccurredAt = null);
+    DateTimeOffset? OccurredAt = null, string EntryType = EntryTypes.Donation);

@@ -8,6 +8,7 @@ import {
   actOnRecurring,
   createRecurring,
   listRecurring,
+  type EntryType,
   type LoginResult,
   type RecurringDonation,
 } from '../../lib/api';
@@ -19,6 +20,7 @@ export default function RecorrenciaPage() {
   const [organizationId, setOrganizationId] = useState('');
   const [amount, setAmount] = useState('');
   const [dayOfMonth, setDayOfMonth] = useState('5');
+  const [entryType, setEntryType] = useState<EntryType>('tithe');
   const [donorName, setDonorName] = useState('');
   const [donorEmail, setDonorEmail] = useState('');
   const [donorDocument, setDonorDocument] = useState('');
@@ -54,6 +56,7 @@ export default function RecorrenciaPage() {
         organizationId,
         amount: Number(amount),
         dayOfMonth: Number(dayOfMonth),
+        entryType,
         donor: { name: donorName, email: donorEmail || undefined, document: donorDocument },
       });
       setAmount('');
@@ -101,6 +104,13 @@ export default function RecorrenciaPage() {
                 <label htmlFor="day">Dia do mês</label>
                 <input id="day" type="number" min="1" max="31" value={dayOfMonth}
                   onChange={(e) => setDayOfMonth(e.target.value)} required />
+              </div>
+              <div className="field" style={{ width: 150 }}>
+                <label htmlFor="rtype">Tipo</label>
+                <select id="rtype" value={entryType} onChange={(e) => setEntryType(e.target.value as EntryType)}>
+                  <option value="tithe">Dízimo (membro)</option>
+                  <option value="donation">Doação (apoiador)</option>
+                </select>
               </div>
             </div>
             <div className="field">

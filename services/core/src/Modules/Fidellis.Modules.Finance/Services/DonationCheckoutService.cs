@@ -59,6 +59,7 @@ public sealed class DonationCheckoutService(
             DonorId = donor.Id,
             CampaignId = cmd.CampaignId,
             ReceivableId = cmd.ReceivableId,
+            EntryType = EntryTypes.IsValid(cmd.EntryType) ? cmd.EntryType : EntryTypes.Donation,
         };
         tenantDb.Donations.Add(donation);
 

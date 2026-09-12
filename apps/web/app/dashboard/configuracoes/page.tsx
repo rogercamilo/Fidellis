@@ -16,6 +16,9 @@ export default function ConfiguracoesPage() {
 
   const [recurringLabel, setRecurringLabel] = useState('Dízimo');
   const [onetimeLabel, setOnetimeLabel] = useState('Oferta');
+  const [titheLabel, setTitheLabel] = useState('Dízimo');
+  const [offeringLabel, setOfferingLabel] = useState('Oferta');
+  const [donationLabel, setDonationLabel] = useState('Doação');
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
 
   const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
@@ -44,6 +47,9 @@ export default function ConfiguracoesPage() {
       ]);
       setRecurringLabel(s.recurringLabel);
       setOnetimeLabel(s.onetimeLabel);
+      setTitheLabel(s.titheLabel);
+      setOfferingLabel(s.offeringLabel);
+      setDonationLabel(s.donationLabel);
       setCostCenters(cc);
       setFunds(fn);
       setDonorTypes(dt);
@@ -85,7 +91,7 @@ export default function ConfiguracoesPage() {
   }
 
   const saveSettings = guard(async () => {
-    await updateFinanceSettings(token!, { recurringLabel, onetimeLabel });
+    await updateFinanceSettings(token!, { recurringLabel, onetimeLabel, titheLabel, offeringLabel, donationLabel });
     setSavedMsg('Salvo.');
     setTimeout(() => setSavedMsg(null), 2000);
   });
@@ -105,13 +111,18 @@ export default function ConfiguracoesPage() {
 
       <div className="grid cols-2 rise rise-2" style={{ alignItems: 'start' }}>
         <Panel title="Nomenclatura" actions={savedMsg && <span className="badge ok">{savedMsg}</span>}>
+          <p className="muted" style={{ marginTop: 0 }}>Rótulos por tipo de entrada (D-06). As chaves internas são estáveis; aqui você define como sua comunidade chama cada tipo.</p>
           <div className="field">
-            <label htmlFor="rl">Doação recorrente</label>
-            <input id="rl" value={recurringLabel} onChange={(e) => setRecurringLabel(e.target.value)} />
+            <label htmlFor="tl">Dízimo (só membro, recorrente)</label>
+            <input id="tl" value={titheLabel} onChange={(e) => setTitheLabel(e.target.value)} />
           </div>
           <div className="field">
-            <label htmlFor="ol">Doação pontual</label>
-            <input id="ol" value={onetimeLabel} onChange={(e) => setOnetimeLabel(e.target.value)} />
+            <label htmlFor="offl">Oferta (só membro, pontual)</label>
+            <input id="offl" value={offeringLabel} onChange={(e) => setOfferingLabel(e.target.value)} />
+          </div>
+          <div className="field">
+            <label htmlFor="dl">Doação (não-membro)</label>
+            <input id="dl" value={donationLabel} onChange={(e) => setDonationLabel(e.target.value)} />
           </div>
           <button className="btn btn-primary" onClick={saveSettings}>Salvar</button>
         </Panel>

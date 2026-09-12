@@ -19,12 +19,11 @@ public static class ConfigEndpoints
     {
         var g = app.MapGroup("/api/finance").WithTags("Finance/Config").AddEndpointFilter<FinanceWriteFilter>();
 
-        // ---- Nomenclatura (RF-FIN-180/181) ----
+        // ---- Nomenclatura (RF-FIN-180/181 + rótulos por tipo D-06) ----
         g.MapGet("/settings", async (TenantDbContext db, CancellationToken ct) =>
         {
             var s = await db.FinanceSettings.FirstOrDefaultAsync(ct);
-            return Results.Ok(new FinanceSettingsDto(
-                s?.RecurringLabel ?? "Dízimo", s?.OnetimeLabel ?? "Oferta"));
+            return Results.Ok(ToDto(s ?? new FinanceSettings()));
         });
 
         g.MapPut("/settings", async (
@@ -33,14 +32,19 @@ public static class ConfigEndpoints
             if (!tenant.HasTenant) return Results.BadRequest(new { error = "Nenhum tenant no request." });
             if (string.IsNullOrWhiteSpace(req.RecurringLabel) || string.IsNullOrWhiteSpace(req.OnetimeLabel))
                 return Results.BadRequest(new { error = "recurringLabel e onetimeLabel são obrigatórios." });
+            if (string.IsNullOrWhiteSpace(req.TitheLabel) || string.IsNullOrWhiteSpace(req.OfferingLabel) || string.IsNullOrWhiteSpace(req.DonationLabel))
+                return Results.BadRequest(new { error = "titheLabel, offeringLabel e donationLabel são obrigatórios." });
 
             var s = await db.FinanceSettings.FirstOrDefaultAsync(ct);
             if (s is null) { s = new FinanceSettings(); db.FinanceSettings.Add(s); }
             s.RecurringLabel = req.RecurringLabel.Trim();
             s.OnetimeLabel = req.OnetimeLabel.Trim();
+            s.TitheLabel = req.TitheLabel.Trim();
+            s.OfferingLabel = req.OfferingLabel.Trim();
+            s.DonationLabel = req.DonationLabel.Trim();
             s.UpdatedAt = clock.UtcNow;
             await db.SaveChangesAsync(ct);
-            return Results.Ok(new FinanceSettingsDto(s.RecurringLabel, s.OnetimeLabel));
+            return Results.Ok(ToDto(s));
         });
 
         // ---- Tipos de doador (RF-FIN-182) ----
@@ -130,9 +134,14 @@ public static class ConfigEndpoints
         foreach (var existing in await db.DonorTypes.Where(x => x.IsRecurringDefault).ToListAsync(ct))
             existing.IsRecurringDefault = false;
     }
+
+    private static FinanceSettingsDto ToDto(FinanceSettings s)
+        => new(s.RecurringLabel, s.OnetimeLabel, s.TitheLabel, s.OfferingLabel, s.DonationLabel);
 }
 
-public sealed record FinanceSettingsDto(string RecurringLabel, string OnetimeLabel);
+public sealed record FinanceSettingsDto(
+    string RecurringLabel, string OnetimeLabel,
+    string TitheLabel = "Dízimo", string OfferingLabel = "Oferta", string DonationLabel = "Doação");
 public sealed record DonorTypeDto(Guid Id, string Name, bool IsRecurringDefault, bool Active);
 public sealed record FinanceCategoryDto(Guid Id, string Kind, string Name, Guid? LedgerAccountId, bool Active);
 

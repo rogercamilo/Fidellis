@@ -4,13 +4,14 @@ import { useEffect, useRef, useState } from 'react';
 import { PageHeader, StatusBadge } from '../../components/Fiori';
 import { OrganizationPicker } from '../../components/OrganizationPicker';
 import { Panel } from '../../components/Panel';
-import { createDonation, getDonation, getFinanceSettings, type DonationCheckout, type LoginResult } from '../../lib/api';
+import { createDonation, ENTRY_TYPES, getDonation, getFinanceSettings, type DonationCheckout, type EntryType, type LoginResult } from '../../lib/api';
 
 export default function CobrancaPage() {
   const [token, setToken] = useState<string | null>(null);
   const [organizationId, setOrganizationId] = useState('');
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('pix');
+  const [entryType, setEntryType] = useState<EntryType>('offering');
   const [donorName, setDonorName] = useState('');
   const [donorEmail, setDonorEmail] = useState('');
   const [donorDocument, setDonorDocument] = useState('');
@@ -44,6 +45,7 @@ export default function CobrancaPage() {
         organizationId,
         amount: Number(amount),
         method,
+        entryType,
         donor: { name: donorName, email: donorEmail || undefined, document: donorDocument },
       });
       setCheckout(result);
@@ -92,11 +94,17 @@ export default function CobrancaPage() {
                   <input id="amount" type="number" step="0.01" min="0.01" value={amount}
                     onChange={(e) => setAmount(e.target.value)} required />
                 </div>
-                <div className="field" style={{ width: 140 }}>
+                <div className="field" style={{ width: 130 }}>
                   <label htmlFor="method">Método</label>
                   <select id="method" value={method} onChange={(e) => setMethod(e.target.value)}>
                     <option value="pix">PIX</option>
                     <option value="boleto">Boleto</option>
+                  </select>
+                </div>
+                <div className="field" style={{ width: 130 }}>
+                  <label htmlFor="etype">Tipo</label>
+                  <select id="etype" value={entryType} onChange={(e) => setEntryType(e.target.value as EntryType)}>
+                    {ENTRY_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </select>
                 </div>
               </div>
