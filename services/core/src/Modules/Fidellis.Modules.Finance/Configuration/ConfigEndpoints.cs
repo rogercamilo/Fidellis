@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Fidellis.Infrastructure.Persistence;
 using Fidellis.Infrastructure.TenantData;
 using Fidellis.Modules.Finance.Security;
@@ -39,6 +40,7 @@ public static class ConfigEndpoints
             s.OfferingLabel = req.OfferingLabel.Trim();
             s.DonationLabel = req.DonationLabel.Trim();
             s.AdvancedManagement = req.AdvancedManagement;
+            s.RoleLabelsJson = SerializeRoleLabels(req.RoleLabels);
             s.UpdatedAt = clock.UtcNow;
             await db.SaveChangesAsync(ct);
             return Results.Ok(ToDto(s));
@@ -133,12 +135,28 @@ public static class ConfigEndpoints
     }
 
     private static FinanceSettingsDto ToDto(FinanceSettings s)
-        => new(s.TitheLabel, s.OfferingLabel, s.DonationLabel, s.AdvancedManagement);
+        => new(s.TitheLabel, s.OfferingLabel, s.DonationLabel, s.AdvancedManagement, DeserializeRoleLabels(s.RoleLabelsJson));
+
+    /// <summary>Overrides de rótulo de papel (D-02 Q6): só chaves de papel válidas + valores não-vazios.</summary>
+    private static string SerializeRoleLabels(Dictionary<string, string>? labels)
+    {
+        if (labels is null) return "{}";
+        var clean = labels
+            .Where(kv => FinanceRoles.IsValid(kv.Key) && !string.IsNullOrWhiteSpace(kv.Value))
+            .ToDictionary(kv => kv.Key.Trim().ToLowerInvariant(), kv => kv.Value.Trim());
+        return JsonSerializer.Serialize(clean);
+    }
+
+    private static Dictionary<string, string> DeserializeRoleLabels(string json)
+    {
+        try { return JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? new(); }
+        catch { return new(); }
+    }
 }
 
 public sealed record FinanceSettingsDto(
     string TitheLabel = "Dízimo", string OfferingLabel = "Oferta", string DonationLabel = "Doação",
-    bool AdvancedManagement = false);
+    bool AdvancedManagement = false, Dictionary<string, string>? RoleLabels = null);
 public sealed record DonorTypeDto(Guid Id, string Name, bool IsRecurringDefault, bool Active);
 public sealed record FinanceCategoryDto(Guid Id, string Kind, string Name, Guid? LedgerAccountId, bool Active);
 

@@ -6,7 +6,7 @@ import { Panel } from '../../components/Panel';
 import {
   createCategory, createCostCenter, createDonorType, createFund,
   getFinanceSettings, listCategories, listCostCenters, listDonorTypes, listFunds, listTeam,
-  setMemberRole, teamRoles, updateFinanceSettings,
+  roleLabel, roleLabelWith, setMemberRole, teamRoles, updateFinanceSettings,
   type CostCenter, type Fund, type DonorTypeItem, type FinanceCategoryItem, type LoginResult, type TeamMember,
 } from '../../lib/api';
 
@@ -18,6 +18,7 @@ export default function ConfiguracoesPage() {
   const [offeringLabel, setOfferingLabel] = useState('Oferta');
   const [donationLabel, setDonationLabel] = useState('Doação');
   const [advancedManagement, setAdvancedManagement] = useState(false);
+  const [roleLabels, setRoleLabels] = useState<Record<string, string>>({});
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
 
   const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
@@ -48,6 +49,7 @@ export default function ConfiguracoesPage() {
       setOfferingLabel(s.offeringLabel);
       setDonationLabel(s.donationLabel);
       setAdvancedManagement(s.advancedManagement);
+      setRoleLabels(s.roleLabels ?? {});
       setCostCenters(cc);
       setFunds(fn);
       setDonorTypes(dt);
@@ -89,7 +91,7 @@ export default function ConfiguracoesPage() {
   }
 
   const saveSettings = guard(async () => {
-    await updateFinanceSettings(token!, { titheLabel, offeringLabel, donationLabel, advancedManagement });
+    await updateFinanceSettings(token!, { titheLabel, offeringLabel, donationLabel, advancedManagement, roleLabels });
     setSavedMsg('Salvo.');
     setTimeout(() => setSavedMsg(null), 2000);
   });
@@ -199,7 +201,7 @@ export default function ConfiguracoesPage() {
       </div>
 
       {isAdmin && (
-        <div className="rise rise-3" style={{ marginTop: '1rem' }}>
+        <div className="grid cols-2 rise rise-3" style={{ marginTop: '1rem', alignItems: 'start' }}>
           <Panel title="Equipe e papéis" flush>
             <p className="muted" style={{ padding: '0.75rem 1rem 0' }}>
               O papel define o RBAC financeiro e as alçadas de aprovação. Somente admin atribui papéis.
@@ -213,13 +215,32 @@ export default function ConfiguracoesPage() {
                     <td className="muted">{m.email}</td>
                     <td>
                       <select value={m.role} onChange={(e) => changeRole(m.userId, e.target.value)}>
-                        {roles.map((r) => <option key={r} value={r}>{r}</option>)}
+                        {roles.map((r) => <option key={r} value={r}>{roleLabelWith(roleLabels, r)}</option>)}
                       </select>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </Panel>
+
+          <Panel title="Rótulos de papéis" actions={savedMsg && <span className="badge ok">{savedMsg}</span>}>
+            <p className="muted" style={{ marginTop: 0 }}>
+              Como sua comunidade chama cada papel (ex.: coordenador → &quot;ecônomo&quot;). Só exibição — as
+              regras de RBAC e alçadas não mudam. Em branco = rótulo padrão.
+            </p>
+            {roles.map((r) => (
+              <div className="field" key={r}>
+                <label htmlFor={`rl-${r}`}>{roleLabel(r)} <code className="muted" style={{ fontSize: '0.75rem' }}>{r}</code></label>
+                <input
+                  id={`rl-${r}`}
+                  value={roleLabels[r] ?? ''}
+                  placeholder={roleLabel(r)}
+                  onChange={(e) => setRoleLabels((prev) => ({ ...prev, [r]: e.target.value }))}
+                />
+              </div>
+            ))}
+            <button className="btn btn-primary" onClick={saveSettings}>Salvar rótulos</button>
           </Panel>
         </div>
       )}

@@ -67,6 +67,7 @@ public class FinanceConfigTests
         Assert.Equal("Dízimo", settings.TitheLabel);
         Assert.Equal("Oferta", settings.OfferingLabel);
         Assert.Equal("Doação", settings.DonationLabel);
+        Assert.Equal("{}", settings.RoleLabelsJson); // sem overrides de rótulo de papel por default (D-02 Q6)
 
         var types = await tdb.DonorTypes.ToListAsync();
         Assert.Equal(2, types.Count);

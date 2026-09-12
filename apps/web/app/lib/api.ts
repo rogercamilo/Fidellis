@@ -484,6 +484,8 @@ export const createProject = (t: string, body: { code: string; name: string; fun
 export interface FinanceSettings {
   titheLabel: string; offeringLabel: string; donationLabel: string;
   advancedManagement: boolean;
+  /** Overrides de rótulo de papel por tenant (D-02 Q6): { chaveTécnica: rótulo }. */
+  roleLabels: Record<string, string>;
 }
 
 /** Tipos de entrada (D-06): chaves técnicas estáveis + rótulo default (customizável por tenant). */
@@ -666,6 +668,10 @@ export const ROLE_LABELS: Record<string, string> = {
   member: 'Membro',
 };
 export const roleLabel = (role: string) => ROLE_LABELS[role] ?? role;
+
+/** Rótulo do papel preferindo o override do tenant (D-02 Q6), com fallback ao default. */
+export const roleLabelWith = (overrides: Record<string, string> | undefined, role: string) =>
+  overrides?.[role] ?? roleLabel(role);
 
 /** Tela inicial por papel (D-03): cada perfil cai no seu recorte após o login. */
 export function landingFor(role: string | null | undefined): string {
