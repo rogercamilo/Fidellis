@@ -5,41 +5,60 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 import { bootstrapStatus, type BootstrapStatus, type LoginResult } from '../lib/api';
 
-/** Navegação do ERP, agrupada por módulo (estilo SAP Fiori). Cresce a cada novo bloco. */
-const NAV: { label: string; items: { href: string; label: string }[] }[] = [
+// Conjuntos de papéis (D-03). Menu filtrado pelo papel; a trava de escrita real fica no back.
+const OPERATORS = ['admin', 'coordinator'];                                              // lançam
+const APPROVERS = ['admin', 'coordinator', 'council_officer', 'council_chair'];           // aprovam
+const OVERSIGHT = [...APPROVERS, 'fiscal_council'];                                        // + fiscaliza
+const ACCOUNTING = [...OVERSIGHT, 'accountant'];                                           // + contador
+
+/**
+ * Navegação do ERP reorganizada em Entradas/Saídas (D-04) e filtrada por papel (D-03). `roles` ausente =
+ * visível a todos; senão o grupo só aparece para os papéis listados (papel nulo/dev vê tudo).
+ */
+const NAV: { label: string; roles?: string[]; items: { href: string; label: string }[] }[] = [
   { label: '', items: [{ href: '/dashboard', label: 'Início' }] },
   {
-    label: 'Financeiro',
+    label: 'Entradas',
+    roles: OVERSIGHT,
     items: [
       { href: '/dashboard/cobranca', label: 'Cobrança' },
       { href: '/dashboard/recorrencia', label: 'Recorrência' },
+      { href: '/dashboard/caixa', label: 'Caixa' },
       { href: '/dashboard/receber', label: 'Contas a receber' },
+      { href: '/dashboard/doadores', label: 'Doadores' },
+    ],
+  },
+  {
+    label: 'Saídas',
+    roles: OVERSIGHT,
+    items: [
       { href: '/dashboard/pagar', label: 'Contas a pagar' },
       { href: '/dashboard/tesouraria', label: 'Tesouraria' },
-      { href: '/dashboard/caixa', label: 'Caixa' },
-      { href: '/dashboard/conciliacao', label: 'Conciliação' },
-      { href: '/dashboard/orcamento', label: 'Orçamento' },
-      { href: '/dashboard/projetos', label: 'Projetos & voluntariado' },
-      { href: '/dashboard/fechamento', label: 'Fechamento' },
     ],
   },
   {
     label: 'Contabilidade',
+    roles: ACCOUNTING,
     items: [
       { href: '/dashboard/contabilidade', label: 'Balancete & razão' },
       { href: '/dashboard/demonstracoes', label: 'Demonstrações' },
+      { href: '/dashboard/conciliacao', label: 'Conciliação' },
+      { href: '/dashboard/fechamento', label: 'Fechamento' },
     ],
   },
   {
-    label: 'Gestão',
+    label: 'Prestação de contas',
+    roles: ACCOUNTING,
     items: [
-      { href: '/dashboard/doadores', label: 'Doadores' },
+      { href: '/dashboard/orcamento', label: 'Orçamento' },
+      { href: '/dashboard/projetos', label: 'Projetos & voluntariado' },
       { href: '/dashboard/relatorios', label: 'Relatórios' },
       { href: '/dashboard/auditoria', label: 'Auditoria' },
     ],
   },
   {
     label: 'Organização',
+    roles: OPERATORS,
     items: [
       { href: '/dashboard/equipe', label: 'Equipe & conselho' },
       { href: '/dashboard/configuracoes', label: 'Configurações' },
@@ -72,12 +91,16 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isActive = (href: string) =>
     href === '/dashboard' ? pathname === href : pathname.startsWith(href);
 
-  // Título do app atual no shell bar (detalhe SAP Fiori): melhor correspondência da rota.
+  // Título do app atual no shell bar (detalhe SAP Fiori): melhor correspondência da rota (menu completo).
   const allItems = NAV.flatMap((g) => g.items);
   const current =
     allItems
       .filter((it) => (it.href === '/dashboard' ? pathname === it.href : pathname.startsWith(it.href)))
       .sort((a, b) => b.href.length - a.href.length)[0]?.label ?? 'Início';
+
+  // Progressive disclosure por papel (D-03): sem papel (dev) vê tudo; senão só os grupos do papel.
+  const role = session?.tenants.find((t) => t.slug === session.activeTenant)?.role;
+  const nav = NAV.filter((g) => !g.roles || !role || g.roles.includes(role));
 
   return (
     <div className="app">
@@ -103,7 +126,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="shell-body">
         <div className="sidenav-backdrop" data-open={open} onClick={() => setOpen(false)} />
         <aside className="sidenav-fiori" data-open={open}>
-          {NAV.map((group, gi) => (
+          {nav.map((group, gi) => (
             <div className="nav-group" key={group.label || `g${gi}`}>
               {group.label && <div className="nav-group-label">{group.label}</div>}
               {group.items.map((item) => (
