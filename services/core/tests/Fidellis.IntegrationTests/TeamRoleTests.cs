@@ -40,9 +40,9 @@ public class TeamRoleTests
     {
         var (catalog, tenantId, userId) = await SeededAsync($"team_{Guid.NewGuid()}");
         var svc = new TeamService(catalog);
-        var m = await svc.SetRoleAsync(tenantId, userId, "treasurer");
+        var m = await svc.SetRoleAsync(tenantId, userId, "coordinator");
         Assert.NotNull(m);
-        Assert.Equal("treasurer", (await catalog.Memberships.SingleAsync()).Role);
+        Assert.Equal("coordinator", (await catalog.Memberships.SingleAsync()).Role);
     }
 
     [Fact]
@@ -51,6 +51,6 @@ public class TeamRoleTests
         var (catalog, tenantId, userId) = await SeededAsync($"team_{Guid.NewGuid()}");
         var svc = new TeamService(catalog);
         await Assert.ThrowsAsync<ArgumentException>(() => svc.SetRoleAsync(tenantId, userId, "chefão"));
-        Assert.Null(await svc.SetRoleAsync(tenantId, Guid.NewGuid(), "treasurer")); // usuário inexistente
+        Assert.Null(await svc.SetRoleAsync(tenantId, Guid.NewGuid(), "coordinator")); // usuário inexistente
     }
 }

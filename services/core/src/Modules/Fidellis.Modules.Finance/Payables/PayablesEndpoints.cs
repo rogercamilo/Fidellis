@@ -49,6 +49,10 @@ public static class PayablesEndpoints
             CreatePayableRequest req, PayablesService payables, ITenantContext tenant, ICurrentUser user, CancellationToken ct) =>
         {
             if (!tenant.HasTenant) return Results.BadRequest(new { error = "Nenhum tenant no request." });
+            // Q3 (D-02): conselheiro/moderador aprovam, mas não lançam — lançar é de coordenador/admin.
+            if (!FinanceRoles.CanLaunch(user.Role))
+                return Results.Json(new { error = "Somente coordenador ou admin lançam títulos a pagar." },
+                    statusCode: StatusCodes.Status403Forbidden);
             if (req.PayeeId == Guid.Empty || req.Amount <= 0 || string.IsNullOrWhiteSpace(req.Description))
                 return Results.BadRequest(new { error = "payeeId, amount (>0) e description são obrigatórios." });
             if (req.OrganizationId == Guid.Empty)
@@ -83,13 +87,21 @@ public static class PayablesEndpoints
 
         // ---- Alçadas: aprovar / rejeitar / pagar (RF-FIN-112/113) ----
         g.MapPost("/payables/{id:guid}/approve", async (
-            Guid id, ApprovalService approvals, ICurrentUser user, CancellationToken ct) =>
+            Guid id, ApprovalService approvals, InvitationService invitations, ITenantContext tenant, ICurrentUser user, CancellationToken ct) =>
         {
             if (user.UserId is not { } uid)
                 return Results.BadRequest(new { error = "Usuário do request não identificado." });
             try
             {
-                var p = await approvals.ApproveAsync(id, uid, user.Role ?? "", ct);
+                // Estado de bootstrap (D-01): libera o coringa do admin só enquanto a equipe não existe.
+                var inBootstrap = false;
+                if (tenant.HasTenant)
+                {
+                    var tenantId = await invitations.ResolveTenantIdAsync(tenant.TenantId!, ct);
+                    if (tenantId != Guid.Empty)
+                        inBootstrap = (await invitations.BootstrapStatusAsync(tenantId, ct)).InBootstrap;
+                }
+                var p = await approvals.ApproveAsync(id, uid, user.Role ?? "", inBootstrap, ct);
                 return Results.Ok(new { id = p.Id, status = p.Status, approvedAt = p.ApprovedAt });
             }
             catch (InvalidOperationException ex)

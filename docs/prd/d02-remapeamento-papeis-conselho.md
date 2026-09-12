@@ -1,6 +1,18 @@
 # D-02 — Remapeamento de papéis e alçadas para a governança de conselho
 
-> **Status:** decisões do PO registradas (Q1–Q6, §9) — pronta para implementação · 2026-09-11
+> **Status:** ✅ **implementada** · 2026-09-12 (decisões Q1–Q6 do PO, §9).
+> **Entregue:** vocabulário renomeado em `FinanceRoles` (`treasurer→coordinator`, `manager→council_officer`,
+> +`council_chair`; só-leitura mantém `{fiscal_council, accountant}`); novas alçadas default em
+> `FinanceConfigSeeder` (§4 — conselho fiscal sai da faixa alta); migrações de dados `RemapCouncilRoles`
+> (catalog: `memberships.role`; tenant: `approval_tiers.roles_csv`). Q3: guard de lançamento em
+> `POST /payables` (`FinanceRoles.CanLaunch` = admin+coordenador; conselheiro/moderador aprovam mas não
+> lançam) + UI (`pagar`). Q4: `ApprovalService.ApproveAsync(..., inBootstrap)` — coringa do `admin` só em
+> bootstrap (estado da D-01 via `InvitationService.BootstrapStatusAsync`), com aviso `approval.bootstrap_override`.
+> Web usa o vocabulário via `roleLabel`. Testes atualizados (`ApprovalTests`, `FinanceRbacTests`,
+> `PeriodTests`, `TeamRoleTests`, `InvitationTests`) — 167 verdes.
+>
+> **Follow-up deferido:** Q6 *edição* de rótulos por tenant (custom display labels) — só exibição,
+> não-compliance; o app já traz chaves estáveis + rótulos PT-BR default de governança em `roleLabel`.
 > **Origem:** decisão **D-02** do [parecer do terceiro setor](parecer-finance-terceiro-setor.md).
 > **Fluxo:** detalhar → **PO revisa/ajusta** → só então codar. Este documento é a etapa "detalhar".
 > **Referências de código:** `FinanceRoles`, `FinanceConfigSeeder`, `ApprovalService`, `FinanceWriteFilter`,

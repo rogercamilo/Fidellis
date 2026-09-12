@@ -12,6 +12,7 @@ import {
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const date = (s: string) => new Date(s + 'T00:00:00').toLocaleDateString('pt-BR');
 const READ_ONLY_ROLES = ['fiscal_council', 'accountant'];
+const LAUNCHER_ROLES = ['admin', 'coordinator'];
 
 export default function PagarPage() {
   const [token, setToken] = useState<string | null>(null);
@@ -34,6 +35,7 @@ export default function PagarPage() {
   const [description, setDescription] = useState('');
 
   const canWrite = !role || !READ_ONLY_ROLES.includes(role);
+  const canLaunch = !role || LAUNCHER_ROLES.includes(role); // Q3: conselheiro/moderador aprovam, não lançam
   const payeeName = useMemo(() => new Map(payees.map((p) => [p.id, p.name])), [payees]);
 
   const refresh = useCallback(async (t: string) => {
@@ -93,9 +95,10 @@ export default function PagarPage() {
 
       {error && <p className="error-text">{error}</p>}
       {!canWrite && <p className="muted" style={{ marginBottom: '0.5rem' }}>Perfil somente-leitura: ações de escrita ocultadas.</p>}
+      {canWrite && !canLaunch && <p className="muted" style={{ marginBottom: '0.5rem' }}>Perfil de aprovação: o lançamento de títulos é do coordenador — aqui você aprova/rejeita.</p>}
 
       <div className="grid cols-2 rise rise-2" style={{ alignItems: 'start' }}>
-        {canWrite && (
+        {canLaunch && (
           <Panel title="Novo título">
             <form onSubmit={addPayable}>
               <div className="field">

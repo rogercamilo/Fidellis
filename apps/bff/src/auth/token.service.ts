@@ -7,7 +7,7 @@ export interface AccessClaims {
   email: string;
   /** Slug do tenant assumido; lido pelo core para resolver o schema t_<slug>. */
   tenant?: string;
-  /** Papel do usuário no tenant ativo; lido pelo core para o RBAC (ex.: admin, treasurer). */
+  /** Papel do usuário no tenant ativo; lido pelo core para o RBAC (ex.: admin, coordinator). */
   role?: string;
 }
 

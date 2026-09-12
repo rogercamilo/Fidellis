@@ -1,4 +1,5 @@
 using Fidellis.Infrastructure.Accounting;
+using Fidellis.Infrastructure.Audit;
 using Fidellis.Infrastructure.Configuration;
 using Fidellis.Infrastructure.Persistence;
 using Fidellis.Modules.Finance.Security;
@@ -13,6 +14,11 @@ namespace Fidellis.IntegrationTests;
 public class PeriodTests
 {
     private sealed class FixedClock(DateTimeOffset now) : IClock { public DateTimeOffset UtcNow { get; set; } = now; }
+    private sealed class NullAudit : IAuditLog
+    {
+        public Task RecordAsync(string action, string entity, string? entityId = null, string? metadata = null, CancellationToken ct = default)
+            => Task.CompletedTask;
+    }
     private static readonly DateTimeOffset T0 = new(2026, 5, 20, 12, 0, 0, TimeSpan.Zero);
 
     private static TenantDbContext TDb(string db)
@@ -40,7 +46,7 @@ public class PeriodTests
         var svc = new PeriodService(tdb, new FixedClock(T0));
         await svc.CloseAsync(2026, 5, Guid.NewGuid());
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.ReopenAsync(2026, 5, FinanceRoles.Treasurer));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.ReopenAsync(2026, 5, FinanceRoles.Coordinator));
 
         var reopened = await svc.ReopenAsync(2026, 5, FinanceRoles.Admin);
         Assert.Equal("open", reopened!.Status);
@@ -54,11 +60,11 @@ public class PeriodTests
         await new FinanceConfigSeeder(tdb).EnsureDefaultsAsync();
         var periods = new PeriodService(tdb, clock);
         var payables = new PayablesService(tdb, clock, new ChartOfAccountsSeeder(tdb), periods);
-        var approvals = new ApprovalService(tdb, clock);
+        var approvals = new ApprovalService(tdb, clock, new NullAudit());
 
         var payee = await payables.CreatePayeeAsync("Fornecedor", null, null, "supplier");
         var p = await payables.CreatePayableAsync(payee.Id, 100m, new DateOnly(2026, 6, 1), "Material", null, null, null, null, null, null, Guid.NewGuid());
-        await approvals.ApproveAsync(p.Id, Guid.NewGuid(), "treasurer");
+        await approvals.ApproveAsync(p.Id, Guid.NewGuid(), "coordinator");
 
         var treasury = new TreasuryService(tdb);
         var acc = await treasury.CreateAccountAsync(Guid.NewGuid(), "Banco", "bank", 500m);

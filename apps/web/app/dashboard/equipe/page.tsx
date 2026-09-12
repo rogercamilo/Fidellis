@@ -10,7 +10,7 @@ import {
   type BootstrapStatus, type Invitation, type LoginResult, type TeamMember,
 } from '../../lib/api';
 
-const INVITER_ROLES = new Set(['admin', 'treasurer', 'coordinator']);
+const INVITER_ROLES = new Set(['admin', 'coordinator']);
 
 export default function EquipePage() {
   const router = useRouter();
@@ -26,7 +26,7 @@ export default function EquipePage() {
   const [status, setStatus] = useState<BootstrapStatus | null>(null);
 
   const [email, setEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState('treasurer');
+  const [inviteRole, setInviteRole] = useState('coordinator');
 
   const isAdmin = role === 'admin';
   const canInvite = INVITER_ROLES.has(role);

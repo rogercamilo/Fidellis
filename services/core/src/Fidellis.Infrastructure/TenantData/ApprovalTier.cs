@@ -14,6 +14,6 @@ public sealed class ApprovalTier : Entity
     public decimal? MaxAmount { get; set; }
     public int Signatures { get; set; } = 1;
 
-    /// <summary>Papéis aprovadores separados por vírgula (ex.: <c>treasurer,manager</c>).</summary>
-    public string RolesCsv { get; set; } = "treasurer";
+    /// <summary>Papéis aprovadores separados por vírgula (ex.: <c>coordinator,council_officer</c>).</summary>
+    public string RolesCsv { get; set; } = "coordinator";
 }

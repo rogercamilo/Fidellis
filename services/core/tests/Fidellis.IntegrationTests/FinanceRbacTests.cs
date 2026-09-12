@@ -12,12 +12,23 @@ public class FinanceRbacTests
     [Theory]
     [InlineData(null, true)]                       // sem papel (dev/público) → permite
     [InlineData("admin", true)]
-    [InlineData("treasurer", true)]
-    [InlineData("manager", true)]
+    [InlineData("coordinator", true)]
+    [InlineData("council_officer", true)]          // conselheiro escreve (para aprovar)
+    [InlineData("council_chair", true)]            // moderador escreve (para aprovar)
     [InlineData("fiscal_council", false)]          // conselho fiscal: somente leitura
     [InlineData("accountant", false)]              // contador: somente leitura
     public void CanWrite_reflects_role(string? role, bool expected)
         => Assert.Equal(expected, FinanceRoles.CanWrite(role));
+
+    [Theory]
+    [InlineData(null, true)]                       // dev/público
+    [InlineData("admin", true)]
+    [InlineData("coordinator", true)]
+    [InlineData("council_officer", false)]         // conselheiro aprova, mas NÃO lança (Q3)
+    [InlineData("council_chair", false)]
+    [InlineData("member", false)]
+    public void CanLaunch_restricts_to_operators(string? role, bool expected)
+        => Assert.Equal(expected, FinanceRoles.CanLaunch(role));
 
     private static EndpointFilterInvocationContext ContextFor(string method, string? role)
     {
@@ -49,7 +60,7 @@ public class FinanceRbacTests
     {
         var filter = new FinanceWriteFilter();
         var called = false;
-        await filter.InvokeAsync(ContextFor("POST", "treasurer"),
+        await filter.InvokeAsync(ContextFor("POST", "coordinator"),
             _ => { called = true; return ValueTask.FromResult<object?>(Results.Ok()); });
 
         Assert.True(called);
