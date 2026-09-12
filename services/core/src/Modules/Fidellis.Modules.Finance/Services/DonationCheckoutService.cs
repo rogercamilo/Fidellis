@@ -63,6 +63,19 @@ public sealed class DonationCheckoutService(
         };
         tenantDb.Donations.Add(donation);
 
+        // Earmark de campanha (D-08): a doação da campanha herda o fundo/projeto vinculado — segrega o
+        // recurso como restrito (ITG 2002). Precede o default, mas respeita dimensão já informada.
+        if (donation.CampaignId is { } campaignId)
+        {
+            var campaign = await tenantDb.Campaigns
+                .Where(c => c.Id == campaignId).Select(c => new { c.FundId, c.ProjectId }).FirstOrDefaultAsync(ct);
+            if (campaign is not null)
+            {
+                donation.FundId ??= campaign.FundId;
+                donation.ProjectId ??= campaign.ProjectId;
+            }
+        }
+
         // Dimensões: aplica os defaults do tenant quando não informadas (RF-FIN-143).
         donation.CostCenterId ??= await tenantDb.CostCenters
             .Where(c => c.IsDefault).Select(c => (Guid?)c.Id).FirstOrDefaultAsync(ct);

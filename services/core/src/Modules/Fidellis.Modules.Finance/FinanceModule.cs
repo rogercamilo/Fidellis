@@ -6,6 +6,7 @@ using Fidellis.Infrastructure.Persistence;
 using Fidellis.Infrastructure.TenantData;
 using Fidellis.Modules.Finance.Banking;
 using Fidellis.Modules.Finance.Budgeting;
+using Fidellis.Modules.Finance.Campaigns;
 using Fidellis.Modules.Finance.CashSessions;
 using Fidellis.Modules.Finance.Configuration;
 using Fidellis.Modules.Finance.Dimensions;
@@ -48,6 +49,7 @@ public static class FinanceModule
         services.AddScoped<ApprovalService>();
         services.AddScoped<CashSessionService>();
         services.AddScoped<ManualEntryService>();
+        services.AddScoped<CampaignService>();
         services.AddScoped<PeriodService>();
         services.AddScoped<StatementImportService>();
         services.AddScoped<ReconciliationMatchService>();
@@ -246,6 +248,24 @@ public static class FinanceModule
             return Results.Ok(await statements.TransparencyAsync(y, q, ct));
         });
 
+        // Campanhas públicas (D-08): lista das ativas + detalhe com progresso (arrecadado × meta).
+        pub.MapGet("/campaigns", async (
+            string tenant, CatalogDbContext catalog, ITenantContext tc, Services.CampaignService campaigns, CancellationToken ct) =>
+        {
+            if (!await PublicTenant.TryResolveAsync(catalog, tc, tenant, ct))
+                return Results.NotFound(new { error = "Instituição não encontrada." });
+            return Results.Ok(await campaigns.ListAsync(activeOnly: true, ct));
+        });
+
+        pub.MapGet("/campaigns/{slug}", async (
+            string tenant, string slug, CatalogDbContext catalog, ITenantContext tc, Services.CampaignService campaigns, CancellationToken ct) =>
+        {
+            if (!await PublicTenant.TryResolveAsync(catalog, tc, tenant, ct))
+                return Results.NotFound(new { error = "Instituição não encontrada." });
+            var c = await campaigns.GetBySlugAsync(slug, ct);
+            return c is { Active: true } ? Results.Ok(c) : Results.NotFound(new { error = "Campanha não encontrada." });
+        });
+
         // Receptor de webhook do Pagar.me — FORA da resolução de tenant por JWT.
         group.MapPost("/webhooks/pagarme", async (
             HttpRequest request,
@@ -301,6 +321,9 @@ public static class FinanceModule
 
         // Lançamento manual de entrada (recebimento fora do PSP — D-05).
         app.MapEntries();
+
+        // Campanhas (earmark + meta × arrecadado + prestação de contas — D-08).
+        app.MapCampaigns();
 
         // Fechamento de período (bloqueio de lançamentos retroativos).
         app.MapPeriods();
