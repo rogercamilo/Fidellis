@@ -1,19 +1,17 @@
-# D-10 — Auditoria do Formattio (1ª rodada preenchida via esquema local)
+# D-10 — Auditoria do Formattio (concluída — esquema + código)
 
-> **Status:** auditoria **em andamento** · 2026-09-12 — **§1–§5 preenchidos via introspecção do esquema**
-> (Docker local, só metadados; **nenhuma linha de PII consultada** — ADR-0013). Pendências: amostra
-> pseudonimizada p/ taxa de match; superfície de **API** (app não estava no ar); confirmar **unicidade de
-> e-mail por org**. Alimenta o RIPD e o [ADR-0013](../architecture/ADR-0013-lgpd-formattio-fidellis.md). Epic **#80**.
+> **Status:** ✅ **auditoria substancialmente concluída** · 2026-09-12 — esquema (Docker, metadados) +
+> **revisão do código** (`App formativo/frontend`, Next.js). **Nenhuma PII consultada** (ADR-0013).
+> **Pronta para o RIPD.** Única pendência não-bloqueante: taxa de match em amostra pseudonimizada.
+> Alimenta o [ADR-0013](../architecture/ADR-0013-lgpd-formattio-fidellis.md). Epic **#80**.
 
 ---
 
 ## 0. Acesso / insumos
 
-- [x] **Acesso ao esquema** — Docker `appformativo-postgres-1` (Postgres 16), db `formacao_comunitaria`,
-  user `formativo`; Adminer em `:8080`. ORM: **Prisma** (`_prisma_migrations`). Billing do Formattio: **Stripe**.
-- [ ] **Amostra pseudonimizada** p/ medir taxa de match por e-mail (não consultada — só metadados até aqui).
-- [ ] **Doc/superfície de API** (o container da app não está no ar; só Postgres + Adminer).
-- [ ] Confirmar **unicidade de `Formando.email`** (por org?) e escala (nº de formandos).
+- [x] **Esquema** — Docker `appformativo-postgres-1` (Postgres 16), db `formacao_comunitaria`, ORM **Prisma**.
+- [x] **Código/superfície de API** — `App formativo/frontend` (Next.js, ~149 rotas `app/api`) revisado.
+- [ ] **Amostra pseudonimizada** p/ taxa de match (não-bloqueante — o vínculo é o `ExternalId`, não e-mail).
 
 ## 1. Dicionário — entidades relevantes + classificação LGPD
 
@@ -51,9 +49,12 @@
 
 | Item | Achado |
 | --- | --- |
-| Banco | Postgres 16 (Prisma). Export/DB viável para 1ª carga. |
-| **API** | _(a confirmar — app fora do ar; verificar rotas no repo do Formattio)_. |
-| Auth p/ Formattio→Fidellis | Formattio já tem **`FormandoAccessToken`** (token/link mágico) e `Usuario.mfa`. Para a aba de dízimo: **credencial de serviço por tenant** (server-to-server) + `ExternalId` — a definir no ADR. |
+| Banco | Postgres 16 (Prisma). |
+| **Export** (carga inicial) | ✅ `GET /api/export/organizacao` (export por org) e `/api/export/meus-dados` (portabilidade LGPD do próprio formando). Viável para a 1ª carga de formandos. |
+| **Portal do formando** | ✅ Robusto: `portal/login`, `portal/me`, `portal/perfil`, `portal/notificacoes`, `portal/presenca`, `portal/travessia`… → **home natural da aba de dízimo/oferta** (chamaria o Fidellis server-to-server). |
+| **API de integração externa** | 🔴 **Inexistente** — não há API pública de terceiros nem `api-key`/service-token. O contrato de integração (Formattio→Fidellis) é **greenfield no lado do Formattio**. |
+| Webhooks | Só **inbound** (`webhooks/resend`, `stripe/webhook`). **Sem webhook outbound** de mudança de status → offboarding via **export/polling** ou webhook a ser construído no Formattio. |
+| Auth p/ Formattio→Fidellis | Formattio tem auth de formando (`portal/login` + `FormandoAccessToken`, `ativar`/`recuperar`) e `Usuario.mfa`. Para a aba de dízimo: **credencial de serviço por tenant** (server-to-server) + `ExternalId` — a construir (não existe hoje). |
 | **Sinal de offboarding** | ✅ **`Formando.ativo=false`** e/ou `deletedAt`. O enum `condicaoAtual ∈ {…, desligado, falecido}` existe mas **não estava populado** na base de teste → confiar em `ativo`/`deletedAt` como sinal primário. Formattio tem `ProcessedWebhookEvent` (infra de webhook) → um **webhook de mudança de status** é viável; senão, polling. |
 | Billing | Formattio usa **Stripe** (Organizacao.stripe*); Fidellis usa Pagar.me — sistemas separados (sem impacto no give do membro, que é lado Fidellis). |
 
@@ -75,8 +76,14 @@
 - **Semântica confirma a regra do PO:** o enum chama-se **`CondicaoMembro`** — o formando **é** um membro,
   reforçando "integração ⇒ membro".
 
-## 7. Pendências para fechar a auditoria
+## 7. Conclusão
 
-1. **API do Formattio** (subir a app / conferir rotas no repo) — define API × export.
-2. **Amostra pseudonimizada** → taxa de match por e-mail + unicidade + escala.
-3. Consolidar → **RIPD** → aceitar **ADR-0013** → só então codar adaptador + identidade federada.
+Auditoria **substancialmente concluída** (esquema + código). Superfície definida: **carga inicial por
+`export/organizacao`**; **aba de dízimo/oferta no portal do formando** (a construir no Formattio,
+chamando o Fidellis por credencial de serviço/tenant); **offboarding por export/polling** (sem webhook
+outbound hoje). O **contrato de integração é greenfield no lado do Formattio** — não bloqueia o desenho
+do Fidellis, mas é dependência de entrega da outra equipe.
+
+**Próximo passo:** **RIPD/DPIA** com base nestes achados → aceitar **ADR-0013** → só então codar, no
+Fidellis, `Donor.ExternalId`/`Source` + canal de importação + a chamada de give autenticada. Pendência
+não-bloqueante: medir taxa de match numa amostra pseudonimizada (o vínculo autoritativo é o `ExternalId`).
