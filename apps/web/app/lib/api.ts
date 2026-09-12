@@ -415,7 +415,7 @@ export async function publicOrganizations(tenant: string): Promise<PublicOrg[]> 
 
 export async function publicCreateDonation(
   tenant: string,
-  input: { organizationId: string; amount: number; donor: { name: string; email?: string; document: string } },
+  input: { organizationId: string; amount: number; donor: { name: string; email?: string; document: string }; campaignId?: string },
 ): Promise<DonationCheckout> {
   const res = await fetch(`${BFF_URL}/api/public/${tenant}/donations`, {
     method: 'POST',
@@ -557,6 +557,36 @@ export const createManualEntry = (
 
 /** Linha discriminada da coleta de caixa (D-06): tipo + valor (+ dimensões opcionais). */
 export interface CashLine { entryType: EntryType; amount: number; costCenterId?: string; projectId?: string; fundId?: string }
+
+// ---- Campanhas (D-08) ----
+
+export interface CampaignProgress {
+  id: string; organizationId: string; title: string; slug: string; description: string | null;
+  goalAmount: number | null; raised: number; percent: number; active: boolean;
+  startsAt: string | null; endsAt: string | null; fundId: string | null; projectId: string | null; status: string;
+}
+export interface CampaignReport { id: string; title: string; goalAmount: number | null; raised: number; applied: number; balance: number }
+
+export const listCampaigns = (t: string) => authGet<CampaignProgress[]>(t, '/api/finance/campaigns', 'campanhas');
+export const createCampaign = (
+  t: string,
+  body: { organizationId: string; title: string; slug?: string; goalAmount?: number; description?: string; startsAt?: string; endsAt?: string; fundId?: string; projectId?: string },
+) => authSend<{ id: string; slug: string }>(t, 'POST', '/api/finance/campaigns', body, 'criar campanha');
+export const setCampaignStatus = (t: string, id: string, status: 'active' | 'closed') =>
+  authSend<{ id: string; status: string }>(t, 'PATCH', `/api/finance/campaigns/${id}/status`, { status }, 'atualizar campanha');
+export const campaignReport = (t: string, id: string) =>
+  authGet<CampaignReport>(t, `/api/finance/campaigns/${id}/report`, 'prestação de contas');
+
+export async function publicCampaigns(tenant: string): Promise<CampaignProgress[]> {
+  const res = await fetch(`${BFF_URL}/api/public/${tenant}/campaigns`);
+  if (!res.ok) throw new Error('Instituição não encontrada.');
+  return res.json() as Promise<CampaignProgress[]>;
+}
+export async function publicCampaign(tenant: string, slug: string): Promise<CampaignProgress> {
+  const res = await fetch(`${BFF_URL}/api/public/${tenant}/campaigns/${encodeURIComponent(slug)}`);
+  if (!res.ok) throw new Error('Campanha não encontrada.');
+  return res.json() as Promise<CampaignProgress>;
+}
 export const closeCashSession = (t: string, id: string, body: { countedAmount: number; lines?: CashLine[] }) => authSend<CashSession>(t, 'POST', `/api/finance/cash-sessions/${id}/close`, body, 'fechar caixa');
 export const depositCashSession = (t: string, id: string, body: { bankAccountId: string }) => authSend<{ id: string; depositedMovementId: string | null }>(t, 'POST', `/api/finance/cash-sessions/${id}/deposit`, body, 'depositar');
 

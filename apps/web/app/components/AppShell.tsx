@@ -23,6 +23,7 @@ const NAV: { label: string; roles?: string[]; items: { href: string; label: stri
     items: [
       { href: '/dashboard/cobranca', label: 'Cobrança' },
       { href: '/dashboard/recorrencia', label: 'Recorrência' },
+      { href: '/dashboard/campanhas', label: 'Campanhas' },
       { href: '/dashboard/caixa', label: 'Caixa' },
       { href: '/dashboard/receber', label: 'Contas a receber' },
       { href: '/dashboard/doadores', label: 'Doadores' },
