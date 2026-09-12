@@ -9,7 +9,7 @@ public interface ICurrentUser
     Guid? UserId { get; }
     bool HasUser { get; }
 
-    /// <summary>Papel do usuário no tenant do request (ex.: admin, treasurer, fiscal_council). Pode ser nulo.</summary>
+    /// <summary>Papel do usuário no tenant do request (ex.: admin, coordinator, fiscal_council). Pode ser nulo.</summary>
     string? Role { get; }
 
     void SetUser(Guid userId, string? role = null);

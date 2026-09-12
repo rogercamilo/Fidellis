@@ -1,3 +1,4 @@
+using Fidellis.Infrastructure.Audit;
 using Fidellis.Infrastructure.Persistence;
 using Fidellis.Infrastructure.TenantData;
 using Fidellis.Modules.Finance.Security;
@@ -10,9 +11,11 @@ namespace Fidellis.Modules.Finance.Services;
 /// Alçadas de aprovação de Contas a Pagar (RF-FIN-112). Resolve a faixa por valor e aplica os
 /// <b>guarda-corpos de compliance</b> não-desligáveis: mínimo 1 aprovação; autoaprovação bloqueada
 /// (quem criou ≠ aprovador); acima de R$ 5.000, 2 assinaturas sempre; papel deve pertencer à faixa;
-/// um aprovador não assina duas vezes. Roda no schema do tenant.
+/// um aprovador não assina duas vezes. O <c>admin</c> é aprovador-coringa <b>apenas em bootstrap</b>
+/// (equipe/conselho ainda não montados — D-02 Q4), gravando aviso auditável; fora dele respeita a faixa.
+/// Roda no schema do tenant.
 /// </summary>
-public sealed class ApprovalService(TenantDbContext db, IClock clock)
+public sealed class ApprovalService(TenantDbContext db, IClock clock, IAuditLog audit)
 {
     /// <summary>Teto de compliance (D13): acima disso, 2 assinaturas são sempre obrigatórias.</summary>
     public const decimal ComplianceCeiling = 5000m;
@@ -27,8 +30,13 @@ public sealed class ApprovalService(TenantDbContext db, IClock clock)
         return tiers.FirstOrDefault(t => amount >= t.MinAmount && (t.MaxAmount is null || amount < t.MaxAmount));
     }
 
-    /// <summary>Registra uma aprovação; quando as assinaturas exigidas são atingidas, o título vira <c>approved</c>.</summary>
-    public async Task<Payable> ApproveAsync(Guid payableId, Guid approverId, string role, CancellationToken ct = default)
+    /// <summary>
+    /// Registra uma aprovação; quando as assinaturas exigidas são atingidas, o título vira <c>approved</c>.
+    /// O <paramref name="inBootstrap"/> (derivado do estado da equipe — D-01) libera o coringa do
+    /// <c>admin</c> apenas enquanto a governança não está montada, com aviso auditável.
+    /// </summary>
+    public async Task<Payable> ApproveAsync(
+        Guid payableId, Guid approverId, string role, bool inBootstrap = false, CancellationToken ct = default)
     {
         var payable = await db.Payables.FirstOrDefaultAsync(p => p.Id == payableId, ct)
             ?? throw new InvalidOperationException("Título não encontrado.");
@@ -42,12 +50,18 @@ public sealed class ApprovalService(TenantDbContext db, IClock clock)
         var tier = await ResolveTierAsync(payable.Amount, ct)
             ?? throw new InvalidOperationException("Nenhuma faixa de alçada cobre este valor.");
 
-        // Guarda-corpo: papel deve pertencer à faixa. Admin é aprovador coringa (satisfaz qualquer
-        // faixa) — mas a segregação de funções (autoaprovação bloqueada) continua valendo.
+        // Guarda-corpo: papel deve pertencer à faixa. O coringa do admin (D-02 Q4) vale só em bootstrap
+        // (equipe ainda não montada), com aviso auditável; fora do bootstrap, admin respeita a faixa.
         var roles = tier.RolesCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        var isAdmin = string.Equals(role, FinanceRoles.Admin, StringComparison.OrdinalIgnoreCase);
-        if (!isAdmin && !roles.Contains(role, StringComparer.OrdinalIgnoreCase))
-            throw new InvalidOperationException($"O papel '{role}' não aprova títulos nesta faixa.");
+        if (!roles.Contains(role, StringComparer.OrdinalIgnoreCase))
+        {
+            var isAdmin = string.Equals(role, FinanceRoles.Admin, StringComparison.OrdinalIgnoreCase);
+            if (isAdmin && inBootstrap)
+                await audit.RecordAsync("approval.bootstrap_override", "payable", payableId.ToString(),
+                    $"tier:{tier.MinAmount}-{tier.MaxAmount?.ToString() ?? "∞"};approver:{approverId}", ct);
+            else
+                throw new InvalidOperationException($"O papel '{role}' não aprova títulos nesta faixa.");
+        }
 
         // Guarda-corpo: um aprovador não assina duas vezes.
         if (await db.PayableApprovals.AnyAsync(a => a.PayableId == payableId && a.ApproverId == approverId, ct))

@@ -49,7 +49,7 @@ public class InvitationTests
     public async Task Invite_new_email_creates_pending_invitation_and_email()
     {
         var (svc, cat, tdb, tenantId) = await SetupAsync(Guid.NewGuid().ToString("N"));
-        var result = await svc.CreateAsync(tenantId, "Diocese SP", "novo@ex.com", "treasurer", Guid.NewGuid());
+        var result = await svc.CreateAsync(tenantId, "Diocese SP", "novo@ex.com", "coordinator", Guid.NewGuid());
 
         Assert.Equal(InviteOutcome.Invited, result.Outcome);
         Assert.NotNull(result.Invitation);
@@ -69,11 +69,11 @@ public class InvitationTests
         cat.Users.Add(user);
         await cat.SaveChangesAsync();
 
-        var result = await svc.CreateAsync(tenantId, "Diocese SP", "JA@ex.com", "manager", Guid.NewGuid());
+        var result = await svc.CreateAsync(tenantId, "Diocese SP", "JA@ex.com", "council_officer", Guid.NewGuid());
 
         Assert.Equal(InviteOutcome.MemberAdded, result.Outcome);
         var m = await cat.Memberships.SingleAsync(x => x.UserId == user.Id && x.TenantId == tenantId);
-        Assert.Equal("manager", m.Role);
+        Assert.Equal("council_officer", m.Role);
         Assert.Empty(await cat.Invitations.ToListAsync()); // não cria convite
         Assert.Single(tdb.Messages.Where(x => x.EventType == "team.member_added"));
     }
@@ -84,19 +84,19 @@ public class InvitationTests
         var (svc, cat, _, tenantId) = await SetupAsync(Guid.NewGuid().ToString("N"));
         var user = new User { Email = "membro@ex.com", PasswordHash = "x" };
         cat.Users.Add(user);
-        cat.Memberships.Add(new Membership { UserId = user.Id, TenantId = tenantId, Role = "treasurer" });
+        cat.Memberships.Add(new Membership { UserId = user.Id, TenantId = tenantId, Role = "coordinator" });
         await cat.SaveChangesAsync();
 
-        var result = await svc.CreateAsync(tenantId, "Diocese SP", "membro@ex.com", "manager", Guid.NewGuid());
+        var result = await svc.CreateAsync(tenantId, "Diocese SP", "membro@ex.com", "council_officer", Guid.NewGuid());
         Assert.Equal(InviteOutcome.AlreadyMember, result.Outcome);
-        Assert.Equal("treasurer", (await cat.Memberships.SingleAsync()).Role); // papel inalterado
+        Assert.Equal("coordinator", (await cat.Memberships.SingleAsync()).Role); // papel inalterado
     }
 
     [Fact]
     public async Task Resend_regenerates_token_and_resets_expiry()
     {
         var (svc, cat, _, tenantId) = await SetupAsync(Guid.NewGuid().ToString("N"));
-        await svc.CreateAsync(tenantId, "Diocese SP", "novo@ex.com", "treasurer", null);
+        await svc.CreateAsync(tenantId, "Diocese SP", "novo@ex.com", "coordinator", null);
         var before = await cat.Invitations.AsNoTracking().SingleAsync();
 
         var clock = new FixedClock(T0.AddDays(1));
@@ -113,7 +113,7 @@ public class InvitationTests
     public async Task Revoke_marks_invitation_revoked()
     {
         var (svc, cat, _, tenantId) = await SetupAsync(Guid.NewGuid().ToString("N"));
-        await svc.CreateAsync(tenantId, "Diocese SP", "novo@ex.com", "treasurer", null);
+        await svc.CreateAsync(tenantId, "Diocese SP", "novo@ex.com", "coordinator", null);
         var inv = await cat.Invitations.AsNoTracking().SingleAsync();
 
         Assert.True(await svc.RevokeAsync(tenantId, inv.Id));
@@ -131,15 +131,15 @@ public class InvitationTests
         Assert.False(s0.TeamReady);
         Assert.True(s0.InBootstrap);
 
-        // Papéis aprovadores vêm das faixas default (treasurer, manager, fiscal_council).
-        cat.Memberships.Add(new Membership { UserId = Guid.NewGuid(), TenantId = tenantId, Role = "treasurer" });
+        // Papéis aprovadores vêm das faixas default (coordinator, council_officer, council_chair).
+        cat.Memberships.Add(new Membership { UserId = Guid.NewGuid(), TenantId = tenantId, Role = "coordinator" });
         cat.Memberships.Add(new Membership { UserId = Guid.NewGuid(), TenantId = tenantId, Role = "member" }); // não aprova
         await cat.SaveChangesAsync();
         var s1 = await svc.BootstrapStatusAsync(tenantId);
         Assert.Equal(1, s1.ApproverCount);
         Assert.False(s1.TeamReady);
 
-        cat.Memberships.Add(new Membership { UserId = Guid.NewGuid(), TenantId = tenantId, Role = "manager" });
+        cat.Memberships.Add(new Membership { UserId = Guid.NewGuid(), TenantId = tenantId, Role = "council_officer" });
         await cat.SaveChangesAsync();
         var s2 = await svc.BootstrapStatusAsync(tenantId);
         Assert.Equal(2, s2.ApproverCount);
@@ -161,7 +161,7 @@ public class InvitationTests
     {
         var (svc, _, _, tenantId) = await SetupAsync(Guid.NewGuid().ToString("N"));
         await Assert.ThrowsAsync<ArgumentException>(() => svc.CreateAsync(tenantId, "Diocese SP", "ok@ex.com", "chefão", null));
-        await Assert.ThrowsAsync<ArgumentException>(() => svc.CreateAsync(tenantId, "Diocese SP", "sem-arroba", "treasurer", null));
+        await Assert.ThrowsAsync<ArgumentException>(() => svc.CreateAsync(tenantId, "Diocese SP", "sem-arroba", "coordinator", null));
     }
 
     [Fact]
@@ -177,9 +177,8 @@ public class InvitationTests
     public void CanInvite_covers_admin_and_coordinator_only()
     {
         Assert.True(FinanceRoles.CanInvite("admin"));
-        Assert.True(FinanceRoles.CanInvite("treasurer"));
         Assert.True(FinanceRoles.CanInvite("coordinator"));
-        Assert.False(FinanceRoles.CanInvite("manager"));
+        Assert.False(FinanceRoles.CanInvite("council_officer"));
         Assert.False(FinanceRoles.CanInvite("fiscal_council"));
         Assert.False(FinanceRoles.CanInvite(null));
     }

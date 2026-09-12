@@ -31,13 +31,14 @@ public sealed class FinanceConfigSeeder(TenantDbContext db)
             changed = true;
         }
 
-        // Faixas de alçada default (RF-FIN-112): 3 faixas conforme o padrão aprovado.
+        // Faixas de alçada default (RF-FIN-112) no vocabulário de conselho (D-02 §4): o conselho fiscal
+        // NÃO autoriza (fiscaliza); a faixa alta é do conselheiro + moderador/presidente.
         if (!await db.ApprovalTiers.AnyAsync(ct))
         {
             db.ApprovalTiers.AddRange(
-                new ApprovalTier { MinAmount = 0m, MaxAmount = 500m, Signatures = 1, RolesCsv = "treasurer" },
-                new ApprovalTier { MinAmount = 500m, MaxAmount = 5000m, Signatures = 2, RolesCsv = "treasurer,manager" },
-                new ApprovalTier { MinAmount = 5000m, MaxAmount = null, Signatures = 2, RolesCsv = "manager,fiscal_council" });
+                new ApprovalTier { MinAmount = 0m, MaxAmount = 500m, Signatures = 1, RolesCsv = "coordinator,council_officer" },
+                new ApprovalTier { MinAmount = 500m, MaxAmount = 5000m, Signatures = 2, RolesCsv = "coordinator,council_officer" },
+                new ApprovalTier { MinAmount = 5000m, MaxAmount = null, Signatures = 2, RolesCsv = "council_officer,council_chair" });
             changed = true;
         }
 
