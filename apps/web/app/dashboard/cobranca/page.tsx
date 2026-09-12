@@ -27,7 +27,7 @@ export default function CobrancaPage() {
     if (raw) {
       const t = (JSON.parse(raw) as LoginResult).accessToken;
       setToken(t);
-      getFinanceSettings(t).then((s) => setLabel(s.onetimeLabel)).catch(() => {});
+      getFinanceSettings(t).then((s) => setLabel(s.offeringLabel)).catch(() => {});
     }
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);

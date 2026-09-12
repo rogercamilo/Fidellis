@@ -302,8 +302,10 @@ public sealed class SchemaProvisioner(
             -- Configurabilidade (Onda 1): nomenclatura, tipos de doador e rubricas.
             CREATE TABLE IF NOT EXISTS "{schema}".finance_settings (
                 id              uuid PRIMARY KEY,
-                recurring_label varchar(60) NOT NULL DEFAULT 'Dízimo',
-                onetime_label   varchar(60) NOT NULL DEFAULT 'Oferta',
+                tithe_label     varchar(60) NOT NULL DEFAULT 'Dízimo',
+                offering_label  varchar(60) NOT NULL DEFAULT 'Oferta',
+                donation_label  varchar(60) NOT NULL DEFAULT 'Doação',
+                advanced_management boolean NOT NULL DEFAULT false,
                 updated_at      timestamptz NOT NULL DEFAULT now(),
                 created_at      timestamptz NOT NULL DEFAULT now()
             );

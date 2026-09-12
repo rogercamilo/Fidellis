@@ -14,8 +14,6 @@ export default function ConfiguracoesPage() {
   const [token, setToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [recurringLabel, setRecurringLabel] = useState('Dízimo');
-  const [onetimeLabel, setOnetimeLabel] = useState('Oferta');
   const [titheLabel, setTitheLabel] = useState('Dízimo');
   const [offeringLabel, setOfferingLabel] = useState('Oferta');
   const [donationLabel, setDonationLabel] = useState('Doação');
@@ -46,8 +44,6 @@ export default function ConfiguracoesPage() {
       const [s, cc, fn, dt, ct] = await Promise.all([
         getFinanceSettings(t), listCostCenters(t), listFunds(t), listDonorTypes(t), listCategories(t),
       ]);
-      setRecurringLabel(s.recurringLabel);
-      setOnetimeLabel(s.onetimeLabel);
       setTitheLabel(s.titheLabel);
       setOfferingLabel(s.offeringLabel);
       setDonationLabel(s.donationLabel);
@@ -93,7 +89,7 @@ export default function ConfiguracoesPage() {
   }
 
   const saveSettings = guard(async () => {
-    await updateFinanceSettings(token!, { recurringLabel, onetimeLabel, titheLabel, offeringLabel, donationLabel, advancedManagement });
+    await updateFinanceSettings(token!, { titheLabel, offeringLabel, donationLabel, advancedManagement });
     setSavedMsg('Salvo.');
     setTimeout(() => setSavedMsg(null), 2000);
   });
