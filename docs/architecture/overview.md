@@ -7,8 +7,8 @@ para o terceiro setor religioso. Decisões formais nos ADRs desta pasta.
 
 ```
    ┌───────────────┐        ┌───────────────┐        ┌────────────────────┐
-   │  Doador        │        │  Gestor da     │        │  Gestor da rede     │
-   │ (dízimo/oferta)│        │  unidade       │        │ (diocese/instituto) │
+   │  Doador        │        │  Coordenação   │        │  Conselho da rede   │
+   │ (dízimo/oferta)│        │  da unidade    │        │ (diocese/instituto) │
    └──────┬─────────┘        └──────┬────────┘        └─────────┬──────────┘
           │                         │                           │
           ▼                         ▼                           ▼
@@ -23,8 +23,9 @@ para o terceiro setor religioso. Decisões formais nos ADRs desta pasta.
     PIX / cartão / boleto      (recibos/régua)         (recibos/assets)
 ```
 
-Atores: **doador** (contribui via link/portal), **gestor de unidade** (paróquia/casa), **gestor de
-rede** (diocese/instituto que consolida várias unidades). Sistemas externos: **PSP** (Pagar.me/Stone),
+Atores: **doador** (contribui via link/portal), **coordenação/conselho da unidade** (paróquia/casa,
+equipe + conselho que operam as finanças — D-01/D-02), **conselho da rede** (diocese/instituto que
+consolida várias unidades). Sistemas externos: **PSP** (Pagar.me/Stone),
 **mensageria** (e-mail/WhatsApp) e **object storage** (Cloudflare R2/S3).
 
 ## C2 — Contêineres

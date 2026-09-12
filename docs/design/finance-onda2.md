@@ -106,7 +106,7 @@ CREATE TABLE IF NOT EXISTS "{schema}".approval_tiers (
     min_amount    numeric(18,2) NOT NULL,     -- faixa [min, max)
     max_amount    numeric(18,2),              -- null = infinito
     signatures    int NOT NULL DEFAULT 1,
-    roles_csv     varchar(200) NOT NULL,      -- papéis aprovadores (ex.: "treasurer,manager")
+    roles_csv     varchar(200) NOT NULL,      -- papéis aprovadores (ex.: "coordinator,council_officer")
     created_at    timestamptz NOT NULL DEFAULT now()
 );
 
@@ -267,7 +267,8 @@ exigem papéis específicos (a definir — ver decisões).
 ## 7. Decisões resolvidas (propostas aprovadas — 2026-09-06)
 
 1. **Contas:** ✔ **nova tabela `treasury_accounts`** dedicada (separa tesouraria da conta contábil).
-2. **Aprovação de AP — papéis:** ✔ segue o **default do RF-FIN-112** (tesoureiro / +gestor / +conselho fiscal).
+2. **Aprovação de AP — papéis:** ✔ segue o **default do RF-FIN-112**; vocabulário de conselho (D-02):
+   coordenador / +conselheiro responsável / conselheiro + moderador (o conselho fiscal **não** aprova).
 3. **Pagamento de AP:** ✔ **só marca `paid` + movimento de tesouraria** (execução manual do PIX);
    remessa CNAB/PIX em lote fica p/ Onda 3.
 4. **Baixa de AR:** ✔ **vínculo explícito** (doação carrega o `receivable_id`); casamento heurístico depois.
