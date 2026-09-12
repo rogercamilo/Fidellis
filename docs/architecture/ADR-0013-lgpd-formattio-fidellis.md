@@ -91,7 +91,10 @@ armazenamento: ao surfacar a arrecadação **dentro do portal de formação**, o
 - **Progresso (2026-09-12):** auditoria do Formattio **concluída** (esquema + código — ver
   [planilha](../prd/d10-formattio-audit-worksheet.md)) e **RIPD rascunhado**
   ([ripd-formattio-fidellis.md](ripd-formattio-fidellis.md)). Falta validação **jurídica/DPO** do RIPD +
-  base legal do cruzamento → então este ADR passa a **Aceito**.
+  base legal do cruzamento → então este ADR passa a **Aceito**. Para acelerar a etapa jurídica, há
+  **rascunhos/modelos** do [termo de consentimento](../legal/consentimento-integracao-formattio.md) e do
+  [acordo de compartilhamento](../legal/acordo-compartilhamento-formattio-fidellis.md) — pendentes de
+  revisão jurídica, não são pareceres.
 
 ## Ciclo de vida do vínculo (offboarding) — decidido
 

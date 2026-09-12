@@ -78,9 +78,11 @@ doação** (não-membro), sem cruzamento.
 
 ## 7. Pendências para aprovar (checklist)
 
-- [ ] **Parecer jurídico** sobre a base legal do cruzamento sensível + texto de **consentimento específico**.
+- [ ] **Parecer jurídico** sobre a base legal do cruzamento sensível + texto de **consentimento específico**
+  (rascunho pronto: [termo de consentimento](../legal/consentimento-integracao-formattio.md)).
 - [ ] **Encarregado/DPO** designado e ciente; enquadramento controlador × operador confirmado.
-- [ ] **Acordo de compartilhamento de dados** Formattio ↔ Fidellis assinado.
+- [ ] **Acordo de compartilhamento de dados** Formattio ↔ Fidellis assinado
+  (rascunho pronto: [acordo de compartilhamento](../legal/acordo-compartilhamento-formattio-fidellis.md)).
 - [ ] **ADR-0013** movido para **Aceito** com estas condições registradas.
 - [ ] Só então: implementar no Fidellis `Donor.ExternalId`/`Source` + canal de importação + give autenticado.
 
