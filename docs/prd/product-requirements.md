@@ -160,6 +160,16 @@ Adaptador **opcional de mão única** (importação) com **identidade federada**
 Formattio → RIPD → ADR-0013 (LGPD) aceito**. Ver [ADR-0013](../architecture/ADR-0013-lgpd-formattio-fidellis.md)
 e o [plano de auditoria](d10-formattio-audit-plan.md).
 
+**Estado (2026-09-12):** a esteira documental está **completa** — [auditoria concluída](d10-formattio-audit-worksheet.md),
+[RIPD/DPIA](../architecture/ripd-formattio-fidellis.md) rascunhado, e os **rascunhos jurídicos** escritos
+em `docs/legal/`: [minuta de parecer](../legal/parecer-juridico-cruzamento-sensivel.md) (base legal =
+consentimento art. 11, I), [termo de consentimento](../legal/consentimento-integracao-formattio.md) e
+[acordo de compartilhamento](../legal/acordo-compartilhamento-formattio-fidellis.md). ⚠️ São **modelos**,
+não pareceres assinados. O bloqueio remanescente é **exclusivamente humano**: advogado(a) habilitado(a)
+assina o parecer, DPO ciente, acordo assinado → **ADR-0013 → Aceito** → só então implementar
+(`Donor.ExternalId`/`Source` + canal de importação + give autenticado server-to-server; contrato greenfield
+no lado do Formattio).
+
 ### 8.3 Evoluções futuras
 
 WhatsApp real, rate limiting reforçado no público, portal com login/senha do doador, NF-e/faturamento
@@ -172,6 +182,7 @@ O produto evoluiu bem além do scaffold inicial: o roadmap do PRD (§8, passos 1
 do parecer (§8.1, D-01→D-09) estão **entregues**. Permanecem **fora de escopo** por ora:
 
 - **NF-e / faturamento** — reservado como recurso de "gestão avançada" (D-09), sob demanda.
-- **Integração Formattio em produção** — depende da auditoria + RIPD + ADR-0013 (§8.2).
+- **Integração Formattio em produção** — esteira documental completa (auditoria, RIPD, rascunhos de
+  parecer/consentimento/acordo em `docs/legal/`); aguarda **assinatura jurídica/DPO** → ADR-0013 Aceito (§8.2).
 - **Endowment / fundo patrimonial ativo, multi-moeda, folha de pagamento** — fora do núcleo.
 - **PIX Automático (mandato)** — o motor de recorrência já existe; o mandato do PSP entra quando disponível.
