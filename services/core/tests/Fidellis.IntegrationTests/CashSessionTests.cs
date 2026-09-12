@@ -1,4 +1,7 @@
+using Fidellis.Infrastructure.Accounting;
+using Fidellis.Infrastructure.Messaging;
 using Fidellis.Infrastructure.Persistence;
+using Fidellis.Modules.Finance.Notifications;
 using Fidellis.Modules.Finance.Services;
 using Fidellis.SharedKernel;
 using Microsoft.EntityFrameworkCore;
@@ -21,8 +24,11 @@ public class CashSessionTests
 
     private static (CashSessionService sessions, TreasuryService treasury) Services(TenantDbContext tdb)
     {
+        var clock = new FixedClock(T0);
         var treasury = new TreasuryService(tdb);
-        return (new CashSessionService(tdb, treasury, new FixedClock(T0)), treasury);
+        var recon = new ReconciliationService(tdb, new ChartOfAccountsSeeder(tdb), new ReceiptService(tdb, clock),
+            new OutboxNotifier(tdb, new MessageOutbox(tdb)), clock);
+        return (new CashSessionService(tdb, treasury, recon, clock), treasury);
     }
 
     [Fact]
@@ -49,6 +55,26 @@ public class CashSessionTests
         var closed = await sessions.CloseAsync(s.Id, 500m, Guid.NewGuid());
         Assert.Equal("closed", closed.Status);
         Assert.Equal(500m, await treasury.AccountBalanceAsync(caixa.Id)); // coleta entrou no caixa
+    }
+
+    [Fact]
+    public async Task Close_generates_a_first_class_cash_entry()
+    {
+        var tdb = TDb($"cs_{Guid.NewGuid()}");
+        var (sessions, treasury) = Services(tdb);
+        var caixa = await treasury.CreateAccountAsync(Guid.NewGuid(), "Caixa", "cash", 0m);
+        var s = await sessions.OpenAsync(caixa.Id, Guid.NewGuid(), "Culto");
+        await sessions.CloseAsync(s.Id, 500m, Guid.NewGuid());
+
+        // D-05: a coleta vira entrada de 1ª classe — Donation (source=cash, paid) + partida dobrada.
+        var entry = await tdb.Donations.SingleAsync();
+        Assert.Equal("cash", entry.Source);
+        Assert.Equal("paid", entry.Status);
+        Assert.Equal(500m, entry.Amount);
+        Assert.Equal(2, await tdb.AccountingEntries.CountAsync());     // débito Caixa / crédito Receita
+        var caixaLedger = await tdb.LedgerAccounts.FirstAsync(a => a.Code == ChartOfAccounts.Cash);
+        Assert.Equal(500m, await tdb.AccountingEntries.Where(e => e.LedgerAccountId == caixaLedger.Id).SumAsync(e => e.Debit));
+        Assert.Empty(await tdb.Receipts.ToListAsync());               // coleta anônima: sem recibo (Q3)
     }
 
     [Fact]

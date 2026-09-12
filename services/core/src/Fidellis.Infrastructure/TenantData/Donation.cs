@@ -11,6 +11,13 @@ public sealed class Donation : Entity
     public string Status { get; set; } = "pending";
     public string? DonorName { get; set; }
 
+    /// <summary>
+    /// Origem/canal da entrada (D-05): <c>checkout</c> | <c>portal</c> | <c>cash</c> | <c>manual</c>.
+    /// Torna a entrada agnóstica a canal — caixa físico e lançamento manual nascem de 1ª classe, como o
+    /// checkout. O instrumento (pix/boleto/cartão/espécie) segue em <see cref="Method"/>.
+    /// </summary>
+    public string Source { get; set; } = "checkout";
+
     // Vínculos e dados de pagamento (passo 1 — cobrança PIX via Pagar.me).
     public Guid? DonorId { get; set; }
     public Guid? CampaignId { get; set; }

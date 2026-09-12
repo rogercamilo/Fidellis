@@ -530,6 +530,15 @@ export interface CashSession { id: string; accountId: string; eventLabel: string
 
 export const listCashSessions = (t: string, status?: string) => authGet<CashSession[]>(t, `/api/finance/cash-sessions${status ? `?status=${status}` : ''}`, 'sessões de caixa');
 export const openCashSession = (t: string, body: { accountId: string; eventLabel?: string }) => authSend<CashSession>(t, 'POST', '/api/finance/cash-sessions/open', body, 'abrir caixa');
+
+// ---- Lançamento manual de entrada (recebimento fora do PSP — D-05) ----
+
+export interface ManualEntry { id: string; amount: number; source: string; status: string }
+
+export const createManualEntry = (
+  t: string,
+  body: { treasuryAccountId: string; amount: number; donorName?: string; donorEmail?: string; donorDocument?: string; costCenterId?: string; projectId?: string; fundId?: string; occurredAt?: string },
+) => authSend<ManualEntry>(t, 'POST', '/api/finance/entries', body, 'lançar entrada');
 export const closeCashSession = (t: string, id: string, body: { countedAmount: number }) => authSend<CashSession>(t, 'POST', `/api/finance/cash-sessions/${id}/close`, body, 'fechar caixa');
 export const depositCashSession = (t: string, id: string, body: { bankAccountId: string }) => authSend<{ id: string; depositedMovementId: string | null }>(t, 'POST', `/api/finance/cash-sessions/${id}/deposit`, body, 'depositar');
 
