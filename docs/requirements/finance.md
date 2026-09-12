@@ -97,7 +97,7 @@ Limitar `/api/public/{tenant}/*` por **IP + tenant**.
 - **Aceite:** flood acima do teto → 429.
 
 #### RF-FIN-003 — Idempotência na criação de cobrança · *Alta*
-Aceitar `Idempotency-Key` no checkout (gestor e público).
+Aceitar `Idempotency-Key` no checkout (operador autenticado e público).
 - **RN:** mesma chave (mesmo tenant) → mesma doação/cobrança, sem novo pedido no PSP; chave expira em
   24h; ausência → comportamento atual.
 - **Aceite:** duas chamadas com a mesma chave → uma cobrança no PSP.
@@ -199,9 +199,13 @@ Todo título a pagar passa por aprovação antes de poder ser agendado/pago.
 
   | Faixa | Quem aprova | Assinaturas |
   | --- | --- | --- |
-  | Até R$ 500 | Tesoureiro | 1 |
-  | R$ 500 – R$ 5.000 | Tesoureiro + Gestor | 2 |
-  | Acima de R$ 5.000 | Gestor + Conselho fiscal | 2 |
+  | Até R$ 500 | Coordenador **ou** Conselheiro responsável | 1 |
+  | R$ 500 – R$ 5.000 | Coordenador **+** Conselheiro responsável | 2 |
+  | Acima de R$ 5.000 | Conselheiro responsável **+** Moderador/Presidente | 2 |
+
+  > Vocabulário de **governança de conselho** (D-02): o **conselho fiscal fiscaliza (somente-leitura), não
+  > aprova** — saiu da faixa alta, onde entra o moderador/presidente. Chaves técnicas: `coordinator`,
+  > `council_officer`, `council_chair`.
 
 - **Guarda-corpos de compliance (fixos, não desligáveis):**
   1. **Nunca zero aprovação** — mínimo 1 aprovação sempre.
@@ -362,9 +366,12 @@ Todo título a pagar passa por aprovação antes de poder ser agendado/pago.
 - **Aceite:** lançamento em período fechado é recusado.
 
 #### RF-FIN-171 — RBAC financeiro + segregação de funções · *Alta*
-- **RN:** perfis **tesoureiro**, **gestor**, **conselho fiscal (somente leitura)**, **contador
-  externo**; segregação lançar ≠ aprovar ≠ pagar.
-- **Aceite:** cada perfil só executa o que lhe cabe; conselho fiscal não altera dados.
+- **RN:** perfis de **governança de conselho** (D-02) — **coordenador** (`coordinator`, lança/opera),
+  **conselheiro responsável** (`council_officer`, aprova), **moderador/presidente** (`council_chair`,
+  aprova faixa alta), **conselho fiscal** (`fiscal_council`, somente-leitura), **contador externo**
+  (`accountant`, somente-leitura); segregação lançar ≠ aprovar ≠ pagar. Conselheiro/moderador **aprovam
+  mas não lançam** (trava por endpoint); admin é coringa **só em bootstrap** (Q4).
+- **Aceite:** cada perfil só executa o que lhe cabe; conselho fiscal e contador não alteram dados.
 
 #### RF-FIN-172 — Trilha de auditoria financeira · *Alta*
 - **RN:** estende o `audit_log` para lançamentos, aprovações, baixas, conciliações e fechamentos.
