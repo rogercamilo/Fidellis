@@ -80,7 +80,7 @@ public sealed class CampaignService(TenantDbContext db, IClock clock)
 
     public async Task<CampaignProgress> ProgressAsync(Campaign c, CancellationToken ct = default)
     {
-        var raised = await db.Donations
+        var raised = await db.Entries
             .Where(d => d.CampaignId == c.Id && d.Status == "paid").SumAsync(d => d.Amount, ct);
         var percent = c.GoalAmount is { } g && g > 0 ? Math.Round(raised / g * 100m, 1) : 0m;
         return new CampaignProgress(
@@ -93,7 +93,7 @@ public sealed class CampaignService(TenantDbContext db, IClock clock)
         var c = await db.Campaigns.FirstOrDefaultAsync(x => x.Id == id, ct);
         if (c is null) return null;
 
-        var raised = await db.Donations
+        var raised = await db.Entries
             .Where(d => d.CampaignId == c.Id && d.Status == "paid").SumAsync(d => d.Amount, ct);
 
         // Aplicado: despesas (débito) na dimensão vinculada — fundo restrito ou projeto.

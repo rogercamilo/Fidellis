@@ -17,7 +17,7 @@ public sealed class DonationExpiryService(TenantDbContext db, IClock clock)
         var now = clock.UtcNow;
         var today = DateOnly.FromDateTime(now.UtcDateTime);
 
-        var overdue = await db.Donations
+        var overdue = await db.Entries
             .Where(d => d.Status == "pending" && d.RecurringDonationId == null
                         && ((d.ExpiresAt != null && d.ExpiresAt < now)
                             || (d.DueDate != null && d.DueDate < today)))

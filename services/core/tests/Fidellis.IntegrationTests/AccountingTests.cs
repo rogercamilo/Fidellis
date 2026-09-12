@@ -65,7 +65,7 @@ public class AccountingTests
     {
         var tdb = TDb($"acc_{Guid.NewGuid()}");
         var org = Guid.NewGuid();
-        tdb.Donations.Add(new Donation
+        tdb.Entries.Add(new Entry
         {
             OrganizationId = org, Amount = 100m, Method = "pix", Status = "pending",
             PspChargeId = "ch_1", DonorName = "Ana",
@@ -94,7 +94,7 @@ public class AccountingTests
     public async Task Receipt_is_not_duplicated_on_webhook_replay()
     {
         var tdb = TDb($"acc_{Guid.NewGuid()}");
-        tdb.Donations.Add(new Donation
+        tdb.Entries.Add(new Entry
         {
             OrganizationId = Guid.NewGuid(), Amount = 50m, Method = "pix", Status = "pending",
             PspChargeId = "ch_1", DonorName = "Ana",
@@ -117,9 +117,9 @@ public class AccountingTests
         var org = Guid.NewGuid();
         var receipts = new ReceiptService(tdb, new FixedClock(T0));
 
-        var d1 = new Donation { OrganizationId = org, Amount = 10m, Method = "pix", Status = "paid" };
-        var d2 = new Donation { OrganizationId = org, Amount = 20m, Method = "pix", Status = "paid" };
-        tdb.Donations.AddRange(d1, d2);
+        var d1 = new Entry { OrganizationId = org, Amount = 10m, Method = "pix", Status = "paid" };
+        var d2 = new Entry { OrganizationId = org, Amount = 20m, Method = "pix", Status = "paid" };
+        tdb.Entries.AddRange(d1, d2);
         await tdb.SaveChangesAsync();
 
         var r1 = await receipts.GenerateForDonationAsync(d1, "Ana", null);

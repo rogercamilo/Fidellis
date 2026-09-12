@@ -15,7 +15,7 @@ public sealed class ReactivationScanner(TenantDbContext db, MessageOutbox outbox
         var cutoff = clock.UtcNow.AddDays(-days);
         var period = clock.UtcNow.ToString("yyyyMM");
 
-        var lastPaid = await db.Donations
+        var lastPaid = await db.Entries
             .Where(d => d.Status == "paid" && d.DonorId != null && d.PaidAt != null)
             .GroupBy(d => d.DonorId!.Value)
             .Select(g => new { DonorId = g.Key, Last = g.Max(x => x.PaidAt) })

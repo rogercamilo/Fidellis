@@ -33,7 +33,7 @@ public sealed class DonationCheckoutService(
                 .FirstOrDefaultAsync(k => k.Key == cmd.IdempotencyKey && k.ExpiresAt > DateTimeOffset.UtcNow, ct);
             if (existingKey is not null)
             {
-                var prior = await tenantDb.Donations.FirstAsync(d => d.Id == existingKey.DonationId, ct);
+                var prior = await tenantDb.Entries.FirstAsync(d => d.Id == existingKey.DonationId, ct);
                 return ToResult(prior);
             }
         }
@@ -49,7 +49,7 @@ public sealed class DonationCheckoutService(
 
         var method = string.IsNullOrWhiteSpace(cmd.Method) ? "pix" : cmd.Method.Trim().ToLowerInvariant();
 
-        var donation = new Donation
+        var donation = new Entry
         {
             OrganizationId = cmd.OrganizationId,
             Amount = cmd.Amount,
@@ -61,7 +61,7 @@ public sealed class DonationCheckoutService(
             ReceivableId = cmd.ReceivableId,
             EntryType = EntryTypes.IsValid(cmd.EntryType) ? cmd.EntryType : EntryTypes.Donation,
         };
-        tenantDb.Donations.Add(donation);
+        tenantDb.Entries.Add(donation);
 
         // Earmark de campanha (D-08): a doação da campanha herda o fundo/projeto vinculado — segrega o
         // recurso como restrito (ITG 2002). Precede o default, mas respeita dimensão já informada.
@@ -104,7 +104,7 @@ public sealed class DonationCheckoutService(
         return ToResult(donation);
     }
 
-    private static CheckoutResult ToResult(Donation d) => new(
+    private static CheckoutResult ToResult(Entry d) => new(
         d.Id, d.Status, d.Method,
         QrCode: d.PixQrCode, QrCodeUrl: d.PixQrCodeUrl, ExpiresAt: d.ExpiresAt,
         BoletoLine: d.BoletoLine, BoletoUrl: d.BoletoUrl, DueDate: d.DueDate,
@@ -116,7 +116,7 @@ public sealed class DonationCheckoutService(
     /// <c>catalog.psp_orders</c>. Não faz <c>SaveChanges</c> — quem chama persiste.
     /// </summary>
     public async Task<PixOrderResult> CreatePixChargeAsync(
-        Donation donation, Donor donor, string? description = null, CancellationToken ct = default)
+        Entry donation, Donor donor, string? description = null, CancellationToken ct = default)
     {
         var recipient = await tenantDb.PspRecipients
             .Where(r => r.OrganizationId == donation.OrganizationId && r.Status == "active")
@@ -158,7 +158,7 @@ public sealed class DonationCheckoutService(
     /// expiração). Não faz <c>SaveChanges</c> — quem chama persiste.
     /// </summary>
     public async Task<BoletoOrderResult> CreateBoletoChargeAsync(
-        Donation donation, Donor donor, string? description = null, CancellationToken ct = default)
+        Entry donation, Donor donor, string? description = null, CancellationToken ct = default)
     {
         var recipient = await tenantDb.PspRecipients
             .Where(r => r.OrganizationId == donation.OrganizationId && r.Status == "active")
@@ -204,7 +204,7 @@ public sealed class DonationCheckoutService(
     /// trafega — só o <c>card_token</c> do front. Não faz <c>SaveChanges</c> — quem chama persiste.
     /// </summary>
     public async Task CreateCardChargeAsync(
-        Donation donation, Donor donor, string? cardToken, string? description = null, CancellationToken ct = default)
+        Entry donation, Donor donor, string? cardToken, string? description = null, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(cardToken))
             throw new ArgumentException("cardToken é obrigatório para pagamento com cartão.");

@@ -49,8 +49,8 @@ public class ReceivablesTests
         var org = Guid.NewGuid();
         var r = await svc.CreateAsync(org, 80m, new DateOnly(2026, 6, 1), "pledge", null, null, null, null, null);
 
-        var donation = new Donation { OrganizationId = org, Amount = 80m, Method = "pix", Status = "paid", ReceivableId = r.Id, DonorName = "Ana" };
-        tdb.Donations.Add(donation);
+        var donation = new Entry { OrganizationId = org, Amount = 80m, Method = "pix", Status = "paid", ReceivableId = r.Id, DonorName = "Ana" };
+        tdb.Entries.Add(donation);
         await tdb.SaveChangesAsync();
 
         var recon = new ReconciliationService(tdb, new ChartOfAccountsSeeder(tdb), new ReceiptService(tdb, clock),

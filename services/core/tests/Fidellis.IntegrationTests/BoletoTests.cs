@@ -74,7 +74,7 @@ public class BoletoTests
         Assert.Equal("https://pagar.me/boleto/ch_1.pdf", result.BoletoUrl);
         Assert.Equal(new DateOnly(2026, 5, 25), result.DueDate);
 
-        var d = await tdb.Donations.SingleAsync();
+        var d = await tdb.Entries.SingleAsync();
         Assert.Equal("boleto", d.Method);
         Assert.Equal(new DateOnly(2026, 5, 25), d.DueDate);
     }
@@ -89,7 +89,7 @@ public class BoletoTests
             new ReceiptService(tdb, clock), new OutboxNotifier(tdb, new MessageOutbox(tdb)), clock,
             NullLogger<WebhookProcessor>.Instance);
 
-        tdb.Donations.Add(new Donation
+        tdb.Entries.Add(new Entry
         {
             OrganizationId = Guid.NewGuid(), Amount = 80m, Method = "boleto", Status = "pending",
             PspChargeId = "ch_1", DonorName = "Ana",
@@ -98,7 +98,7 @@ public class BoletoTests
 
         await processor.ProcessAsync(new PagarmeWebhookEvent("hook_1", "charge.paid", "or_1", "ch_1", "paid"), "{}");
 
-        var d = await tdb.Donations.SingleAsync();
+        var d = await tdb.Entries.SingleAsync();
         Assert.Equal("paid", d.Status);
         Assert.Equal(2, await tdb.AccountingEntries.CountAsync());
         Assert.Equal(1, await tdb.Receipts.CountAsync());
@@ -111,17 +111,17 @@ public class BoletoTests
         var tdb = TDb($"bol_{Guid.NewGuid()}", tenant);
         var now = new DateTimeOffset(2026, 5, 30, 0, 0, 0, TimeSpan.Zero);
 
-        var overdue = new Donation { OrganizationId = Guid.NewGuid(), Amount = 50m, Method = "boleto", Status = "pending", DueDate = new DateOnly(2026, 5, 25) };
-        var future = new Donation { OrganizationId = Guid.NewGuid(), Amount = 50m, Method = "boleto", Status = "pending", DueDate = new DateOnly(2026, 6, 25) };
-        var recurring = new Donation { OrganizationId = Guid.NewGuid(), Amount = 50m, Method = "pix", Status = "pending", RecurringDonationId = Guid.NewGuid(), ExpiresAt = new DateTimeOffset(2026, 5, 20, 0, 0, 0, TimeSpan.Zero) };
-        tdb.Donations.AddRange(overdue, future, recurring);
+        var overdue = new Entry { OrganizationId = Guid.NewGuid(), Amount = 50m, Method = "boleto", Status = "pending", DueDate = new DateOnly(2026, 5, 25) };
+        var future = new Entry { OrganizationId = Guid.NewGuid(), Amount = 50m, Method = "boleto", Status = "pending", DueDate = new DateOnly(2026, 6, 25) };
+        var recurring = new Entry { OrganizationId = Guid.NewGuid(), Amount = 50m, Method = "pix", Status = "pending", RecurringDonationId = Guid.NewGuid(), ExpiresAt = new DateTimeOffset(2026, 5, 20, 0, 0, 0, TimeSpan.Zero) };
+        tdb.Entries.AddRange(overdue, future, recurring);
         await tdb.SaveChangesAsync();
 
         var expired = await new DonationExpiryService(tdb, new FixedClock(now)).ExpireOverdueAsync();
 
         Assert.Equal(1, expired);
-        Assert.Equal("expired", (await tdb.Donations.FirstAsync(d => d.Id == overdue.Id)).Status);
-        Assert.Equal("pending", (await tdb.Donations.FirstAsync(d => d.Id == future.Id)).Status);
-        Assert.Equal("pending", (await tdb.Donations.FirstAsync(d => d.Id == recurring.Id)).Status); // recorrente é do dunning
+        Assert.Equal("expired", (await tdb.Entries.FirstAsync(d => d.Id == overdue.Id)).Status);
+        Assert.Equal("pending", (await tdb.Entries.FirstAsync(d => d.Id == future.Id)).Status);
+        Assert.Equal("pending", (await tdb.Entries.FirstAsync(d => d.Id == recurring.Id)).Status); // recorrente é do dunning
     }
 }

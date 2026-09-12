@@ -9,7 +9,7 @@ namespace Fidellis.Infrastructure.TenantData;
 /// <item><b>donation</b> (doação) — não-membro; pública/anônima; pontual ou recorrente.</item>
 /// </list>
 /// O <b>ator</b> (membro × não-membro) é implicado pelo tipo; a <b>frequência</b> é derivada da
-/// recorrência (<c>Donation.RecurringDonationId</c>).
+/// recorrência (<c>Entry.RecurringDonationId</c>).
 /// </summary>
 public static class EntryTypes
 {

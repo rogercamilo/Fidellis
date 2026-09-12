@@ -58,7 +58,7 @@ public class MemberPortalTests
         var result = await checkout.CreateAsync(new CheckoutCommand(
             Guid.NewGuid(), 120m, member.Name, member.Email!, member.Document!, EntryType: EntryTypes.Tithe));
 
-        var donation = await tdb.Donations.FirstAsync(d => d.Id == result.DonationId);
+        var donation = await tdb.Entries.FirstAsync(d => d.Id == result.DonationId);
         Assert.Equal(EntryTypes.Tithe, donation.EntryType);
         Assert.Equal(member.Id, donation.DonorId); // reusa o doador por e-mail (não duplica)
     }

@@ -35,7 +35,7 @@ public static class DonationsModule
             if (!tenant.HasTenant)
                 return Results.BadRequest(new { error = "Nenhum tenant no request (header X-Tenant ou claim)." });
 
-            var count = await db.Donations.CountAsync(ct);
+            var count = await db.Entries.CountAsync(ct);
             return Results.Ok(new { module = "Donations", tenant = tenant.TenantId, schema = tenant.SchemaName, donations = count });
         });
 
@@ -124,7 +124,7 @@ public static class DonationsModule
             if (!tenant.HasTenant) return Results.BadRequest(new { error = "Nenhum tenant no request." });
             var visible = await VisibleOrgsAsync(user, db, ct);
 
-            var rows = await db.Donations
+            var rows = await db.Entries
                 .Where(d => d.DonorId != null && visible.Contains(d.OrganizationId))
                 .Select(d => new { DonorId = d.DonorId!.Value, d.Status, d.Amount, d.PaidAt })
                 .ToListAsync(ct);
@@ -165,7 +165,7 @@ public static class DonationsModule
             var donor = await db.Donors.FirstOrDefaultAsync(d => d.Id == id, ct);
             if (donor is null) return Results.NotFound();
 
-            var donations = await db.Donations
+            var donations = await db.Entries
                 .Where(d => d.DonorId == id && visible.Contains(d.OrganizationId))
                 .OrderByDescending(d => d.CreatedAt)
                 .Select(d => new { d.Id, d.Amount, d.Status, d.Method, d.CreatedAt, d.PaidAt })
@@ -196,7 +196,7 @@ public static class DonationsModule
             var donor = await db.Donors.FirstOrDefaultAsync(d => d.Id == id, ct);
             if (donor is null) return Results.NotFound();
 
-            var donations = await db.Donations.Where(d => d.DonorId == id)
+            var donations = await db.Entries.Where(d => d.DonorId == id)
                 .Select(d => new { d.Id, d.Amount, d.Status, d.Method, d.CreatedAt, d.PaidAt }).ToListAsync(ct);
             var recurring = await db.RecurringDonations.Where(r => r.DonorId == id)
                 .Select(r => new { r.Id, r.Amount, r.DayOfMonth, r.Status }).ToListAsync(ct);
@@ -223,7 +223,7 @@ public static class DonationsModule
             donor.Document = null;
             donor.Phone = null;
             donor.AnonymizedAt = DateTimeOffset.UtcNow;
-            foreach (var d in await db.Donations.Where(x => x.DonorId == id).ToListAsync(ct))
+            foreach (var d in await db.Entries.Where(x => x.DonorId == id).ToListAsync(ct))
                 d.DonorName = "Anonimizado";
 
             await db.SaveChangesAsync(ct);
@@ -301,7 +301,7 @@ public static class DonationsModule
             var donor = await db.Donors.Where(d => d.Id == donorId).Select(d => new { d.Name, d.Email, d.IsMember }).FirstOrDefaultAsync(ct);
             if (donor is null) return Results.NotFound();
 
-            var donations = await db.Donations.Where(d => d.DonorId == donorId)
+            var donations = await db.Entries.Where(d => d.DonorId == donorId)
                 .OrderByDescending(d => d.CreatedAt)
                 .Select(d => new { d.Id, d.Amount, d.Status, d.Method, d.CreatedAt, d.PaidAt })
                 .ToListAsync(ct);

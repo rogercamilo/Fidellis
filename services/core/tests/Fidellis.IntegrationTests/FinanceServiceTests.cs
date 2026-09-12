@@ -67,7 +67,7 @@ public class FinanceServiceTests
         Assert.Equal("00020126PIX", result.QrCode);
         Assert.Equal("pending", result.Status);
 
-        var donation = await tdb.Donations.SingleAsync();
+        var donation = await tdb.Entries.SingleAsync();
         Assert.Equal("or_1", donation.PspOrderId);
         Assert.Equal("ch_1", donation.PspChargeId);
 
@@ -83,7 +83,7 @@ public class FinanceServiceTests
         var id = Guid.NewGuid().ToString();
         var tenant = Tenant();
         var tdb = NewTenantDb(tenant, $"t_{id}");
-        tdb.Donations.Add(new Donation
+        tdb.Entries.Add(new Entry
         {
             OrganizationId = Guid.NewGuid(), Amount = 100m, Method = "pix", Status = "pending", PspChargeId = "ch_1",
         });
@@ -95,7 +95,7 @@ public class FinanceServiceTests
         var processed = await processor.ProcessAsync(evt, "{}");
 
         Assert.True(processed);
-        Assert.Equal("paid", (await tdb.Donations.SingleAsync()).Status);
+        Assert.Equal("paid", (await tdb.Entries.SingleAsync()).Status);
         Assert.Equal(1, await tdb.Transactions.CountAsync());
 
         var entries = await tdb.AccountingEntries.ToListAsync();
@@ -110,7 +110,7 @@ public class FinanceServiceTests
         var id = Guid.NewGuid().ToString();
         var tenant = Tenant();
         var tdb = NewTenantDb(tenant, $"t_{id}");
-        tdb.Donations.Add(new Donation
+        tdb.Entries.Add(new Entry
         {
             OrganizationId = Guid.NewGuid(), Amount = 100m, Method = "pix", Status = "pending", PspChargeId = "ch_1",
         });

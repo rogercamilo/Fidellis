@@ -3,7 +3,7 @@ using Fidellis.SharedKernel;
 namespace Fidellis.Infrastructure.TenantData;
 
 /// <summary>
-/// Doação recorrente (ex.: dízimo mensal). O scheduler gera uma <see cref="Donation"/> de ciclo a
+/// Doação recorrente (ex.: dízimo mensal). O scheduler gera uma <see cref="Entry"/> de ciclo a
 /// cada período e aplica dunning nas falhas. Reside no schema do tenant.
 /// </summary>
 public sealed class RecurringDonation : Entity

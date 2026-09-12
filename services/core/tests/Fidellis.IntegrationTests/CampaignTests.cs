@@ -46,8 +46,8 @@ public class CampaignTests
         var org = Guid.NewGuid();
         var c = await svc.CreateAsync(org, "Reforma do telhado", null, 1000m, "Ajude", null, null, null, null);
 
-        tdb.Donations.Add(new Donation { OrganizationId = org, Amount = 300m, Status = "paid", CampaignId = c.Id });
-        tdb.Donations.Add(new Donation { OrganizationId = org, Amount = 100m, Status = "pending", CampaignId = c.Id }); // não conta
+        tdb.Entries.Add(new Entry { OrganizationId = org, Amount = 300m, Status = "paid", CampaignId = c.Id });
+        tdb.Entries.Add(new Entry { OrganizationId = org, Amount = 100m, Status = "pending", CampaignId = c.Id }); // não conta
         await tdb.SaveChangesAsync();
 
         var p = await svc.ProgressAsync(c);
@@ -76,7 +76,7 @@ public class CampaignTests
         var result = await checkout.CreateAsync(new CheckoutCommand(
             org, 250m, "Doador", "d@x.org", "123", CampaignId: campaign.Id, EntryType: EntryTypes.Donation));
 
-        var donation = await tdb.Donations.FirstAsync(d => d.Id == result.DonationId);
+        var donation = await tdb.Entries.FirstAsync(d => d.Id == result.DonationId);
         Assert.Equal(fund.Id, donation.FundId); // herdou o fundo restrito da campanha (earmark)
     }
 
@@ -107,7 +107,7 @@ public class CampaignTests
         await tdb.SaveChangesAsync();
         var c = await svc.CreateAsync(org, "Reforma", null, 1000m, null, null, null, fund.Id, null);
 
-        tdb.Donations.Add(new Donation { OrganizationId = org, Amount = 600m, Status = "paid", CampaignId = c.Id });
+        tdb.Entries.Add(new Entry { OrganizationId = org, Amount = 600m, Status = "paid", CampaignId = c.Id });
         // Despesa (débito) no fundo restrito = aplicado.
         tdb.Transactions.Add(new Transaction { AccountId = Guid.NewGuid(), Amount = 420m, Kind = "debit", FundId = fund.Id, AccountingDate = new DateOnly(2026, 6, 10) });
         await tdb.SaveChangesAsync();

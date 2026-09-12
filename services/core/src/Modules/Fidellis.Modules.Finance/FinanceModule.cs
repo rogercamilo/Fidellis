@@ -109,7 +109,7 @@ public static class FinanceModule
             IPaymentGateway gateway,
             CancellationToken ct) =>
         {
-            var d = await db.Donations.FirstOrDefaultAsync(x => x.Id == id, ct);
+            var d = await db.Entries.FirstOrDefaultAsync(x => x.Id == id, ct);
             if (d is null) return Results.NotFound();
 
             string? pspStatus = null;
@@ -232,7 +232,7 @@ public static class FinanceModule
         {
             if (!await PublicTenant.TryResolveAsync(catalog, tc, tenant, ct))
                 return Results.NotFound();
-            var d = await db.Donations.FirstOrDefaultAsync(x => x.Id == id, ct);
+            var d = await db.Entries.FirstOrDefaultAsync(x => x.Id == id, ct);
             if (d is null) return Results.NotFound();
             return Results.Ok(new { id = d.Id, status = d.Status, qrCode = d.PixQrCode, qrCodeUrl = d.PixQrCodeUrl, expiresAt = d.ExpiresAt, amount = d.Amount });
         });

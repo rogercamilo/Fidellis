@@ -9,7 +9,7 @@ namespace Fidellis.Infrastructure.Accounting;
 public sealed class ReceiptService(TenantDbContext db, IClock clock)
 {
     public async Task<Receipt> GenerateForDonationAsync(
-        Donation donation, string donorName, string? donorDocument, CancellationToken ct = default)
+        Entry donation, string donorName, string? donorDocument, CancellationToken ct = default)
     {
         var existing = await db.Receipts.FirstOrDefaultAsync(r => r.DonationId == donation.Id, ct);
         if (existing is not null) return existing;

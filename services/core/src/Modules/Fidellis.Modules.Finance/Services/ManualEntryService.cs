@@ -14,14 +14,14 @@ public sealed record ManualEntryCommand(
 
 /// <summary>
 /// Lançamento manual de entrada (D-05): recebimento fora do PSP (transferência recebida, depósito
-/// avulso). Cria uma <see cref="Donation"/> já <c>paid</c> com origem <c>manual</c>, contabiliza contra a
+/// avulso). Cria uma <see cref="Entry"/> já <c>paid</c> com origem <c>manual</c>, contabiliza contra a
 /// conta de tesouraria escolhida (Caixa ou Banco conforme o tipo) e — via
 /// <see cref="ReconciliationService.PostEntryAsync"/> — emite recibo quando há doador identificado
 /// (recibo condicional, Q3). Roda no schema do tenant.
 /// </summary>
 public sealed class ManualEntryService(TenantDbContext db, ReconciliationService reconciliation, IClock clock)
 {
-    public async Task<Donation> CreateAsync(ManualEntryCommand cmd, CancellationToken ct = default)
+    public async Task<Entry> CreateAsync(ManualEntryCommand cmd, CancellationToken ct = default)
     {
         if (cmd.Amount <= 0)
             throw new ArgumentException("O valor da entrada deve ser positivo.");
@@ -44,7 +44,7 @@ public sealed class ManualEntryService(TenantDbContext db, ReconciliationService
             donorId = donor.Id;
         }
 
-        var entry = new Donation
+        var entry = new Entry
         {
             OrganizationId = account.OrganizationId,
             Amount = cmd.Amount,
@@ -60,7 +60,7 @@ public sealed class ManualEntryService(TenantDbContext db, ReconciliationService
             ProjectId = cmd.ProjectId,
             FundId = cmd.FundId ?? await db.Funds.Where(f => f.IsDefault).Select(f => (Guid?)f.Id).FirstOrDefaultAsync(ct),
         };
-        db.Donations.Add(entry);
+        db.Entries.Add(entry);
 
         var ledger = account.Kind == "cash" ? ChartOfAccounts.Cash : ChartOfAccounts.Bank;
         await reconciliation.PostEntryAsync(entry, account, ledger, ct);
