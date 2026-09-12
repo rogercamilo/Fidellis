@@ -42,6 +42,7 @@ public static class ConfigEndpoints
             s.TitheLabel = req.TitheLabel.Trim();
             s.OfferingLabel = req.OfferingLabel.Trim();
             s.DonationLabel = req.DonationLabel.Trim();
+            s.AdvancedManagement = req.AdvancedManagement;
             s.UpdatedAt = clock.UtcNow;
             await db.SaveChangesAsync(ct);
             return Results.Ok(ToDto(s));
@@ -136,12 +137,13 @@ public static class ConfigEndpoints
     }
 
     private static FinanceSettingsDto ToDto(FinanceSettings s)
-        => new(s.RecurringLabel, s.OnetimeLabel, s.TitheLabel, s.OfferingLabel, s.DonationLabel);
+        => new(s.RecurringLabel, s.OnetimeLabel, s.TitheLabel, s.OfferingLabel, s.DonationLabel, s.AdvancedManagement);
 }
 
 public sealed record FinanceSettingsDto(
     string RecurringLabel, string OnetimeLabel,
-    string TitheLabel = "Dízimo", string OfferingLabel = "Oferta", string DonationLabel = "Doação");
+    string TitheLabel = "Dízimo", string OfferingLabel = "Oferta", string DonationLabel = "Doação",
+    bool AdvancedManagement = false);
 public sealed record DonorTypeDto(Guid Id, string Name, bool IsRecurringDefault, bool Active);
 public sealed record FinanceCategoryDto(Guid Id, string Kind, string Name, Guid? LedgerAccountId, bool Active);
 

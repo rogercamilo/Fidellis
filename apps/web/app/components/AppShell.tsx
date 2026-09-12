@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
-import { bootstrapStatus, type BootstrapStatus, type LoginResult } from '../lib/api';
+import { bootstrapStatus, getFinanceSettings, type BootstrapStatus, type LoginResult } from '../lib/api';
 
 // Conjuntos de papéis (D-03). Menu filtrado pelo papel; a trava de escrita real fica no back.
 const OPERATORS = ['admin', 'coordinator'];                                              // lançam
@@ -15,7 +15,7 @@ const ACCOUNTING = [...OVERSIGHT, 'accountant'];                                
  * Navegação do ERP reorganizada em Entradas/Saídas (D-04) e filtrada por papel (D-03). `roles` ausente =
  * visível a todos; senão o grupo só aparece para os papéis listados (papel nulo/dev vê tudo).
  */
-const NAV: { label: string; roles?: string[]; items: { href: string; label: string }[] }[] = [
+const NAV: { label: string; roles?: string[]; items: { href: string; label: string; advanced?: boolean }[] }[] = [
   { label: '', items: [{ href: '/dashboard', label: 'Início' }] },
   {
     label: 'Entradas',
@@ -52,7 +52,7 @@ const NAV: { label: string; roles?: string[]; items: { href: string; label: stri
     roles: ACCOUNTING,
     items: [
       { href: '/dashboard/orcamento', label: 'Orçamento' },
-      { href: '/dashboard/projetos', label: 'Projetos & voluntariado' },
+      { href: '/dashboard/projetos', label: 'Projetos & voluntariado', advanced: true },
       { href: '/dashboard/relatorios', label: 'Relatórios' },
       { href: '/dashboard/auditoria', label: 'Auditoria' },
     ],
@@ -73,13 +73,17 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<LoginResult | null>(null);
   const [open, setOpen] = useState(false);
   const [bootstrap, setBootstrap] = useState<BootstrapStatus | null>(null);
+  const [advanced, setAdvanced] = useState(false);
 
   useEffect(() => {
     const raw = sessionStorage.getItem('fidellis.session');
     if (!raw) return;
     const s = JSON.parse(raw) as LoginResult;
     setSession(s);
-    if (s.accessToken) bootstrapStatus(s.accessToken).then(setBootstrap).catch(() => undefined);
+    if (s.accessToken) {
+      bootstrapStatus(s.accessToken).then(setBootstrap).catch(() => undefined);
+      getFinanceSettings(s.accessToken).then((fs) => setAdvanced(fs.advancedManagement)).catch(() => undefined);
+    }
   }, [pathname]);
 
   useEffect(() => setOpen(false), [pathname]);
@@ -99,9 +103,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       .filter((it) => (it.href === '/dashboard' ? pathname === it.href : pathname.startsWith(it.href)))
       .sort((a, b) => b.href.length - a.href.length)[0]?.label ?? 'Início';
 
-  // Progressive disclosure por papel (D-03): sem papel (dev) vê tudo; senão só os grupos do papel.
+  // Progressive disclosure por papel (D-03) + por funcionalidade (D-09 — "Gestão avançada"): sem papel
+  // (dev) vê todos os grupos; itens `advanced` só aparecem com o modo ligado; grupos vazios somem.
   const role = session?.tenants.find((t) => t.slug === session.activeTenant)?.role;
-  const nav = NAV.filter((g) => !g.roles || !role || g.roles.includes(role));
+  const nav = NAV
+    .filter((g) => !g.roles || !role || g.roles.includes(role))
+    .map((g) => ({ ...g, items: g.items.filter((it) => !it.advanced || advanced) }))
+    .filter((g) => g.items.length > 0);
 
   return (
     <div className="app">

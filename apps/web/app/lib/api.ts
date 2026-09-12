@@ -484,6 +484,7 @@ export const createProject = (t: string, body: { code: string; name: string; fun
 export interface FinanceSettings {
   recurringLabel: string; onetimeLabel: string;
   titheLabel: string; offeringLabel: string; donationLabel: string;
+  advancedManagement: boolean;
 }
 
 /** Tipos de entrada (D-06): chaves técnicas estáveis + rótulo default (customizável por tenant). */

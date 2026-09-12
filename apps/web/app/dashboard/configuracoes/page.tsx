@@ -19,6 +19,7 @@ export default function ConfiguracoesPage() {
   const [titheLabel, setTitheLabel] = useState('Dízimo');
   const [offeringLabel, setOfferingLabel] = useState('Oferta');
   const [donationLabel, setDonationLabel] = useState('Doação');
+  const [advancedManagement, setAdvancedManagement] = useState(false);
   const [savedMsg, setSavedMsg] = useState<string | null>(null);
 
   const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
@@ -50,6 +51,7 @@ export default function ConfiguracoesPage() {
       setTitheLabel(s.titheLabel);
       setOfferingLabel(s.offeringLabel);
       setDonationLabel(s.donationLabel);
+      setAdvancedManagement(s.advancedManagement);
       setCostCenters(cc);
       setFunds(fn);
       setDonorTypes(dt);
@@ -91,7 +93,7 @@ export default function ConfiguracoesPage() {
   }
 
   const saveSettings = guard(async () => {
-    await updateFinanceSettings(token!, { recurringLabel, onetimeLabel, titheLabel, offeringLabel, donationLabel });
+    await updateFinanceSettings(token!, { recurringLabel, onetimeLabel, titheLabel, offeringLabel, donationLabel, advancedManagement });
     setSavedMsg('Salvo.');
     setTimeout(() => setSavedMsg(null), 2000);
   });
@@ -123,6 +125,13 @@ export default function ConfiguracoesPage() {
           <div className="field">
             <label htmlFor="dl">Doação (não-membro)</label>
             <input id="dl" value={donationLabel} onChange={(e) => setDonationLabel(e.target.value)} />
+          </div>
+          <div className="field">
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+              <input type="checkbox" checked={advancedManagement} onChange={(e) => setAdvancedManagement(e.target.checked)} style={{ width: 'auto' }} />
+              Gestão avançada (convênios/MROSC, projetos, NF)
+            </label>
+            <p className="muted" style={{ margin: '0.25rem 0 0', fontSize: '0.8rem' }}>Habilita recursos fora da curva do dia a dia. Desligado, some do menu.</p>
           </div>
           <button className="btn btn-primary" onClick={saveSettings}>Salvar</button>
         </Panel>

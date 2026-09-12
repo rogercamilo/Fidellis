@@ -25,6 +25,12 @@ public sealed class FinanceSettings : Entity
     /// <summary>Rótulo do tipo <c>donation</c> (doação).</summary>
     public string DonationLabel { get; set; } = "Doação";
 
+    /// <summary>
+    /// Modo "Gestão avançada" (D-09): quando ligado, habilita os pontos fora da curva do público-base
+    /// (convênios/MROSC, projetos, e futuramente NF/faturamento). Default desligado.
+    /// </summary>
+    public bool AdvancedManagement { get; set; }
+
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     /// <summary>Rótulo de exibição do tipo de entrada informado (fallback: a própria chave).</summary>
