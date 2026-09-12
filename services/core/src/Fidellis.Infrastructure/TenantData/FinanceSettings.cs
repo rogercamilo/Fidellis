@@ -9,11 +9,30 @@ namespace Fidellis.Infrastructure.TenantData;
 /// </summary>
 public sealed class FinanceSettings : Entity
 {
-    /// <summary>Rótulo da doação recorrente (ex.: Dízimo, Contribuição, Mensalidade).</summary>
+    /// <summary>Rótulo da doação recorrente (ex.: Dízimo, Contribuição, Mensalidade). Legado (pré-D-06).</summary>
     public string RecurringLabel { get; set; } = "Dízimo";
 
-    /// <summary>Rótulo da doação pontual (ex.: Oferta, Apoio, Doação avulsa).</summary>
+    /// <summary>Rótulo da doação pontual (ex.: Oferta, Apoio, Doação avulsa). Legado (pré-D-06).</summary>
     public string OnetimeLabel { get; set; } = "Oferta";
 
+    // Rótulos por tipo de entrada (D-06/D-07): chaves técnicas estáveis (EntryTypes), nomes customizáveis.
+    /// <summary>Rótulo do tipo <c>tithe</c> (dízimo).</summary>
+    public string TitheLabel { get; set; } = "Dízimo";
+
+    /// <summary>Rótulo do tipo <c>offering</c> (oferta).</summary>
+    public string OfferingLabel { get; set; } = "Oferta";
+
+    /// <summary>Rótulo do tipo <c>donation</c> (doação).</summary>
+    public string DonationLabel { get; set; } = "Doação";
+
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    /// <summary>Rótulo de exibição do tipo de entrada informado (fallback: a própria chave).</summary>
+    public string LabelFor(string entryType) => entryType switch
+    {
+        EntryTypes.Tithe => TitheLabel,
+        EntryTypes.Offering => OfferingLabel,
+        EntryTypes.Donation => DonationLabel,
+        _ => entryType,
+    };
 }

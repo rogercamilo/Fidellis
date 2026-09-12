@@ -94,7 +94,7 @@ public static class FinanceModule
             var result = await checkout.CreateAsync(new CheckoutCommand(
                 req.OrganizationId, req.Amount, req.Donor.Name, req.Donor.Email ?? "", req.Donor.Document,
                 req.CampaignId, req.Description, IdempotencyKey: request.Headers["Idempotency-Key"].FirstOrDefault(),
-                Method: method, CardToken: req.CardToken), ct);
+                Method: method, CardToken: req.CardToken, EntryType: req.EntryType), ct);
 
             return Results.Created($"/api/finance/donations/{result.DonationId}", result);
         });
@@ -171,7 +171,7 @@ public static class FinanceModule
             }
 
             var r = await billing.CreatePledgeAsync(
-                req.OrganizationId, donor.Id, req.Amount, req.DayOfMonth, req.ChargeToday ?? true, ct);
+                req.OrganizationId, donor.Id, req.Amount, req.DayOfMonth, req.ChargeToday ?? true, req.EntryType, ct);
             return Results.Created($"/api/finance/recurring-donations/{r.Id}", ToRecurringDto(r));
         });
 
@@ -214,10 +214,12 @@ public static class FinanceModule
             if (method == "card" && string.IsNullOrWhiteSpace(req.CardToken))
                 return Results.BadRequest(new { error = "cardToken é obrigatório para pagamento com cartão." });
 
+            // Gating por ator (D-06): o portal público só aceita DOAÇÃO (não-membro). Dízimo/oferta
+            // (só membro) são lançados pelo dashboard/caixa/manual — não pelo checkout anônimo.
             var result = await checkout.CreateAsync(new CheckoutCommand(
                 req.OrganizationId, req.Amount, req.Donor.Name, req.Donor.Email ?? "", req.Donor.Document,
                 req.CampaignId, req.Description, IdempotencyKey: request.Headers["Idempotency-Key"].FirstOrDefault(),
-                Method: method, CardToken: req.CardToken), ct);
+                Method: method, CardToken: req.CardToken, EntryType: EntryTypes.Donation), ct);
             await audit.RecordAsync("donation.public_checkout", "donation", result.DonationId.ToString());
             return Results.Created($"/api/public/{tenant}/donations/{result.DonationId}", result);
         });
@@ -367,7 +369,8 @@ public sealed record CreateDonationRequest(
     Guid? CampaignId = null,
     string? Description = null,
     string Method = "pix",
-    string? CardToken = null);
+    string? CardToken = null,
+    string EntryType = EntryTypes.Donation);
 
 public sealed record CreateRecipientHttpRequest(
     Guid OrganizationId,
@@ -381,7 +384,8 @@ public sealed record CreateRecurringRequest(
     decimal Amount,
     int DayOfMonth,
     DonorInput Donor,
-    bool? ChargeToday = null);
+    bool? ChargeToday = null,
+    string EntryType = EntryTypes.Tithe);
 
 public sealed record RecurringDto(
     Guid Id,

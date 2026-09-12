@@ -92,6 +92,27 @@ public class RecurringBillingTests
     }
 
     [Fact]
+    public async Task Recurring_donation_for_supporter_carries_donation_type_and_cycle_inherits_it()
+    {
+        var id = Guid.NewGuid().ToString();
+        var tenant = Tenant();
+        var tdb = TDb(tenant, $"t_{id}");
+        var cdb = CDb($"c_{id}");
+        var donor = new Donor { Name = "Apoiador", Email = "ap@x.org" };
+        tdb.Donors.Add(donor);
+        await tdb.SaveChangesAsync();
+        var svc = Service(tdb, cdb, tenant, new FixedClock(T0));
+
+        // D-07: apoiador não-membro assina uma DOAÇÃO recorrente (não dízimo).
+        var pledge = await svc.CreatePledgeAsync(Guid.NewGuid(), donor.Id, 50m, 10, chargeToday: true, entryType: EntryTypes.Donation);
+        Assert.Equal(EntryTypes.Donation, pledge.EntryType);
+
+        await svc.RunBillingCycleAsync();
+        var cycle = await tdb.Donations.SingleAsync();
+        Assert.Equal(EntryTypes.Donation, cycle.EntryType); // ciclo herda o tipo do compromisso
+    }
+
+    [Fact]
     public async Task Dunning_schedules_retry_on_first_failure()
     {
         var id = Guid.NewGuid().ToString();

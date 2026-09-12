@@ -30,8 +30,13 @@ public sealed class CashSessionService(TenantDbContext db, TreasuryService treas
         return session;
     }
 
-    /// <summary>Fecha a sessão com o valor conferido; exige um segundo responsável (dupla conferência).</summary>
-    public async Task<CashSession> CloseAsync(Guid sessionId, decimal countedAmount, Guid confirmedBy, CancellationToken ct = default)
+    /// <summary>
+    /// Fecha a sessão com o valor conferido; exige um segundo responsável (dupla conferência). A coleta
+    /// pode ser <b>discriminada</b> em linhas por tipo/finalidade (D-06 — Σ das linhas == conferido); sem
+    /// linhas, gera uma entrada agregada de <c>oferta</c>.
+    /// </summary>
+    public async Task<CashSession> CloseAsync(
+        Guid sessionId, decimal countedAmount, Guid confirmedBy, IReadOnlyList<CashEntryLine>? lines = null, CancellationToken ct = default)
     {
         var session = await db.CashSessions.FirstOrDefaultAsync(s => s.Id == sessionId, ct)
             ?? throw new InvalidOperationException("Sessão não encontrada.");
@@ -47,26 +52,52 @@ public sealed class CashSessionService(TenantDbContext db, TreasuryService treas
         session.ClosedAt = clock.UtcNow;
         session.Status = "closed";
 
-        // D-05: a coleta em espécie vira uma ENTRADA de 1ª classe (receita + dimensão + tesouraria),
-        // não só um saldo de caixa. Agregada pelo total conferido (Q2); débito no Caixa, crédito Receita;
-        // sem recibo (coleta anônima — Q3). O depósito posterior segue como transferência caixa→banco.
+        // D-05/D-06: a coleta em espécie vira ENTRADA(s) de 1ª classe (receita + dimensão + tesouraria),
+        // não só um saldo de caixa. Débito no Caixa, crédito Receita; sem recibo (coleta anônima). Pode
+        // ser discriminada por tipo (D-06); sem discriminação, uma entrada agregada de oferta. O depósito
+        // posterior segue como transferência caixa→banco.
         if (countedAmount > 0)
         {
             var account = await db.TreasuryAccounts.FirstAsync(a => a.Id == session.AccountId, ct);
-            var entry = new Donation
+            var defaultCc = await db.CostCenters.Where(c => c.IsDefault).Select(c => (Guid?)c.Id).FirstOrDefaultAsync(ct);
+            var defaultFund = await db.Funds.Where(f => f.IsDefault).Select(f => (Guid?)f.Id).FirstOrDefaultAsync(ct);
+
+            IReadOnlyList<CashEntryLine> entryLines;
+            if (lines is { Count: > 0 })
             {
-                OrganizationId = account.OrganizationId,
-                Amount = countedAmount,
-                Method = "cash",
-                Source = "cash",
-                Status = "paid",
-                PaidAt = clock.UtcNow,
-                DonorName = string.IsNullOrWhiteSpace(session.EventLabel) ? "Coleta em espécie" : $"Coleta — {session.EventLabel}",
-                CostCenterId = await db.CostCenters.Where(c => c.IsDefault).Select(c => (Guid?)c.Id).FirstOrDefaultAsync(ct),
-                FundId = await db.Funds.Where(f => f.IsDefault).Select(f => (Guid?)f.Id).FirstOrDefaultAsync(ct),
-            };
-            db.Donations.Add(entry);
-            await reconciliation.PostEntryAsync(entry, account, ChartOfAccounts.Cash, ct);
+                if (lines.Any(l => l.Amount <= 0))
+                    throw new InvalidOperationException("Cada linha da coleta deve ter valor positivo.");
+                if (lines.Any(l => !EntryTypes.IsValid(l.EntryType)))
+                    throw new InvalidOperationException("Tipo de entrada inválido numa das linhas da coleta.");
+                if (lines.Sum(l => l.Amount) != countedAmount)
+                    throw new InvalidOperationException("A soma das linhas deve ser igual ao valor conferido.");
+                entryLines = lines;
+            }
+            else
+            {
+                entryLines = [new CashEntryLine(EntryTypes.Offering, countedAmount)];
+            }
+
+            var label = string.IsNullOrWhiteSpace(session.EventLabel) ? "Coleta em espécie" : $"Coleta — {session.EventLabel}";
+            foreach (var line in entryLines)
+            {
+                var entry = new Donation
+                {
+                    OrganizationId = account.OrganizationId,
+                    Amount = line.Amount,
+                    Method = "cash",
+                    Source = "cash",
+                    EntryType = line.EntryType,
+                    Status = "paid",
+                    PaidAt = clock.UtcNow,
+                    DonorName = label,
+                    CostCenterId = line.CostCenterId ?? defaultCc,
+                    ProjectId = line.ProjectId,
+                    FundId = line.FundId ?? defaultFund,
+                };
+                db.Donations.Add(entry);
+                await reconciliation.PostEntryAsync(entry, account, ChartOfAccounts.Cash, ct);
+            }
         }
 
         await db.SaveChangesAsync(ct);
@@ -91,3 +122,7 @@ public sealed class CashSessionService(TenantDbContext db, TreasuryService treas
         return session;
     }
 }
+
+/// <summary>Linha discriminada da coleta de caixa (D-06): tipo + valor + finalidade (dimensões).</summary>
+public sealed record CashEntryLine(
+    string EntryType, decimal Amount, Guid? CostCenterId = null, Guid? ProjectId = null, Guid? FundId = null);

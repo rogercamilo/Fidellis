@@ -49,7 +49,10 @@ public static class CashSessionEndpoints
             if (user.UserId is not { } uid) return Results.BadRequest(new { error = "Usuário do request não identificado." });
             try
             {
-                var s = await sessions.CloseAsync(id, req.CountedAmount, uid, ct);
+                var lines = req.Lines?
+                    .Select(l => new CashEntryLine(l.EntryType, l.Amount, l.CostCenterId, l.ProjectId, l.FundId))
+                    .ToList();
+                var s = await sessions.CloseAsync(id, req.CountedAmount, uid, lines, ct);
                 return Results.Ok(new CashSessionDto(s.Id, s.AccountId, s.EventLabel, s.Status, s.CountedAmount, s.OpenedBy, s.ConfirmedBy, s.ClosedAt, s.DepositedMovementId));
             }
             catch (InvalidOperationException ex) { return Results.BadRequest(new { error = ex.Message }); }
@@ -75,5 +78,6 @@ public sealed record CashSessionDto(
     Guid OpenedBy, Guid? ConfirmedBy, DateTimeOffset? ClosedAt, Guid? DepositedMovementId);
 
 public sealed record OpenCashSessionRequest(Guid AccountId, string? EventLabel = null);
-public sealed record CloseCashSessionRequest(decimal CountedAmount);
+public sealed record CloseCashSessionRequest(decimal CountedAmount, List<CashEntryLineDto>? Lines = null);
+public sealed record CashEntryLineDto(string EntryType, decimal Amount, Guid? CostCenterId = null, Guid? ProjectId = null, Guid? FundId = null);
 public sealed record DepositCashSessionRequest(Guid BankAccountId);

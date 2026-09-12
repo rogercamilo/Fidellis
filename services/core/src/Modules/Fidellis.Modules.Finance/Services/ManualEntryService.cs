@@ -9,7 +9,8 @@ namespace Fidellis.Modules.Finance.Services;
 public sealed record ManualEntryCommand(
     Guid TreasuryAccountId, decimal Amount,
     string? DonorName, string? DonorEmail, string? DonorDocument,
-    Guid? CostCenterId, Guid? ProjectId, Guid? FundId, DateTimeOffset? OccurredAt);
+    Guid? CostCenterId, Guid? ProjectId, Guid? FundId, DateTimeOffset? OccurredAt,
+    string EntryType = EntryTypes.Donation);
 
 /// <summary>
 /// Lançamento manual de entrada (D-05): recebimento fora do PSP (transferência recebida, depósito
@@ -49,6 +50,7 @@ public sealed class ManualEntryService(TenantDbContext db, ReconciliationService
             Amount = cmd.Amount,
             Method = "manual",
             Source = "manual",
+            EntryType = EntryTypes.IsValid(cmd.EntryType) ? cmd.EntryType : EntryTypes.Donation,
             Status = "paid",
             PaidAt = cmd.OccurredAt ?? clock.UtcNow,
             DonorName = donorName,

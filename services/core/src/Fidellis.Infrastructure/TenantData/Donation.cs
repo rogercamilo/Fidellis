@@ -18,6 +18,12 @@ public sealed class Donation : Entity
     /// </summary>
     public string Source { get; set; } = "checkout";
 
+    /// <summary>
+    /// Tipo da entrada de 1ª classe (D-06): <see cref="EntryTypes"/> (<c>tithe|offering|donation</c>).
+    /// Substitui a inferência "recorrente ⇒ dízimo". Chave técnica estável; rótulo é por tenant.
+    /// </summary>
+    public string EntryType { get; set; } = EntryTypes.Donation;
+
     // Vínculos e dados de pagamento (passo 1 — cobrança PIX via Pagar.me).
     public Guid? DonorId { get; set; }
     public Guid? CampaignId { get; set; }

@@ -1,3 +1,5 @@
+using Fidellis.Infrastructure.TenantData;
+
 namespace Fidellis.Modules.Finance.Services;
 
 /// <summary>Comando de criação de cobrança PIX (gerado pelo gestor autenticado).</summary>
@@ -12,7 +14,8 @@ public sealed record CheckoutCommand(
     string? IdempotencyKey = null,
     string Method = "pix",
     string? CardToken = null,
-    Guid? ReceivableId = null);
+    Guid? ReceivableId = null,
+    string EntryType = EntryTypes.Donation);
 
 /// <summary>Resultado do checkout: dados do PIX, do boleto ou do cartão para exibir ao doador.</summary>
 public sealed record CheckoutResult(

@@ -1,6 +1,7 @@
 using Fidellis.Infrastructure.Accounting;
 using Fidellis.Infrastructure.Messaging;
 using Fidellis.Infrastructure.Persistence;
+using Fidellis.Infrastructure.TenantData;
 using Fidellis.Modules.Finance.Notifications;
 using Fidellis.Modules.Finance.Services;
 using Fidellis.SharedKernel;
@@ -69,12 +70,46 @@ public class CashSessionTests
         // D-05: a coleta vira entrada de 1ª classe — Donation (source=cash, paid) + partida dobrada.
         var entry = await tdb.Donations.SingleAsync();
         Assert.Equal("cash", entry.Source);
+        Assert.Equal(EntryTypes.Offering, entry.EntryType);           // agregada default = oferta (D-06)
         Assert.Equal("paid", entry.Status);
         Assert.Equal(500m, entry.Amount);
         Assert.Equal(2, await tdb.AccountingEntries.CountAsync());     // débito Caixa / crédito Receita
         var caixaLedger = await tdb.LedgerAccounts.FirstAsync(a => a.Code == ChartOfAccounts.Cash);
         Assert.Equal(500m, await tdb.AccountingEntries.Where(e => e.LedgerAccountId == caixaLedger.Id).SumAsync(e => e.Debit));
         Assert.Empty(await tdb.Receipts.ToListAsync());               // coleta anônima: sem recibo (Q3)
+    }
+
+    [Fact]
+    public async Task Close_discriminated_creates_one_entry_per_type()
+    {
+        var tdb = TDb($"cs_{Guid.NewGuid()}");
+        var (sessions, treasury) = Services(tdb);
+        var caixa = await treasury.CreateAccountAsync(Guid.NewGuid(), "Caixa", "cash", 0m);
+        var s = await sessions.OpenAsync(caixa.Id, Guid.NewGuid(), "Culto");
+
+        await sessions.CloseAsync(s.Id, 300m, Guid.NewGuid(), new[]
+        {
+            new CashEntryLine(EntryTypes.Tithe, 200m),
+            new CashEntryLine(EntryTypes.Offering, 100m),
+        });
+
+        var entries = await tdb.Donations.ToListAsync();
+        Assert.Equal(2, entries.Count);
+        Assert.Contains(entries, e => e.EntryType == EntryTypes.Tithe && e.Amount == 200m);
+        Assert.Contains(entries, e => e.EntryType == EntryTypes.Offering && e.Amount == 100m);
+        Assert.Equal(300m, await treasury.AccountBalanceAsync(caixa.Id)); // Σ = conferido
+    }
+
+    [Fact]
+    public async Task Close_discriminated_rejects_sum_mismatch()
+    {
+        var tdb = TDb($"cs_{Guid.NewGuid()}");
+        var (sessions, treasury) = Services(tdb);
+        var caixa = await treasury.CreateAccountAsync(Guid.NewGuid(), "Caixa", "cash", 0m);
+        var s = await sessions.OpenAsync(caixa.Id, Guid.NewGuid(), null);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => sessions.CloseAsync(
+            s.Id, 300m, Guid.NewGuid(), new[] { new CashEntryLine(EntryTypes.Tithe, 200m) }));
     }
 
     [Fact]

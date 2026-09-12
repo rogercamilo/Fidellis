@@ -1,6 +1,7 @@
 using Fidellis.Infrastructure.Accounting;
 using Fidellis.Infrastructure.Messaging;
 using Fidellis.Infrastructure.Persistence;
+using Fidellis.Infrastructure.TenantData;
 using Fidellis.Modules.Finance.Notifications;
 using Fidellis.Modules.Finance.Services;
 using Fidellis.SharedKernel;
@@ -43,6 +44,7 @@ public class ManualEntryTests
             banco.Id, 250m, "Maria", "maria@ex.com", "12345678900", null, null, null, null));
 
         Assert.Equal("manual", entry.Source);
+        Assert.Equal(EntryTypes.Donation, entry.EntryType); // default: doação (não-membro)
         Assert.Equal("paid", entry.Status);
         Assert.Equal(2, await tdb.AccountingEntries.CountAsync());          // débito Banco / crédito Receita
         Assert.Equal(250m, await treasury.AccountBalanceAsync(banco.Id));   // entrou no banco
@@ -65,6 +67,19 @@ public class ManualEntryTests
         var caixaLedger = await tdb.LedgerAccounts.FirstAsync(a => a.Code == ChartOfAccounts.Cash);
         Assert.Equal(90m, await tdb.AccountingEntries.Where(e => e.LedgerAccountId == caixaLedger.Id).SumAsync(e => e.Debit));
         Assert.Empty(await tdb.Receipts.ToListAsync());                    // sem doador → sem recibo
+    }
+
+    [Fact]
+    public async Task Manual_entry_can_be_classified_as_tithe()
+    {
+        var tdb = TDb($"me_{Guid.NewGuid()}");
+        var (entries, treasury) = Services(tdb);
+        var banco = await treasury.CreateAccountAsync(Guid.NewGuid(), "Banco", "bank", 0m);
+
+        var entry = await entries.CreateAsync(new ManualEntryCommand(
+            banco.Id, 120m, "João", null, null, null, null, null, null, EntryTypes.Tithe));
+
+        Assert.Equal(EntryTypes.Tithe, entry.EntryType);
     }
 
     [Fact]
