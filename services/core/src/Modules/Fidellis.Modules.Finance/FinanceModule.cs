@@ -56,6 +56,7 @@ public static class FinanceModule
         services.AddScoped<MroscReportService>();
         services.AddScoped<AccountantExportService>();
         services.AddScoped<Security.TeamService>();
+        services.AddScoped<Security.InvitationService>();
         services.AddScoped<Notifications.INotifier, Notifications.OutboxNotifier>();
         return services;
     }

@@ -14,6 +14,7 @@ public sealed class CatalogDbContext(DbContextOptions<CatalogDbContext> options)
     public DbSet<Tenant> Tenants => Set<Tenant>();
     public DbSet<User> Users => Set<User>();
     public DbSet<Membership> Memberships => Set<Membership>();
+    public DbSet<Invitation> Invitations => Set<Invitation>();
     public DbSet<PspOrder> PspOrders => Set<PspOrder>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -43,6 +44,21 @@ public sealed class CatalogDbContext(DbContextOptions<CatalogDbContext> options)
             b.ToTable("memberships");
             b.HasKey(x => x.Id);
             b.HasIndex(x => new { x.UserId, x.TenantId }).IsUnique();
+        });
+
+        modelBuilder.Entity<Invitation>(b =>
+        {
+            b.ToTable("invitations");
+            b.HasKey(x => x.Id);
+            b.Property(x => x.Email).HasMaxLength(320);
+            b.Property(x => x.Role).HasMaxLength(63);
+            b.Property(x => x.TokenHash).HasMaxLength(128);
+            b.Property(x => x.Status).HasMaxLength(20);
+            b.HasIndex(x => x.TokenHash).IsUnique();
+            // Um convite pendente por (tenant, e-mail): filtrado, permite reenviar após revogar/expirar.
+            b.HasIndex(x => new { x.TenantId, x.Email })
+                .IsUnique()
+                .HasFilter("status = 'pending'");
         });
 
         modelBuilder.Entity<PspOrder>(b =>

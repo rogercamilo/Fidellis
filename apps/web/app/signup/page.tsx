@@ -46,7 +46,8 @@ export default function SignupPage() {
         activeTenant: result.activeTenant,
       };
       sessionStorage.setItem('fidellis.session', JSON.stringify(session));
-      router.push('/dashboard');
+      // Etapa 2 do onboarding (D-01): monta a equipe & conselho antes de cair no console.
+      router.push('/dashboard/equipe?welcome=1');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro inesperado.');
     } finally {

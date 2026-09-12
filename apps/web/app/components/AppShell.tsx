@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
-import type { LoginResult } from '../lib/api';
+import { bootstrapStatus, type BootstrapStatus, type LoginResult } from '../lib/api';
 
 /** Navegação do ERP, agrupada por módulo (estilo SAP Fiori). Cresce a cada novo bloco. */
 const NAV: { label: string; items: { href: string; label: string }[] }[] = [
@@ -38,7 +38,13 @@ const NAV: { label: string; items: { href: string; label: string }[] }[] = [
       { href: '/dashboard/auditoria', label: 'Auditoria' },
     ],
   },
-  { label: 'Organização', items: [{ href: '/dashboard/configuracoes', label: 'Configurações' }] },
+  {
+    label: 'Organização',
+    items: [
+      { href: '/dashboard/equipe', label: 'Equipe & conselho' },
+      { href: '/dashboard/configuracoes', label: 'Configurações' },
+    ],
+  },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -46,11 +52,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [session, setSession] = useState<LoginResult | null>(null);
   const [open, setOpen] = useState(false);
+  const [bootstrap, setBootstrap] = useState<BootstrapStatus | null>(null);
 
   useEffect(() => {
     const raw = sessionStorage.getItem('fidellis.session');
-    if (raw) setSession(JSON.parse(raw) as LoginResult);
-  }, []);
+    if (!raw) return;
+    const s = JSON.parse(raw) as LoginResult;
+    setSession(s);
+    if (s.accessToken) bootstrapStatus(s.accessToken).then(setBootstrap).catch(() => undefined);
+  }, [pathname]);
 
   useEffect(() => setOpen(false), [pathname]);
 
@@ -106,7 +116,25 @@ export function AppShell({ children }: { children: ReactNode }) {
           ))}
         </aside>
 
-        <main className="content">{children}</main>
+        <main className="content">
+          {bootstrap?.inBootstrap && !pathname.startsWith('/dashboard/equipe') && (
+            <div
+              role="status"
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap',
+                padding: '0.6rem 0.9rem', marginBottom: '1rem', borderRadius: 8,
+                background: '#fef7e6', border: '1px solid #e9b949', color: '#6b4e00',
+              }}
+            >
+              <span aria-hidden>⚠️</span>
+              <span style={{ flex: 1, minWidth: 200 }}>
+                Sua equipe ainda não está completa. Convide ao menos dois aprovadores para liberar a aprovação de pagamentos.
+              </span>
+              <Link href="/dashboard/equipe" className="btn btn-primary btn-sm">Montar equipe</Link>
+            </div>
+          )}
+          {children}
+        </main>
       </div>
     </div>
   );
