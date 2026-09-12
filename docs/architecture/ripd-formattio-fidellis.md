@@ -79,7 +79,9 @@ doação** (não-membro), sem cruzamento.
 ## 7. Pendências para aprovar (checklist)
 
 - [ ] **Parecer jurídico** sobre a base legal do cruzamento sensível + texto de **consentimento específico**
-  (rascunho pronto: [termo de consentimento](../legal/consentimento-integracao-formattio.md)).
+  (rascunhos prontos: [minuta de parecer](../legal/parecer-juridico-cruzamento-sensivel.md) — conclui por
+  **consentimento art. 11, I** — e [termo de consentimento](../legal/consentimento-integracao-formattio.md);
+  falta **assinatura de advogado(a) habilitado(a)**).
 - [ ] **Encarregado/DPO** designado e ciente; enquadramento controlador × operador confirmado.
 - [ ] **Acordo de compartilhamento de dados** Formattio ↔ Fidellis assinado
   (rascunho pronto: [acordo de compartilhamento](../legal/acordo-compartilhamento-formattio-fidellis.md)).
