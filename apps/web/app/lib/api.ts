@@ -637,6 +637,18 @@ export const ROLE_LABELS: Record<string, string> = {
 };
 export const roleLabel = (role: string) => ROLE_LABELS[role] ?? role;
 
+/** Tela inicial por papel (D-03): cada perfil cai no seu recorte após o login. */
+export function landingFor(role: string | null | undefined): string {
+  switch (role) {
+    case 'coordinator': return '/dashboard/cobranca';        // Entradas (dia a dia)
+    case 'council_officer':
+    case 'council_chair': return '/dashboard/pagar';         // Saídas (aprovar)
+    case 'fiscal_council': return '/dashboard/relatorios';   // Prestação de contas
+    case 'accountant': return '/dashboard/contabilidade';    // Contabilidade
+    default: return '/dashboard';                            // admin/membro/dev
+  }
+}
+
 // ---- Aceite público de convite (BFF direto; token no path) ----
 
 export interface InvitationInfo { email: string; tenantName: string; role: string }

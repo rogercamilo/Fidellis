@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { login } from '../lib/api';
+import { landingFor, login } from '../lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -19,7 +19,9 @@ export default function LoginPage() {
     try {
       const result = await login(email, password);
       sessionStorage.setItem('fidellis.session', JSON.stringify(result));
-      router.push('/dashboard');
+      // Landing por papel (D-03): cada perfil cai no seu recorte.
+      const role = result.tenants.find((t) => t.slug === result.activeTenant)?.role;
+      router.push(landingFor(role));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro inesperado.');
     } finally {
