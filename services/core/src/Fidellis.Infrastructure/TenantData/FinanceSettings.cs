@@ -25,6 +25,13 @@ public sealed class FinanceSettings : Entity
     /// </summary>
     public bool AdvancedManagement { get; set; }
 
+    /// <summary>
+    /// Rótulos de exibição customizados dos <b>papéis</b> por tenant (D-02 Q6), como JSON
+    /// <c>{"chaveTécnica":"rótulo"}</c> — ex.: <c>{"coordinator":"Ecônomo"}</c>. Guarda só os overrides;
+    /// as chaves técnicas (RBAC/alçadas) permanecem estáveis. Default <c>{}</c>.
+    /// </summary>
+    public string RoleLabelsJson { get; set; } = "{}";
+
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     /// <summary>Rótulo de exibição do tipo de entrada informado (fallback: a própria chave).</summary>

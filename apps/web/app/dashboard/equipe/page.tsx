@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { PageHeader, StatusBadge } from '../../components/Fiori';
 import { Panel } from '../../components/Panel';
 import {
-  bootstrapStatus, completeOnboarding, createInvite, listInvitations, listTeam, resendInvite,
-  revokeInvite, roleLabel, setMemberRole, teamRoles,
+  bootstrapStatus, completeOnboarding, createInvite, getFinanceSettings, listInvitations, listTeam, resendInvite,
+  revokeInvite, roleLabelWith, setMemberRole, teamRoles,
   type BootstrapStatus, type Invitation, type LoginResult, type TeamMember,
 } from '../../lib/api';
 
@@ -24,6 +24,7 @@ export default function EquipePage() {
   const [roles, setRoles] = useState<string[]>([]);
   const [invites, setInvites] = useState<Invitation[]>([]);
   const [status, setStatus] = useState<BootstrapStatus | null>(null);
+  const [roleLabels, setRoleLabels] = useState<Record<string, string>>({});
 
   const [email, setEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('coordinator');
@@ -33,11 +34,14 @@ export default function EquipePage() {
 
   const refresh = useCallback(async (t: string) => {
     try {
-      const [tm, rs, iv, st] = await Promise.all([listTeam(t), teamRoles(t), listInvitations(t), bootstrapStatus(t)]);
+      const [tm, rs, iv, st, cfg] = await Promise.all([
+        listTeam(t), teamRoles(t), listInvitations(t), bootstrapStatus(t), getFinanceSettings(t),
+      ]);
       setTeam(tm);
       setRoles(rs);
       setInvites(iv);
       setStatus(st);
+      setRoleLabels(cfg.roleLabels ?? {});
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao carregar.');
     }
@@ -137,7 +141,7 @@ export default function EquipePage() {
               <div className="field" style={{ minWidth: 200, marginBottom: 0 }}>
                 <label htmlFor="inv-role">Papel</label>
                 <select id="inv-role" value={inviteRole} onChange={(e) => setInviteRole(e.target.value)}>
-                  {roles.map((r) => <option key={r} value={r}>{roleLabel(r)}</option>)}
+                  {roles.map((r) => <option key={r} value={r}>{roleLabelWith(roleLabels, r)}</option>)}
                 </select>
               </div>
               <button className="btn btn-primary" type="submit">Enviar convite</button>
@@ -157,7 +161,7 @@ export default function EquipePage() {
                 {invites.map((i) => (
                   <tr key={i.id}>
                     <td>{i.email}</td>
-                    <td>{roleLabel(i.role)}</td>
+                    <td>{roleLabelWith(roleLabels, i.role)}</td>
                     <td className="muted">{new Date(i.expiresAt).toLocaleDateString('pt-BR')}</td>
                     <td><StatusBadge status={i.status} /></td>
                     {canInvite && (
@@ -186,9 +190,9 @@ export default function EquipePage() {
                   <td>
                     {isAdmin ? (
                       <select value={m.role} onChange={(e) => changeRole(m.userId, e.target.value)}>
-                        {roles.map((r) => <option key={r} value={r}>{roleLabel(r)}</option>)}
+                        {roles.map((r) => <option key={r} value={r}>{roleLabelWith(roleLabels, r)}</option>)}
                       </select>
-                    ) : roleLabel(m.role)}
+                    ) : roleLabelWith(roleLabels, m.role)}
                   </td>
                 </tr>
               ))}

@@ -306,6 +306,8 @@ public sealed class SchemaProvisioner(
                 offering_label  varchar(60) NOT NULL DEFAULT 'Oferta',
                 donation_label  varchar(60) NOT NULL DEFAULT 'Doação',
                 advanced_management boolean NOT NULL DEFAULT false,
+                role_labels_json text NOT NULL DEFAULT '',
+                -- fallback DDL: vazio; linhas reais nascem via EF com JSON vazio; o parser trata vazio como sem overrides.
                 updated_at      timestamptz NOT NULL DEFAULT now(),
                 created_at      timestamptz NOT NULL DEFAULT now()
             );
