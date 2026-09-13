@@ -598,6 +598,17 @@ public sealed class SchemaProvisioner(
             );
             CREATE INDEX IF NOT EXISTS ix_fiscal_docs_org ON "{schema}".fiscal_documents (organization_id);
             CREATE INDEX IF NOT EXISTS ix_fiscal_docs_receivable ON "{schema}".fiscal_documents (receivable_id);
+
+            -- Credencial de serviço da integração federada (#80 / ADR-0013 dec.9): chave por origem (hash).
+            CREATE TABLE IF NOT EXISTS "{schema}".integration_credentials (
+                id         uuid PRIMARY KEY,
+                source     varchar(30)  NOT NULL,
+                key_hash   varchar(64)  NOT NULL,
+                enabled    boolean      NOT NULL DEFAULT true,
+                updated_at timestamptz  NOT NULL DEFAULT now(),
+                created_at timestamptz  NOT NULL DEFAULT now()
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS ux_integration_source ON "{schema}".integration_credentials (source);
             """;
 
         await ExecuteAsync(ddl, ct);
