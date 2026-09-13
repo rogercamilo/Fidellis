@@ -336,6 +336,11 @@ public sealed class SchemaProvisioner(
             ALTER TABLE "{schema}".donors ADD COLUMN IF NOT EXISTS converted_at  timestamptz;
             ALTER TABLE "{schema}".donors ADD COLUMN IF NOT EXISTS is_member     boolean NOT NULL DEFAULT false;
 
+            -- Identidade federada (#80 / ADR-0013): vínculo por (origem, id externo).
+            ALTER TABLE "{schema}".donors ADD COLUMN IF NOT EXISTS external_id varchar(120);
+            ALTER TABLE "{schema}".donors ADD COLUMN IF NOT EXISTS source      varchar(30);
+            CREATE INDEX IF NOT EXISTS ix_donors_source_external ON "{schema}".donors (source, external_id);
+
             -- Idempotência de criação de cobrança (RF-FIN-003).
             CREATE TABLE IF NOT EXISTS "{schema}".idempotency_keys (
                 key         varchar(120) PRIMARY KEY,

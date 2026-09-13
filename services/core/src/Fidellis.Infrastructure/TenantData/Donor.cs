@@ -23,6 +23,20 @@ public sealed class Donor : Entity
     /// </summary>
     public bool IsMember { get; set; }
 
+    /// <summary>
+    /// Identidade federada (#80 / ADR-0013): id estável do membro na plataforma de origem (ex.:
+    /// <c>Formando.id</c> do Formattio). É o <b>vínculo autoritativo</b> — não o e-mail (que não é único
+    /// na origem). Nulo em doadores nativos do Fidellis. Combinado com <see cref="Source"/> é único.
+    /// </summary>
+    public string? ExternalId { get; set; }
+
+    /// <summary>
+    /// Origem do doador/membro: <c>null</c> = nativo do Fidellis; <c>formattio</c> = veio da integração
+    /// federada. Regra (ADR-0013 dec.8): origem federada <b>implica membro</b> — o import marca
+    /// <see cref="IsMember"/>. Guardamos só id+origem (minimização); nada de formação/vocação.
+    /// </summary>
+    public string? Source { get; set; }
+
     // Configurabilidade/CRM (Onda 1). Jornada apoiador→recorrente (RF-FIN-182).
     public Guid? DonorTypeId { get; set; }
 

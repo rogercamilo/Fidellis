@@ -257,6 +257,22 @@ public static class DonationsModule
             return Results.Ok(new { id, isMember = donor.IsMember });
         });
 
+        // Importação de identidade federada (#80 / ADR-0013): upsert idempotente por (source, externalId).
+        // A origem federada IMPLICA membro (dec.8) → marca IsMember. Minimização: só id+origem+nome+email;
+        // nada de formação/vocação. O vínculo é o externalId (o e-mail NÃO é chave — não é único na origem).
+        crm.MapPost("/donors/federated", async (
+            ImportFederatedRequest req, ITenantContext tenant, TenantDbContext db, IAuditLog audit, CancellationToken ct) =>
+        {
+            if (!tenant.HasTenant) return Results.BadRequest(new { error = "Nenhum tenant no request." });
+            if (req.Members is null || req.Members.Count == 0)
+                return Results.BadRequest(new { error = "members é obrigatório (lista não vazia)." });
+            var source = string.IsNullOrWhiteSpace(req.Source) ? "formattio" : req.Source.Trim().ToLowerInvariant();
+
+            var (created, updated) = await FederatedImport.ApplyAsync(db, source, req.Members, ct);
+            await audit.RecordAsync("donor.federated_import", "donor", $"{source}:{created}c/{updated}u");
+            return Results.Ok(new { source, created, updated });
+        });
+
         // ---- Público (portal do doador; tenant pelo path) ----
         var pub = app.MapGroup("/api/public/{tenant}").WithTags("Public");
 
@@ -333,3 +349,44 @@ public sealed record AddMemberRequest(Guid? UserId = null, string? Role = null);
 public sealed record MagicLinkRequest(string Email);
 
 public sealed record SetMemberRequest(bool IsMember);
+
+// Importação de identidade federada (#80): lote de membros vindos da origem (ex.: export/organizacao do Formattio).
+public sealed record ImportFederatedRequest(List<FederatedMember> Members, string? Source = null);
+public sealed record FederatedMember(string ExternalId, string Name, string? Email = null);
+
+/// <summary>
+/// Upsert de identidade federada (#80 / ADR-0013): idempotente por <c>(source, externalId)</c>. A origem
+/// federada implica membro (marca <see cref="Donor.IsMember"/>). Minimização: só id+origem+nome+e-mail; o
+/// vínculo é o <c>externalId</c> (não o e-mail, que não é único na origem).
+/// </summary>
+public static class FederatedImport
+{
+    public static async Task<(int Created, int Updated)> ApplyAsync(
+        TenantDbContext db, string source, IReadOnlyList<FederatedMember> members, CancellationToken ct = default)
+    {
+        int created = 0, updated = 0;
+        foreach (var m in members)
+        {
+            if (string.IsNullOrWhiteSpace(m.ExternalId) || string.IsNullOrWhiteSpace(m.Name)) continue;
+            var extId = m.ExternalId.Trim();
+            var donor = await db.Donors.FirstOrDefaultAsync(d => d.Source == source && d.ExternalId == extId, ct);
+            if (donor is null)
+            {
+                db.Donors.Add(new Donor
+                {
+                    Name = m.Name.Trim(), Email = m.Email, ExternalId = extId, Source = source, IsMember = true,
+                });
+                created++;
+            }
+            else
+            {
+                donor.Name = m.Name.Trim();
+                if (!string.IsNullOrWhiteSpace(m.Email)) donor.Email = m.Email;
+                donor.IsMember = true; // origem federada implica membro
+                updated++;
+            }
+        }
+        await db.SaveChangesAsync(ct);
+        return (created, updated);
+    }
+}
