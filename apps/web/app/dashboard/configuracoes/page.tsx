@@ -5,9 +5,10 @@ import { PageHeader } from '../../components/Fiori';
 import { Panel } from '../../components/Panel';
 import {
   createCategory, createCostCenter, createDonorType, createFund,
-  getFinanceSettings, listCategories, listCostCenters, listDonorTypes, listFunds, listTeam,
+  getFinanceSettings, getIntegrationStatus, issueIntegrationKey,
+  listCategories, listCostCenters, listDonorTypes, listFunds, listTeam,
   roleLabel, roleLabelWith, setMemberRole, teamRoles, updateFinanceSettings,
-  type CostCenter, type Fund, type DonorTypeItem, type FinanceCategoryItem, type LoginResult, type TeamMember,
+  type CostCenter, type Fund, type DonorTypeItem, type FinanceCategoryItem, type IntegrationStatus, type LoginResult, type TeamMember,
 } from '../../lib/api';
 
 export default function ConfiguracoesPage() {
@@ -40,6 +41,9 @@ export default function ConfiguracoesPage() {
   const [roles, setRoles] = useState<string[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
 
+  const [integration, setIntegration] = useState<IntegrationStatus | null>(null);
+  const [generatedKey, setGeneratedKey] = useState<string | null>(null);
+
   const refresh = useCallback(async (t: string, admin: boolean) => {
     try {
       const [s, cc, fn, dt, ct] = await Promise.all([
@@ -54,6 +58,7 @@ export default function ConfiguracoesPage() {
       setFunds(fn);
       setDonorTypes(dt);
       setCategories(ct);
+      setIntegration(await getIntegrationStatus(t).catch(() => null));
       if (admin) {
         setTeam(await listTeam(t));
         setRoles(await teamRoles(t));
@@ -99,6 +104,17 @@ export default function ConfiguracoesPage() {
   const addFund = guard(async () => { await createFund(token!, { code: fCode, name: fName, restriction: fRestriction, purpose: fPurpose || undefined }); setFCode(''); setFName(''); setFPurpose(''); });
   const addDonorType = guard(async () => { await createDonorType(token!, { name: dtName }); setDtName(''); });
   const addCategory = guard(async () => { await createCategory(token!, { kind: catKind, name: catName }); setCatName(''); });
+
+  async function generateIntegrationKey() {
+    if (!token) return setError('Sessão não encontrada.');
+    if (integration?.configured && !window.confirm('Isto gera uma nova chave e invalida a anterior. Continuar?')) return;
+    setError(null);
+    try {
+      const r = await issueIntegrationKey(token);
+      setGeneratedKey(r.key);
+      await refresh(token, isAdmin);
+    } catch (err) { setError(err instanceof Error ? err.message : 'Erro ao gerar chave.'); }
+  }
 
   return (
     <>
@@ -197,6 +213,33 @@ export default function ConfiguracoesPage() {
               <li key={c.id}><span className={`badge ${c.kind === 'revenue' ? 'ok' : 'warn'}`}>{c.kind === 'revenue' ? 'receita' : 'despesa'}</span> {c.name}</li>
             ))}
           </ul>
+        </Panel>
+
+        <Panel title="Integração Formattio">
+          <p className="muted" style={{ marginTop: 0 }}>
+            Chave de serviço que o Formattio usa para lançar dízimo/oferta dos membros no Fidellis. Gere aqui e
+            cole no Formattio (Configurações → Integração Fidellis). A chave aparece <strong>uma única vez</strong>.
+          </p>
+          <p style={{ margin: '0.25rem 0 0.75rem' }}>
+            Status:{' '}
+            {integration?.configured
+              ? <span className="badge ok">configurada{integration.enabled ? '' : ' (desabilitada)'}</span>
+              : <span className="badge muted">não configurada</span>}
+          </p>
+          {generatedKey ? (
+            <div className="field">
+              <label>Chave — copie agora (não será exibida de novo)</label>
+              <textarea readOnly value={generatedKey} rows={2} className="mono" style={{ fontSize: '0.8rem' }} />
+              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.4rem' }}>
+                <button className="btn btn-ghost btn-sm" onClick={() => navigator.clipboard?.writeText(generatedKey)}>Copiar</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => setGeneratedKey(null)}>Ocultar</button>
+              </div>
+            </div>
+          ) : (
+            <button className="btn btn-primary" onClick={generateIntegrationKey}>
+              {integration?.configured ? 'Rotacionar chave' : 'Gerar chave'}
+            </button>
+          )}
         </Panel>
       </div>
 
