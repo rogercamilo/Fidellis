@@ -545,6 +545,13 @@ export interface FinanceCategoryItem { id: string; kind: string; name: string; l
 
 export const getFinanceSettings = (t: string) => authGet<FinanceSettings>(t, '/api/finance/settings', 'configurações');
 export const updateFinanceSettings = (t: string, body: FinanceSettings) => authSend<FinanceSettings>(t, 'PUT', '/api/finance/settings', body, 'salvar configurações');
+
+// ---- Integração federada (#80 / P1a): credencial de serviço por tenant ----
+export interface IntegrationStatus { source: string; configured: boolean; enabled: boolean }
+export const getIntegrationStatus = (t: string, source = 'formattio') =>
+  authGet<IntegrationStatus>(t, `/api/finance/integration/${source}`, 'status da integração');
+export const issueIntegrationKey = (t: string, source = 'formattio') =>
+  authSend<{ source: string; key: string }>(t, 'POST', `/api/finance/integration/${source}/key`, undefined, 'gerar chave de integração');
 export const listDonorTypes = (t: string) => authGet<DonorTypeItem[]>(t, '/api/finance/donor-types', 'tipos de doador');
 export const createDonorType = (t: string, body: { name: string; isRecurringDefault?: boolean }) => authSend<DonorTypeItem>(t, 'POST', '/api/finance/donor-types', body, 'criar tipo de doador');
 export const listCategories = (t: string, kind?: string) => authGet<FinanceCategoryItem[]>(t, `/api/finance/categories${kind ? `?kind=${kind}` : ''}`, 'rubricas');
