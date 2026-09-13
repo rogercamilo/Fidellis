@@ -26,6 +26,7 @@ const NAV: { label: string; roles?: string[]; items: { href: string; label: stri
       { href: '/dashboard/campanhas', label: 'Campanhas' },
       { href: '/dashboard/caixa', label: 'Caixa' },
       { href: '/dashboard/receber', label: 'Contas a receber' },
+      { href: '/dashboard/faturamento', label: 'Faturamento (NF)', advanced: true },
       { href: '/dashboard/doadores', label: 'Doadores' },
     ],
   },

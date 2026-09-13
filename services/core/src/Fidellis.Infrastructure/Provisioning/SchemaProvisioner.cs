@@ -570,6 +570,27 @@ public sealed class SchemaProvisioner(
                 created_at   timestamptz  NOT NULL DEFAULT now()
             );
             CREATE INDEX IF NOT EXISTS ix_snapshot_period ON "{schema}".statement_snapshots (year, quarter);
+
+            -- Documentos fiscais (#79 — NF/faturamento, gestão avançada): registro/vínculo de NF emitida
+            -- por fora, atrelada a um recebível comercial. PDF arquivado no object storage (R2).
+            CREATE TABLE IF NOT EXISTS "{schema}".fiscal_documents (
+                id              uuid PRIMARY KEY,
+                organization_id uuid          NOT NULL,
+                type            varchar(10)   NOT NULL,   -- nfse | nfe
+                number          varchar(60)   NOT NULL,
+                series          varchar(20),
+                access_key      varchar(120),
+                description     varchar(200),
+                amount          numeric(18,2) NOT NULL,
+                issued_at       timestamptz   NOT NULL DEFAULT now(),
+                receivable_id   uuid          NOT NULL,
+                entry_id        uuid,
+                status          varchar(12)   NOT NULL DEFAULT 'registered',  -- registered | canceled
+                pdf_object_key  text,
+                created_at      timestamptz   NOT NULL DEFAULT now()
+            );
+            CREATE INDEX IF NOT EXISTS ix_fiscal_docs_org ON "{schema}".fiscal_documents (organization_id);
+            CREATE INDEX IF NOT EXISTS ix_fiscal_docs_receivable ON "{schema}".fiscal_documents (receivable_id);
             """;
 
         await ExecuteAsync(ddl, ct);

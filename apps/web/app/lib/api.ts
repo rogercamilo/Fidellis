@@ -571,6 +571,28 @@ export const receivablesAging = (t: string) => authGet<AgingReport>(t, '/api/fin
 export const createReceivable = (t: string, body: { organizationId: string; amount: number; dueDate: string; source?: string; donorId?: string; description?: string }) => authSend<Receivable>(t, 'POST', '/api/finance/receivables', body, 'criar recebível');
 export const settleReceivable = (t: string, id: string, body: { amount: number; donationId?: string }) => authSend<Receivable>(t, 'POST', `/api/finance/receivables/${id}/settle`, body, 'baixar recebível');
 
+// ---- Faturamento (NF — gestão avançada, #79) ----
+// Registro/vínculo de NF (NFS-e/NF-e) emitida por fora, atrelada a um recebível comercial (service/sale).
+
+export type FiscalDocType = 'nfse' | 'nfe';
+export const FISCAL_DOC_TYPES: { value: FiscalDocType; label: string }[] = [
+  { value: 'nfse', label: 'NFS-e (serviço)' },
+  { value: 'nfe', label: 'NF-e (produto)' },
+];
+export interface FiscalDocument {
+  id: string; organizationId: string; type: FiscalDocType; number: string; series: string | null;
+  accessKey: string | null; description: string | null; amount: number; issuedAt: string;
+  receivableId: string; entryId: string | null; status: string; hasPdf: boolean;
+}
+export interface RegisterFiscalDocument {
+  organizationId: string; type: FiscalDocType; number: string; amount: number; receivableId: string;
+  series?: string; accessKey?: string; description?: string; issuedAt?: string;
+}
+
+export const listFiscalDocuments = (t: string) => authGet<FiscalDocument[]>(t, '/api/finance/fiscal-documents', 'notas fiscais');
+export const registerFiscalDocument = (t: string, body: RegisterFiscalDocument) => authSend<FiscalDocument>(t, 'POST', '/api/finance/fiscal-documents', body, 'registrar nota fiscal');
+export const cancelFiscalDocument = (t: string, id: string) => authSend<FiscalDocument>(t, 'POST', `/api/finance/fiscal-documents/${id}/cancel`, undefined, 'cancelar nota fiscal');
+
 // ---- Contas a Pagar ----
 
 export interface Payee { id: string; name: string; document: string | null; pixKey: string | null; kind: string; active: boolean }

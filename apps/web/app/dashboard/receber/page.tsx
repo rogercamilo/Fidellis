@@ -11,7 +11,9 @@ import {
 
 const brl = (n: number) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const date = (s: string) => new Date(s + 'T00:00:00').toLocaleDateString('pt-BR');
-const sourceLabel = (s: string) => (s === 'grant' ? 'Convênio' : s === 'agreement' ? 'Acordo' : 'Promessa');
+const sourceLabel = (s: string) =>
+  s === 'grant' ? 'Convênio' : s === 'agreement' ? 'Acordo'
+  : s === 'service' ? 'Serviço' : s === 'sale' ? 'Venda' : 'Promessa';
 
 export default function ReceberPage() {
   const [token, setToken] = useState<string | null>(null);
@@ -104,6 +106,8 @@ export default function ReceberPage() {
                   <option value="pledge">Promessa</option>
                   <option value="grant">Convênio</option>
                   <option value="agreement">Acordo</option>
+                  <option value="service">Serviço (faturável)</option>
+                  <option value="sale">Venda (faturável)</option>
                 </select>
               </div>
             </div>
