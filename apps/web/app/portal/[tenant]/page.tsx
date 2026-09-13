@@ -16,15 +16,17 @@ export default function PortalPage({ params }: { params: { tenant: string } }) {
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Contribuição do membro (#75)
+  // Contribuição do membro (#75): o membro escolhe tipo, valor, recorrência e forma de pagamento.
   const [orgs, setOrgs] = useState<PublicOrg[]>([]);
   const [orgId, setOrgId] = useState('');
   const [gType, setGType] = useState<EntryType>('tithe');
   const [gAmount, setGAmount] = useState('');
-  const [pAmount, setPAmount] = useState('');
+  const [recurrence, setRecurrence] = useState<'once' | 'monthly'>('monthly');
   const [pDay, setPDay] = useState('5');
+  const [method, setMethod] = useState('pix');
   const [checkout, setCheckout] = useState<DonationCheckout | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const t = new URLSearchParams(window.location.search).get('token');
@@ -45,27 +47,32 @@ export default function PortalPage({ params }: { params: { tenant: string } }) {
     setSent(true);
   }
 
-  async function give(e: React.FormEvent) {
-    e.preventDefault();
-    if (!token) return;
-    if (!orgId) return setError('Selecione a unidade.');
-    setError(null); setMsg(null);
-    try {
-      const r = await memberGive(tenant, token, { organizationId: orgId, amount: Number(gAmount), entryType: gType });
-      setCheckout(r); setGAmount('');
-    } catch (err) { setError(err instanceof Error ? err.message : 'Erro.'); }
+  // Oferta é sempre pontual (taxonomia); dízimo pode ser recorrente (esperado) ou pontual — o membro decide.
+  function changeType(t: EntryType) {
+    setGType(t);
+    setRecurrence(t === 'tithe' ? 'monthly' : 'once');
   }
 
-  async function pledge(e: React.FormEvent) {
+  const isRecurring = gType === 'tithe' && recurrence === 'monthly';
+
+  async function contribute(e: React.FormEvent) {
     e.preventDefault();
     if (!token) return;
     if (!orgId) return setError('Selecione a unidade.');
-    setError(null); setMsg(null);
+    const amount = Number(gAmount);
+    if (!(amount > 0)) return setError('Informe um valor válido.');
+    setError(null); setMsg(null); setSubmitting(true);
     try {
-      await memberPledge(tenant, token, { organizationId: orgId, amount: Number(pAmount), dayOfMonth: Number(pDay) });
-      setPAmount('');
-      setMsg('Dízimo recorrente assinado — a cobrança do 1º ciclo foi gerada.');
+      if (isRecurring) {
+        const r = await memberPledge(tenant, token, { organizationId: orgId, amount, dayOfMonth: Number(pDay), method });
+        setGAmount('');
+        setMsg(`Dízimo mensal por ${r.method === 'boleto' ? 'boleto' : 'PIX'} assinado (dia ${r.dayOfMonth}). A cobrança de cada ciclo é gerada automaticamente.`);
+      } else {
+        const r = await memberGive(tenant, token, { organizationId: orgId, amount, entryType: gType, method });
+        setCheckout(r); setGAmount('');
+      }
     } catch (err) { setError(err instanceof Error ? err.message : 'Erro.'); }
+    finally { setSubmitting(false); }
   }
 
   return (
@@ -112,15 +119,29 @@ export default function PortalPage({ params }: { params: { tenant: string } }) {
                   {msg && <p className="badge ok" style={{ display: 'inline-block', marginBottom: '0.75rem' }}>{msg}</p>}
                   {checkout ? (
                     <div style={{ display: 'grid', placeItems: 'center', gap: '0.6rem' }}>
-                      {checkout.qrCodeUrl && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={checkout.qrCodeUrl} alt="QR PIX" style={{ width: 200, height: 200, background: '#fff', borderRadius: 10, border: '1px solid var(--border)', padding: 8 }} />
+                      {checkout.method === 'boleto' ? (
+                        <>
+                          <div className="field" style={{ width: '100%' }}>
+                            <label>Linha digitável do boleto</label>
+                            <textarea readOnly value={checkout.boletoLine ?? ''} rows={2} className="mono" style={{ width: '100%', fontSize: '0.8rem' }} />
+                          </div>
+                          {checkout.boletoUrl && (
+                            <a className="btn btn-ghost btn-sm" href={checkout.boletoUrl} target="_blank" rel="noreferrer">Abrir PDF do boleto</a>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          {checkout.qrCodeUrl && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={checkout.qrCodeUrl} alt="QR PIX" style={{ width: 200, height: 200, background: '#fff', borderRadius: 10, border: '1px solid var(--border)', padding: 8 }} />
+                          )}
+                          <textarea readOnly value={checkout.qrCode} rows={3} className="mono" style={{ width: '100%', fontSize: '0.75rem' }} />
+                        </>
                       )}
-                      <textarea readOnly value={checkout.qrCode} rows={3} className="mono" style={{ width: '100%', fontSize: '0.75rem' }} />
                       <button className="btn btn-ghost btn-sm" onClick={() => setCheckout(null)}>Nova contribuição</button>
                     </div>
                   ) : (
-                    <>
+                    <form onSubmit={contribute}>
                       {orgs.length > 1 && (
                         <div className="field">
                           <label htmlFor="p-org">Unidade</label>
@@ -129,32 +150,51 @@ export default function PortalPage({ params }: { params: { tenant: string } }) {
                           </select>
                         </div>
                       )}
-                      <form onSubmit={give} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                        <div className="field" style={{ width: 130, marginBottom: 0 }}>
+                      <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                        <div className="field" style={{ width: 150 }}>
                           <label htmlFor="g-type">Tipo</label>
-                          <select id="g-type" value={gType} onChange={(e) => setGType(e.target.value as EntryType)}>
+                          <select id="g-type" value={gType} onChange={(e) => changeType(e.target.value as EntryType)}>
                             <option value="tithe">Dízimo</option>
                             <option value="offering">Oferta</option>
                           </select>
                         </div>
-                        <div className="field" style={{ flex: 1, minWidth: 120, marginBottom: 0 }}>
+                        <div className="field" style={{ flex: 1, minWidth: 120 }}>
                           <label htmlFor="g-amt">Valor (R$)</label>
                           <input id="g-amt" type="number" step="0.01" min="0.01" value={gAmount} onChange={(e) => setGAmount(e.target.value)} required />
                         </div>
-                        <button className="btn btn-primary" type="submit">Contribuir com PIX</button>
-                      </form>
-                      <form onSubmit={pledge} style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexWrap: 'wrap', marginTop: '0.75rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
-                        <div className="field" style={{ flex: 1, minWidth: 120, marginBottom: 0 }}>
-                          <label htmlFor="p-amt">Dízimo mensal (R$)</label>
-                          <input id="p-amt" type="number" step="0.01" min="0.01" value={pAmount} onChange={(e) => setPAmount(e.target.value)} required />
+                      </div>
+
+                      {/* Recorrência: opcional e indicada pelo membro — só para dízimo (oferta é sempre pontual). */}
+                      {gType === 'tithe' && (
+                        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                          <div className="field" style={{ width: 200 }}>
+                            <label htmlFor="g-rec">Frequência</label>
+                            <select id="g-rec" value={recurrence} onChange={(e) => setRecurrence(e.target.value as 'once' | 'monthly')}>
+                              <option value="monthly">Mensal (recorrente)</option>
+                              <option value="once">Pontual (uma vez)</option>
+                            </select>
+                          </div>
+                          {isRecurring && (
+                            <div className="field" style={{ width: 110 }}>
+                              <label htmlFor="g-day">Dia</label>
+                              <input id="g-day" type="number" min="1" max="31" value={pDay} onChange={(e) => setPDay(e.target.value)} required />
+                            </div>
+                          )}
                         </div>
-                        <div className="field" style={{ width: 110, marginBottom: 0 }}>
-                          <label htmlFor="p-day">Dia</label>
-                          <input id="p-day" type="number" min="1" max="31" value={pDay} onChange={(e) => setPDay(e.target.value)} required />
-                        </div>
-                        <button className="btn btn-ghost" type="submit">Assinar recorrente</button>
-                      </form>
-                    </>
+                      )}
+
+                      <div className="field" style={{ maxWidth: 200 }}>
+                        <label htmlFor="g-method">Forma de pagamento</label>
+                        <select id="g-method" value={method} onChange={(e) => setMethod(e.target.value)}>
+                          <option value="pix">PIX</option>
+                          <option value="boleto">Boleto</option>
+                        </select>
+                      </div>
+
+                      <button className="btn btn-primary" type="submit" disabled={submitting}>
+                        {submitting ? 'Enviando…' : isRecurring ? 'Assinar dízimo mensal' : 'Contribuir'}
+                      </button>
+                    </form>
                   )}
                 </div>
               </div>

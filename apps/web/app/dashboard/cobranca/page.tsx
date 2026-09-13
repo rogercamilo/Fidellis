@@ -4,18 +4,16 @@ import { useEffect, useRef, useState } from 'react';
 import { PageHeader, StatusBadge } from '../../components/Fiori';
 import { OrganizationPicker } from '../../components/OrganizationPicker';
 import { Panel } from '../../components/Panel';
-import { createDonation, ENTRY_TYPES, getDonation, getFinanceSettings, type DonationCheckout, type EntryType, type LoginResult } from '../../lib/api';
+import { createDonation, getDonation, type DonationCheckout, type LoginResult } from '../../lib/api';
 
 export default function CobrancaPage() {
   const [token, setToken] = useState<string | null>(null);
   const [organizationId, setOrganizationId] = useState('');
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('pix');
-  const [entryType, setEntryType] = useState<EntryType>('offering');
   const [donorName, setDonorName] = useState('');
   const [donorEmail, setDonorEmail] = useState('');
   const [donorDocument, setDonorDocument] = useState('');
-  const [label, setLabel] = useState('Oferta');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [checkout, setCheckout] = useState<DonationCheckout | null>(null);
@@ -25,9 +23,7 @@ export default function CobrancaPage() {
   useEffect(() => {
     const raw = sessionStorage.getItem('fidellis.session');
     if (raw) {
-      const t = (JSON.parse(raw) as LoginResult).accessToken;
-      setToken(t);
-      getFinanceSettings(t).then((s) => setLabel(s.offeringLabel)).catch(() => {});
+      setToken((JSON.parse(raw) as LoginResult).accessToken);
     }
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
@@ -45,7 +41,7 @@ export default function CobrancaPage() {
         organizationId,
         amount: Number(amount),
         method,
-        entryType,
+        entryType: 'donation', // a instituição só gera cobrança de doação (dízimo/oferta vêm do membro)
         donor: { name: donorName, email: donorEmail || undefined, document: donorDocument },
       });
       setCheckout(result);
@@ -77,13 +73,13 @@ export default function CobrancaPage() {
   return (
     <>
       <PageHeader
-        title="Cobrança"
-        subtitle={`Gere uma cobrança avulsa (${label.toLowerCase()}) por PIX ou boleto — confirmação e recibo automáticos.`}
+        title="Doação"
+        subtitle="Gere um pedido de doação por PIX ou boleto para um doador — confirmação e recibo automáticos. Dízimo e oferta são do membro (portal), não se cobram aqui."
       />
 
       <div className="grid cols-2 rise rise-2" style={{ alignItems: 'start' }}>
         {!checkout ? (
-          <Panel title="Dados da cobrança">
+          <Panel title="Dados da doação">
             <form onSubmit={onSubmit}>
               <div className="field">
                 <OrganizationPicker token={token} value={organizationId} onChange={setOrganizationId} />
@@ -99,12 +95,6 @@ export default function CobrancaPage() {
                   <select id="method" value={method} onChange={(e) => setMethod(e.target.value)}>
                     <option value="pix">PIX</option>
                     <option value="boleto">Boleto</option>
-                  </select>
-                </div>
-                <div className="field" style={{ width: 130 }}>
-                  <label htmlFor="etype">Tipo</label>
-                  <select id="etype" value={entryType} onChange={(e) => setEntryType(e.target.value as EntryType)}>
-                    {ENTRY_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
                   </select>
                 </div>
               </div>
@@ -144,11 +134,11 @@ export default function CobrancaPage() {
                   ? 'Pagamento confirmado — doação conciliada e recibo emitido.'
                   : 'Aguardando pagamento do boleto… a página atualiza sozinha na confirmação.'}
               </p>
-              <button className="btn btn-ghost" onClick={() => { setCheckout(null); setStatus('pending'); }}>Nova cobrança</button>
+              <button className="btn btn-ghost" onClick={() => { setCheckout(null); setStatus('pending'); }}>Nova doação</button>
             </div>
           </Panel>
         ) : (
-          <Panel title="Cobrança PIX" actions={<StatusBadge status={status} />}>
+          <Panel title="Doação por PIX" actions={<StatusBadge status={status} />}>
             <div style={{ display: 'grid', placeItems: 'center', gap: '0.75rem' }}>
               {checkout.qrCodeUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -165,7 +155,7 @@ export default function CobrancaPage() {
                   : 'Aguardando pagamento… a página atualiza sozinha quando o PIX for confirmado.'}
               </p>
               <button className="btn btn-ghost" onClick={() => { setCheckout(null); setStatus('pending'); }}>
-                Nova cobrança
+                Nova doação
               </button>
             </div>
           </Panel>

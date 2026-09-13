@@ -206,6 +206,8 @@ public sealed class SchemaProvisioner(
             );
             CREATE INDEX IF NOT EXISTS ix_recurring_due
                 ON "{schema}".recurring_donations (status, next_charge_at);
+            -- Forma de pagamento escolhida pelo membro para os ciclos (pix|boleto).
+            ALTER TABLE "{schema}".recurring_donations ADD COLUMN IF NOT EXISTS method varchar(10) NOT NULL DEFAULT 'pix';
 
             ALTER TABLE "{schema}".donations ADD COLUMN IF NOT EXISTS recurring_donation_id uuid;
             ALTER TABLE "{schema}".donations ADD COLUMN IF NOT EXISTS due_at                timestamptz;
