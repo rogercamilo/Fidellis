@@ -62,6 +62,7 @@ public static class FinanceModule
         services.AddScoped<MroscReportService>();
         services.AddScoped<AccountantExportService>();
         services.AddScoped<FiscalDocumentService>();
+        services.AddScoped<IntegrationCredentialService>();
         services.AddScoped<Security.TeamService>();
         services.AddScoped<Security.InvitationService>();
         services.AddScoped<Notifications.INotifier, Notifications.OutboxNotifier>();
@@ -152,6 +153,24 @@ public static class FinanceModule
                 req.OrganizationId, req.Name, req.Email, req.Document, req.PixKey, ct);
             await audit.RecordAsync("recipient.created", "psp_recipient", result.Id.ToString());
             return Results.Created($"/api/finance/recipients/{result.Id}", result);
+        });
+
+        // ---- Integração federada (#80 / ADR-0013 dec.9): credencial de serviço por tenant ----
+
+        // Emite/rotaciona a chave da origem (ex.: formattio). O valor em claro é retornado UMA vez.
+        group.MapPost("/integration/{source}/key", async (
+            string source, IntegrationCredentialService creds, ITenantContext tenant, IAuditLog audit, CancellationToken ct) =>
+        {
+            if (!tenant.HasTenant) return Results.BadRequest(new { error = "Nenhum tenant no request." });
+            var key = await creds.IssueAsync(source, ct);
+            await audit.RecordAsync("integration.key_issued", "integration_credential", source.Trim().ToLowerInvariant());
+            return Results.Ok(new { source = source.Trim().ToLowerInvariant(), key });
+        });
+
+        group.MapGet("/integration/{source}", async (string source, IntegrationCredentialService creds, CancellationToken ct) =>
+        {
+            var (configured, enabled) = await creds.StatusAsync(source, ct);
+            return Results.Ok(new { source = source.Trim().ToLowerInvariant(), configured, enabled });
         });
 
         // ---- Doação recorrente do apoiador (não-membro) + dunning ----
@@ -329,6 +348,58 @@ public static class FinanceModule
                 new { id = r.Id, amount = r.Amount, dayOfMonth = r.DayOfMonth, status = r.Status, nextChargeAt = r.NextChargeAt, method = r.Method });
         });
 
+        // ---- Canal da integração federada (#80 / ADR-0013 dec.9): server-to-server, autenticado por
+        // credencial de serviço por tenant (header X-Integration-Key). Autoriza dízimo/oferta de MEMBRO
+        // federado (resolvido por ExternalId) — "Formattio lança, não armazena". O membro é reconhecido
+        // pela origem (Source=formattio ⇒ membro); o canal anônimo público segue restrito a doação.
+        pub.MapPost("/integration/give", async (
+            string tenant, IntegrationGiveRequest req, HttpRequest request,
+            CatalogDbContext catalog, ITenantContext tc, TenantDbContext db,
+            IntegrationCredentialService creds, DonationCheckoutService checkout, IAuditLog audit, CancellationToken ct) =>
+        {
+            if (!await PublicTenant.TryResolveAsync(catalog, tc, tenant, ct))
+                return Results.NotFound(new { error = "Instituição não encontrada." });
+            if (!await creds.ValidateAsync("formattio", request.Headers["X-Integration-Key"].FirstOrDefault(), ct))
+                return Results.Json(new { error = "Credencial de integração inválida." }, statusCode: StatusCodes.Status401Unauthorized);
+            var member = await ResolveFederatedMemberAsync(db, req.ExternalId, ct);
+            if (member is null)
+                return Results.NotFound(new { error = "Membro federado não encontrado (importe a identidade primeiro)." });
+            if (req.Amount <= 0 || req.OrganizationId == Guid.Empty)
+                return Results.BadRequest(new { error = "organizationId e amount (>0) são obrigatórios." });
+
+            var entryType = req.EntryType is EntryTypes.Tithe or EntryTypes.Offering ? req.EntryType : EntryTypes.Tithe;
+            var method = (req.Method ?? "pix").Trim().ToLowerInvariant() is "boleto" ? "boleto" : "pix";
+            var result = await checkout.CreateAsync(new CheckoutCommand(
+                req.OrganizationId, req.Amount, member.Name, member.Email ?? "", member.Document ?? "",
+                Method: method, EntryType: entryType), ct);
+            await audit.RecordAsync("integration.give", "donation", result.DonationId.ToString());
+            return Results.Created($"/api/public/{tenant}/donations/{result.DonationId}", result);
+        });
+
+        pub.MapPost("/integration/pledge", async (
+            string tenant, IntegrationPledgeRequest req, HttpRequest request,
+            CatalogDbContext catalog, ITenantContext tc, TenantDbContext db,
+            IntegrationCredentialService creds, RecurringBillingService billing, IAuditLog audit, CancellationToken ct) =>
+        {
+            if (!await PublicTenant.TryResolveAsync(catalog, tc, tenant, ct))
+                return Results.NotFound(new { error = "Instituição não encontrada." });
+            if (!await creds.ValidateAsync("formattio", request.Headers["X-Integration-Key"].FirstOrDefault(), ct))
+                return Results.Json(new { error = "Credencial de integração inválida." }, statusCode: StatusCodes.Status401Unauthorized);
+            var member = await ResolveFederatedMemberAsync(db, req.ExternalId, ct);
+            if (member is null)
+                return Results.NotFound(new { error = "Membro federado não encontrado (importe a identidade primeiro)." });
+            if (req.Amount <= 0 || req.OrganizationId == Guid.Empty)
+                return Results.BadRequest(new { error = "organizationId e amount (>0) são obrigatórios." });
+
+            var method = (req.Method ?? "pix").Trim().ToLowerInvariant() is "boleto" ? "boleto" : "pix";
+            var r = await billing.CreatePledgeAsync(
+                req.OrganizationId, member.Id, req.Amount, req.DayOfMonth, chargeToday: true,
+                entryType: EntryTypes.Tithe, method: method, ct: ct);
+            await audit.RecordAsync("integration.pledge", "recurring_donation", r.Id.ToString());
+            return Results.Created($"/api/public/{tenant}/integration/pledge/{r.Id}",
+                new { id = r.Id, amount = r.Amount, dayOfMonth = r.DayOfMonth, status = r.Status, method = r.Method });
+        });
+
         // Receptor de webhook do Pagar.me — FORA da resolução de tenant por JWT.
         group.MapPost("/webhooks/pagarme", async (
             HttpRequest request,
@@ -424,6 +495,14 @@ public static class FinanceModule
         return await db.Donors.FirstOrDefaultAsync(d => d.Id == valid.Value.DonorId, ct);
     }
 
+    /// <summary>Resolve o membro pela identidade federada (#80): vínculo por (source=formattio, externalId).</summary>
+    private static async Task<Donor?> ResolveFederatedMemberAsync(TenantDbContext db, string? externalId, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(externalId)) return null;
+        var extId = externalId.Trim();
+        return await db.Donors.FirstOrDefaultAsync(d => d.Source == "formattio" && d.ExternalId == extId, ct);
+    }
+
     private static bool WebhookAuthOk(HttpRequest request, string raw, InfrastructureOptions options)
     {
         // 1) Assinatura HMAC-SHA256 sobre o corpo bruto (RF-FIN-001): precede o Basic auth.
@@ -491,6 +570,13 @@ public sealed record MemberGiveRequest(
 
 public sealed record MemberPledgeRequest(
     string Token, Guid OrganizationId, decimal Amount, int DayOfMonth, string Method = "pix");
+
+// Canal da integração federada (#80): autenticado por credencial de serviço (header X-Integration-Key),
+// identifica o membro pelo ExternalId (não por token de doador).
+public sealed record IntegrationGiveRequest(
+    string ExternalId, Guid OrganizationId, decimal Amount, string EntryType = EntryTypes.Tithe, string Method = "pix");
+public sealed record IntegrationPledgeRequest(
+    string ExternalId, Guid OrganizationId, decimal Amount, int DayOfMonth, string Method = "pix");
 
 public sealed record RecurringDto(
     Guid Id,

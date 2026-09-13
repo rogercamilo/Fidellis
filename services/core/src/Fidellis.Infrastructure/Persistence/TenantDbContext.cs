@@ -53,6 +53,7 @@ public sealed class TenantDbContext(
     public DbSet<VolunteerWork> VolunteerWork => Set<VolunteerWork>();
     public DbSet<StatementSnapshot> StatementSnapshots => Set<StatementSnapshot>();
     public DbSet<FiscalDocument> FiscalDocuments => Set<FiscalDocument>();
+    public DbSet<IntegrationCredential> IntegrationCredentials => Set<IntegrationCredential>();
     public DbSet<OutboxMessage> Messages => Set<OutboxMessage>();
     public DbSet<AuditLogEntry> AuditLog => Set<AuditLogEntry>();
 
@@ -353,6 +354,13 @@ public sealed class TenantDbContext(
             b.HasIndex(x => x.OrganizationId);
             b.HasIndex(x => x.ReceivableId);
             b.Property(x => x.Amount).HasPrecision(18, 2);
+        });
+
+        modelBuilder.Entity<IntegrationCredential>(b =>
+        {
+            b.ToTable("integration_credentials");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => x.Source).IsUnique();
         });
 
         // Preserva o default do DDL legado: toda coluna created_at nasce com now() no servidor,

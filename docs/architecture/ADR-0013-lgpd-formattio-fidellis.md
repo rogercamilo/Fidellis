@@ -5,10 +5,13 @@
   fica **liberada para código**, sob as condições e salvaguardas abaixo (finalidade específica,
   minimização por identidade federada, base legal por consentimento antes do cruzamento, segregação e
   auditoria). *(Proposto em 2026-09-12 — decisão **D-11** do parecer.)*
-  **Implementação (2026-09-13):** iniciada a **identidade federada** — `Donor.ExternalId`/`Source` +
-  membership derivada da origem + canal de importação idempotente por `ExternalId` (fatia 1, #80). Restam
-  o give autenticado server-to-server (credencial por tenant) e o sinal de offboarding — dependem do
-  contrato **greenfield no lado do Formattio**.
+  **Implementação (2026-09-13):** (fatia 1) **identidade federada** — `Donor.ExternalId`/`Source` +
+  membership derivada da origem + canal de importação idempotente por `ExternalId`. (fatia 2) **give
+  autenticado server-to-server** — `IntegrationCredential` (chave por tenant/origem, só hash) +
+  `POST /api/finance/integration/{source}/key` (emissão) + canal `POST /api/public/{tenant}/integration/{give,pledge}`
+  (header `X-Integration-Key`; dízimo/oferta de membro federado por `ExternalId`; "Formattio lança, não
+  armazena"). **Resta** o sinal de **offboarding** (`ativo`/`deletedAt`) → pausa/encerra a recorrência;
+  depende do **contrato greenfield no lado do Formattio** (expor a chamada/credencial + o sinal).
 - **Contexto:** [parecer do terceiro setor](../prd/parecer-finance-terceiro-setor.md) (D-10/D-11) e o
   [plano de auditoria do Formattio](../prd/d10-formattio-audit-plan.md), que é o **1º passo** e alimenta este ADR.
 - **Relaciona-se a:** [ADR-0004](ADR-0004-standalone-auth.md) (auth standalone),
