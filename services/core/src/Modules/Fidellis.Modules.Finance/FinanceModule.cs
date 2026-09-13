@@ -12,6 +12,7 @@ using Fidellis.Modules.Finance.CashSessions;
 using Fidellis.Modules.Finance.Configuration;
 using Fidellis.Modules.Finance.Dimensions;
 using Fidellis.Modules.Finance.Entries;
+using Fidellis.Modules.Finance.Invoicing;
 using Fidellis.Modules.Finance.Payables;
 using Fidellis.Modules.Finance.Periods;
 using Fidellis.Modules.Finance.Reports;
@@ -60,6 +61,7 @@ public static class FinanceModule
         services.AddScoped<VolunteerWorkService>();
         services.AddScoped<MroscReportService>();
         services.AddScoped<AccountantExportService>();
+        services.AddScoped<FiscalDocumentService>();
         services.AddScoped<Security.TeamService>();
         services.AddScoped<Security.InvitationService>();
         services.AddScoped<Notifications.INotifier, Notifications.OutboxNotifier>();
@@ -375,6 +377,9 @@ public static class FinanceModule
 
         // Campanhas (earmark + meta × arrecadado + prestação de contas — D-08).
         app.MapCampaigns();
+
+        // Faturamento (#79 — NF/faturamento, gestão avançada): registro/vínculo de NF.
+        app.MapFiscalDocuments();
 
         // Fechamento de período (bloqueio de lançamentos retroativos).
         app.MapPeriods();
