@@ -20,7 +20,12 @@ namespace Fidellis.Modules.Donations;
 /// </summary>
 public static class DonationsModule
 {
-    public static IServiceCollection AddDonationsModule(this IServiceCollection services) => services;
+    public static IServiceCollection AddDonationsModule(this IServiceCollection services)
+    {
+        // Puller da integração federada (#80, Opção A): HttpClient tipado para chamar o Formattio.
+        services.AddHttpClient<FormattioSyncService>();
+        return services;
+    }
 
     public static IEndpointRouteBuilder MapDonationsModule(this IEndpointRouteBuilder app)
     {
@@ -273,6 +278,28 @@ public static class DonationsModule
             return Results.Ok(new { source, created, updated });
         });
 
+        // Sincronização puxada (#80, Opção A): o Fidellis chama o Formattio e faz o upsert dos membros
+        // ativos. Config por env (FORMATTIO_BASE_URL/FORMATTIO_PULL_SECRET); organizacaoId (Formattio) no corpo.
+        crm.MapPost("/donors/federated/sync", async (
+            SyncFederatedRequest req, FormattioSyncService sync, ITenantContext tenant, IAuditLog audit, CancellationToken ct) =>
+        {
+            if (!tenant.HasTenant) return Results.BadRequest(new { error = "Nenhum tenant no request." });
+            if (string.IsNullOrWhiteSpace(req.OrganizacaoId))
+                return Results.BadRequest(new { error = "organizacaoId (Formattio) é obrigatório." });
+            if (!sync.Configured)
+                return Results.Json(new { error = "Integração Formattio não configurada." }, statusCode: StatusCodes.Status501NotImplemented);
+            try
+            {
+                var r = await sync.SyncAsync(req.OrganizacaoId, ct);
+                await audit.RecordAsync("donor.federated_sync", "donor", $"{req.OrganizacaoId}:{r.Created}c/{r.Updated}u");
+                return Results.Ok(new { created = r.Created, updated = r.Updated, total = r.Total, skippedInactive = r.SkippedInactive });
+            }
+            catch (Exception ex)
+            {
+                return Results.Json(new { error = $"Falha ao sincronizar com o Formattio: {ex.Message}" }, statusCode: StatusCodes.Status502BadGateway);
+            }
+        });
+
         // ---- Público (portal do doador; tenant pelo path) ----
         var pub = app.MapGroup("/api/public/{tenant}").WithTags("Public");
 
@@ -353,6 +380,7 @@ public sealed record SetMemberRequest(bool IsMember);
 // Importação de identidade federada (#80): lote de membros vindos da origem (ex.: export/organizacao do Formattio).
 public sealed record ImportFederatedRequest(List<FederatedMember> Members, string? Source = null);
 public sealed record FederatedMember(string ExternalId, string Name, string? Email = null);
+public sealed record SyncFederatedRequest(string OrganizacaoId);
 
 /// <summary>
 /// Upsert de identidade federada (#80 / ADR-0013): idempotente por <c>(source, externalId)</c>. A origem

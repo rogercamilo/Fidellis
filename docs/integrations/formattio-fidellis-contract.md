@@ -46,18 +46,19 @@ sacramentos, documentos, foto. O vínculo autoritativo é o **`externalId`** —
 
 ## 4. Endpoints
 
-### 4.1 Importar identidade (carga inicial / sincronização) — JWT do operador
-Idempotente por `(source, externalId)`. Marca `IsMember`. Fonte natural: `GET /api/export/organizacao` do Formattio.
-```http
-POST /api/crm/donors/federated
-{
-  "source": "formattio",
-  "members": [
-    { "externalId": "<Formando.id>", "name": "João da Silva", "email": "joao@ex.com" }
-  ]
-}
-→ 200 { "source": "formattio", "created": 1, "updated": 0 }
-```
+### 4.1 Sincronizar identidade — **Opção A (Fidellis puxa)** ✅ escolhida
+O **Fidellis puxa** do Formattio (server-to-server) e faz o upsert internamente. Idempotente por
+`(source, externalId)`; marca `IsMember`; importa só os **ativos**.
+
+- **No Formattio** (implementado): `GET /api/integrations/fidellis/formandos?organizacaoId=<id>` autenticado por
+  `Authorization: Bearer <segredo>` (env `FIDELLIS_PULL_SECRET`), devolve `{ members: [{externalId,name,email,active}] }`.
+- **No Fidellis** (implementado): gatilho do operador `POST /api/crm/donors/federated/sync { "organizacaoId": "<id Formattio>" }`
+  → chama o endpoint acima e faz o upsert. Config por env no Fidellis: `FORMATTIO_BASE_URL` +
+  `FORMATTIO_PULL_SECRET` (**mesmo valor** do `FIDELLIS_PULL_SECRET` no Formattio — segredo compartilhado).
+  Resposta: `{ created, updated, total, skippedInactive }`. Agende (cron) ou dispare manualmente.
+
+> Alternativa (push): `POST /api/crm/donors/federated` (operador, JWT) aceita um lote
+> `{ source, members: [{externalId, name, email}] }` — mantido para import manual/pontual.
 
 ### 4.2 Contribuição pontual (dízimo/oferta) — `X-Integration-Key`
 ```http
