@@ -174,6 +174,18 @@ public static class FinanceModule
             return Results.Ok(new { source = source.Trim().ToLowerInvariant(), configured, enabled });
         });
 
+        // Código de pareamento (#80 / P1b): o operador escolhe a unidade e gera um código curto (10 min).
+        // O Formattio troca esse código pelas credenciais (POST /api/public/{tenant}/integration/connect).
+        group.MapPost("/integration/connect-code", (
+            ConnectCodeRequest req, ITenantContext tenant, InfrastructureOptions options) =>
+        {
+            if (!tenant.HasTenant) return Results.BadRequest(new { error = "Nenhum tenant no request." });
+            if (req.OrganizationId == Guid.Empty) return Results.BadRequest(new { error = "organizationId (unidade) é obrigatório." });
+            var expires = DateTimeOffset.UtcNow.AddMinutes(10);
+            var code = ConnectToken.Sign(req.OrganizationId, tenant.TenantId!, expires, options.AppSecret);
+            return Results.Ok(new { code, expiresAt = expires });
+        });
+
         // ---- Doação recorrente do apoiador (não-membro) + dunning ----
         // Recorrência de DÍZIMO é indicada pelo próprio membro no portal (member/pledge); a instituição
         // só monta doação recorrente de apoiador aqui (regra: operador não cobra dízimo/oferta).
@@ -420,6 +432,48 @@ public static class FinanceModule
             return Results.Ok(new { action = result.Value.Action, affected = result.Value.Affected });
         });
 
+        // Troca do código de pareamento por credenciais (#80 / P1b). Chamado pelo Formattio server-to-server.
+        // Emite a chave de serviço (Formattio→Fidellis) e o segredo de pull (Fidellis→Formattio) e persiste a
+        // conexão (substitui os env manuais). Retorna as credenciais UMA vez.
+        pub.MapPost("/integration/connect", async (
+            string tenant, ConnectExchangeRequest req,
+            CatalogDbContext catalog, ITenantContext tc, TenantDbContext db,
+            IntegrationCredentialService creds, InfrastructureOptions options, IAuditLog audit, CancellationToken ct) =>
+        {
+            if (!await PublicTenant.TryResolveAsync(catalog, tc, tenant, ct))
+                return Results.NotFound(new { error = "Instituição não encontrada." });
+            var valid = ConnectToken.Validate(req.Code ?? "", options.AppSecret, DateTimeOffset.UtcNow);
+            if (valid is null || valid.Value.Tenant != tenant.Trim().ToLowerInvariant())
+                return Results.Json(new { error = "Código de conexão inválido ou expirado." }, statusCode: StatusCodes.Status401Unauthorized);
+            if (string.IsNullOrWhiteSpace(req.ExternalBaseUrl) || string.IsNullOrWhiteSpace(req.ExternalOrgId))
+                return Results.BadRequest(new { error = "externalBaseUrl e externalOrgId são obrigatórios." });
+
+            var serviceKey = await creds.IssueAsync("formattio", ct);   // Formattio → Fidellis (give/pledge/offboard)
+            var pullSecret = InvitationToken.Generate();                 // Fidellis → Formattio (sync)
+
+            var conn = await db.IntegrationConnections.FirstOrDefaultAsync(c => c.Source == "formattio", ct);
+            if (conn is null)
+            {
+                db.IntegrationConnections.Add(new IntegrationConnection
+                {
+                    Source = "formattio", OrganizationId = valid.Value.OrganizationId,
+                    ExternalBaseUrl = req.ExternalBaseUrl!.Trim(), ExternalOrgId = req.ExternalOrgId!.Trim(), PullSecret = pullSecret,
+                });
+            }
+            else
+            {
+                conn.OrganizationId = valid.Value.OrganizationId;
+                conn.ExternalBaseUrl = req.ExternalBaseUrl!.Trim();
+                conn.ExternalOrgId = req.ExternalOrgId!.Trim();
+                conn.PullSecret = pullSecret;
+                conn.Enabled = true;
+                conn.UpdatedAt = DateTimeOffset.UtcNow;
+            }
+            await db.SaveChangesAsync(ct);
+            await audit.RecordAsync("integration.connected", "integration_connection", $"formattio:{valid.Value.OrganizationId}");
+            return Results.Ok(new { tenantSlug = tenant, organizationId = valid.Value.OrganizationId, serviceKey, pullSecret });
+        });
+
         // Receptor de webhook do Pagar.me — FORA da resolução de tenant por JWT.
         group.MapPost("/webhooks/pagarme", async (
             HttpRequest request,
@@ -598,6 +652,8 @@ public sealed record IntegrationGiveRequest(
 public sealed record IntegrationPledgeRequest(
     string ExternalId, Guid OrganizationId, decimal Amount, int DayOfMonth, string Method = "pix");
 public sealed record IntegrationOffboardRequest(string ExternalId, bool Permanent = false);
+public sealed record ConnectCodeRequest(Guid OrganizationId);
+public sealed record ConnectExchangeRequest(string Code, string ExternalBaseUrl, string ExternalOrgId);
 
 public sealed record RecurringDto(
     Guid Id,

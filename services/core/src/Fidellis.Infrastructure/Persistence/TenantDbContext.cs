@@ -54,6 +54,7 @@ public sealed class TenantDbContext(
     public DbSet<StatementSnapshot> StatementSnapshots => Set<StatementSnapshot>();
     public DbSet<FiscalDocument> FiscalDocuments => Set<FiscalDocument>();
     public DbSet<IntegrationCredential> IntegrationCredentials => Set<IntegrationCredential>();
+    public DbSet<IntegrationConnection> IntegrationConnections => Set<IntegrationConnection>();
     public DbSet<OutboxMessage> Messages => Set<OutboxMessage>();
     public DbSet<AuditLogEntry> AuditLog => Set<AuditLogEntry>();
 
@@ -359,6 +360,13 @@ public sealed class TenantDbContext(
         modelBuilder.Entity<IntegrationCredential>(b =>
         {
             b.ToTable("integration_credentials");
+            b.HasKey(x => x.Id);
+            b.HasIndex(x => x.Source).IsUnique();
+        });
+
+        modelBuilder.Entity<IntegrationConnection>(b =>
+        {
+            b.ToTable("integration_connections");
             b.HasKey(x => x.Id);
             b.HasIndex(x => x.Source).IsUnique();
         });

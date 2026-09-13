@@ -609,6 +609,21 @@ public sealed class SchemaProvisioner(
                 created_at timestamptz  NOT NULL DEFAULT now()
             );
             CREATE UNIQUE INDEX IF NOT EXISTS ux_integration_source ON "{schema}".integration_credentials (source);
+
+            -- Conexão federada estabelecida (#80 / P1b): config do puller por origem (substitui env).
+            CREATE TABLE IF NOT EXISTS "{schema}".integration_connections (
+                id                uuid PRIMARY KEY,
+                source            varchar(30)  NOT NULL,
+                organization_id   uuid         NOT NULL,
+                external_base_url text         NOT NULL,
+                external_org_id   varchar(120) NOT NULL,
+                pull_secret       text         NOT NULL,
+                enabled           boolean      NOT NULL DEFAULT true,
+                last_sync_at      timestamptz,
+                updated_at        timestamptz  NOT NULL DEFAULT now(),
+                created_at        timestamptz  NOT NULL DEFAULT now()
+            );
+            CREATE UNIQUE INDEX IF NOT EXISTS ux_integration_conn_source ON "{schema}".integration_connections (source);
             """;
 
         await ExecuteAsync(ddl, ct);
