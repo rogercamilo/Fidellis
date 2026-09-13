@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using Fidellis.Infrastructure;
 using Fidellis.Infrastructure.Persistence;
+using Fidellis.Infrastructure.TenantData;
 using Fidellis.Modules.Donations;
 using Fidellis.SharedKernel;
 using Microsoft.EntityFrameworkCore;
@@ -65,5 +66,26 @@ public class FormattioSyncTests
     {
         var svc = new FormattioSyncService(new HttpClient(new StubHandler("{}")), TDb($"s_{Guid.NewGuid()}"), Options(false), NullLogger<FormattioSyncService>.Instance);
         await Assert.ThrowsAsync<InvalidOperationException>(() => svc.SyncAsync("org1"));
+    }
+
+    [Fact]
+    public async Task Sync_uses_persisted_connection_when_present()
+    {
+        const string json = """{"members":[{"externalId":"f1","name":"João","email":"j@x.com","active":true}]}""";
+        var db = TDb($"sync_{Guid.NewGuid()}");
+        db.IntegrationConnections.Add(new IntegrationConnection
+        {
+            Source = "formattio", OrganizationId = Guid.NewGuid(),
+            ExternalBaseUrl = "https://formattio.test", ExternalOrgId = "orgX", PullSecret = "pull123",
+        });
+        await db.SaveChangesAsync();
+        // Sem env (Options(false)); a config vem da conexão persistida.
+        var svc = new FormattioSyncService(new HttpClient(new StubHandler(json)), db, Options(false), NullLogger<FormattioSyncService>.Instance);
+
+        var r = await svc.SyncAsync(); // sem override → usa a conexão
+
+        Assert.Equal(1, r.Created);
+        var conn = await db.IntegrationConnections.SingleAsync();
+        Assert.NotNull(conn.LastSyncAt);
     }
 }

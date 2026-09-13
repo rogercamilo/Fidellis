@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Fidellis.Infrastructure;
 using Fidellis.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
 namespace Fidellis.Modules.Donations;
@@ -17,18 +18,43 @@ public sealed record FormattioSyncResult(int Created, int Updated, int Total, in
 public sealed class FormattioSyncService(
     HttpClient http, TenantDbContext db, InfrastructureOptions options, ILogger<FormattioSyncService> logger)
 {
-    public bool Configured =>
+    private bool EnvConfigured =>
         !string.IsNullOrWhiteSpace(options.FormattioBaseUrl) && !string.IsNullOrWhiteSpace(options.FormattioPullSecret);
 
-    public async Task<FormattioSyncResult> SyncAsync(string organizacaoId, CancellationToken ct = default)
-    {
-        if (!Configured)
-            throw new InvalidOperationException("Integração Formattio não configurada (FORMATTIO_BASE_URL / FORMATTIO_PULL_SECRET).");
+    /// <summary>Há config utilizável — conexão persistida (P1b) ou env (fallback).</summary>
+    public async Task<bool> HasConfigAsync(CancellationToken ct = default)
+        => EnvConfigured || await db.IntegrationConnections.AnyAsync(c => c.Source == "formattio" && c.Enabled, ct);
 
-        var baseUrl = options.FormattioBaseUrl!.TrimEnd('/');
-        var url = $"{baseUrl}/api/integrations/fidellis/formandos?organizacaoId={Uri.EscapeDataString(organizacaoId)}";
+    /// <summary>
+    /// Sincroniza a partir da <b>conexão persistida</b> (P1b) ou, na ausência, dos <b>env</b> (fallback).
+    /// <paramref name="organizacaoIdOverride"/> permite forçar a organização (obrigatório no modo env).
+    /// </summary>
+    public async Task<FormattioSyncResult> SyncAsync(string? organizacaoIdOverride = null, CancellationToken ct = default)
+    {
+        var conn = await db.IntegrationConnections.FirstOrDefaultAsync(c => c.Source == "formattio" && c.Enabled, ct);
+
+        string baseUrl, secret, orgId;
+        if (conn is not null)
+        {
+            baseUrl = conn.ExternalBaseUrl;
+            secret = conn.PullSecret;
+            orgId = string.IsNullOrWhiteSpace(organizacaoIdOverride) ? conn.ExternalOrgId : organizacaoIdOverride!;
+        }
+        else if (EnvConfigured)
+        {
+            baseUrl = options.FormattioBaseUrl!;
+            secret = options.FormattioPullSecret!;
+            orgId = organizacaoIdOverride
+                ?? throw new InvalidOperationException("organizacaoId é obrigatório no modo env (sem conexão estabelecida).");
+        }
+        else
+        {
+            throw new InvalidOperationException("Integração Formattio não configurada (conecte via código de pareamento ou defina FORMATTIO_BASE_URL/FORMATTIO_PULL_SECRET).");
+        }
+
+        var url = $"{baseUrl.TrimEnd('/')}/api/integrations/fidellis/formandos?organizacaoId={Uri.EscapeDataString(orgId)}";
         using var req = new HttpRequestMessage(HttpMethod.Get, url);
-        req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", options.FormattioPullSecret);
+        req.Headers.Authorization = new AuthenticationHeaderValue("Bearer", secret);
 
         using var resp = await http.SendAsync(req, ct);
         resp.EnsureSuccessStatusCode();
@@ -42,9 +68,16 @@ public sealed class FormattioSyncService(
 
         var (created, updated) = await FederatedImport.ApplyAsync(db, "formattio", active, ct);
         var skipped = all.Count - active.Count;
+
+        if (conn is not null)
+        {
+            conn.LastSyncAt = DateTimeOffset.UtcNow;
+            await db.SaveChangesAsync(ct);
+        }
+
         logger.LogInformation(
             "Formattio sync org {Org}: {Created} criados, {Updated} atualizados, {Skipped} inativos ignorados.",
-            organizacaoId, created, updated, skipped);
+            orgId, created, updated, skipped);
         return new FormattioSyncResult(created, updated, all.Count, skipped);
     }
 

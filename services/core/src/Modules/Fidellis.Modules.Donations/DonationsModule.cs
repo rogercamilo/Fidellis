@@ -284,12 +284,11 @@ public static class DonationsModule
             SyncFederatedRequest req, FormattioSyncService sync, ITenantContext tenant, IAuditLog audit, CancellationToken ct) =>
         {
             if (!tenant.HasTenant) return Results.BadRequest(new { error = "Nenhum tenant no request." });
-            if (string.IsNullOrWhiteSpace(req.OrganizacaoId))
-                return Results.BadRequest(new { error = "organizacaoId (Formattio) é obrigatório." });
-            if (!sync.Configured)
-                return Results.Json(new { error = "Integração Formattio não configurada." }, statusCode: StatusCodes.Status501NotImplemented);
+            if (!await sync.HasConfigAsync(ct))
+                return Results.Json(new { error = "Integração Formattio não configurada (conecte via código de pareamento)." }, statusCode: StatusCodes.Status501NotImplemented);
             try
             {
+                // organizacaoId é opcional: quando há conexão estabelecida (P1b), vem dela.
                 var r = await sync.SyncAsync(req.OrganizacaoId, ct);
                 await audit.RecordAsync("donor.federated_sync", "donor", $"{req.OrganizacaoId}:{r.Created}c/{r.Updated}u");
                 return Results.Ok(new { created = r.Created, updated = r.Updated, total = r.Total, skippedInactive = r.SkippedInactive });
@@ -380,7 +379,7 @@ public sealed record SetMemberRequest(bool IsMember);
 // Importação de identidade federada (#80): lote de membros vindos da origem (ex.: export/organizacao do Formattio).
 public sealed record ImportFederatedRequest(List<FederatedMember> Members, string? Source = null);
 public sealed record FederatedMember(string ExternalId, string Name, string? Email = null);
-public sealed record SyncFederatedRequest(string OrganizacaoId);
+public sealed record SyncFederatedRequest(string? OrganizacaoId = null);
 
 /// <summary>
 /// Upsert de identidade federada (#80 / ADR-0013): idempotente por <c>(source, externalId)</c>. A origem
