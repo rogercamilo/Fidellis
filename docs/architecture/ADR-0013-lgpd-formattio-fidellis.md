@@ -14,7 +14,8 @@
   pausa (reversível) ou encerra (`permanent`) as recorrências do membro **com aviso** (outbox);
   financeiro já realizado preservado. **Lado Fidellis concluído.** O que resta é **externo/greenfield no
   Formattio**: consumir estas APIs (gerar credencial no setup, chamar give/pledge na aba do portal,
-  emitir o sinal de offboarding a partir de `ativo`/`deletedAt`).
+  emitir o sinal de offboarding a partir de `ativo`/`deletedAt`) — ver o **contrato de integração** em
+  [docs/integrations/formattio-fidellis-contract.md](../integrations/formattio-fidellis-contract.md).
 - **Contexto:** [parecer do terceiro setor](../prd/parecer-finance-terceiro-setor.md) (D-10/D-11) e o
   [plano de auditoria do Formattio](../prd/d10-formattio-audit-plan.md), que é o **1º passo** e alimenta este ADR.
 - **Relaciona-se a:** [ADR-0004](ADR-0004-standalone-auth.md) (auth standalone),
