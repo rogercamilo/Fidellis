@@ -63,6 +63,7 @@ public static class FinanceModule
         services.AddScoped<AccountantExportService>();
         services.AddScoped<FiscalDocumentService>();
         services.AddScoped<IntegrationCredentialService>();
+        services.AddScoped<IntegrationOffboardService>();
         services.AddScoped<Security.TeamService>();
         services.AddScoped<Security.InvitationService>();
         services.AddScoped<Notifications.INotifier, Notifications.OutboxNotifier>();
@@ -400,6 +401,25 @@ public static class FinanceModule
                 new { id = r.Id, amount = r.Amount, dayOfMonth = r.DayOfMonth, status = r.Status, method = r.Method });
         });
 
+        // Offboarding do vínculo (ADR-0013): ao perder o vínculo no Formattio, pausa (reversível) ou
+        // encerra (permanent=true) a recorrência de dízimo do membro, com aviso.
+        pub.MapPost("/integration/offboard", async (
+            string tenant, IntegrationOffboardRequest req, HttpRequest request,
+            CatalogDbContext catalog, ITenantContext tc,
+            IntegrationCredentialService creds, IntegrationOffboardService offboard, IAuditLog audit, CancellationToken ct) =>
+        {
+            if (!await PublicTenant.TryResolveAsync(catalog, tc, tenant, ct))
+                return Results.NotFound(new { error = "Instituição não encontrada." });
+            if (!await creds.ValidateAsync("formattio", request.Headers["X-Integration-Key"].FirstOrDefault(), ct))
+                return Results.Json(new { error = "Credencial de integração inválida." }, statusCode: StatusCodes.Status401Unauthorized);
+
+            var result = await offboard.OffboardAsync(req.ExternalId, req.Permanent, ct);
+            if (result is null)
+                return Results.NotFound(new { error = "Membro federado não encontrado." });
+            await audit.RecordAsync("integration.offboard", "donor", $"{req.ExternalId}:{result.Value.Action}:{result.Value.Affected}");
+            return Results.Ok(new { action = result.Value.Action, affected = result.Value.Affected });
+        });
+
         // Receptor de webhook do Pagar.me — FORA da resolução de tenant por JWT.
         group.MapPost("/webhooks/pagarme", async (
             HttpRequest request,
@@ -577,6 +597,7 @@ public sealed record IntegrationGiveRequest(
     string ExternalId, Guid OrganizationId, decimal Amount, string EntryType = EntryTypes.Tithe, string Method = "pix");
 public sealed record IntegrationPledgeRequest(
     string ExternalId, Guid OrganizationId, decimal Amount, int DayOfMonth, string Method = "pix");
+public sealed record IntegrationOffboardRequest(string ExternalId, bool Permanent = false);
 
 public sealed record RecurringDto(
     Guid Id,
