@@ -145,6 +145,8 @@ public sealed class TenantDbContext(
         {
             b.ToTable("donors");
             b.HasKey(x => x.Id);
+            // Identidade federada (#80): vínculo autoritativo por (origem, id externo).
+            b.HasIndex(x => new { x.Source, x.ExternalId });
         });
 
         modelBuilder.Entity<Campaign>(b =>

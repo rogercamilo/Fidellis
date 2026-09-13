@@ -1,7 +1,14 @@
 # ADR-0013 — LGPD do elo Formattio ↔ Fidellis (identidade federada + dados sensíveis)
 
-- **Status:** Proposto (2026-09-12) — **decisão antes de codar** (decisão **D-11** do parecer). A
-  integração **D-10** fica **bloqueada** até este ADR ser Aceito e o RIPD (§ Consequências) concluído.
+- **Status:** **Aceito (2026-09-13)** — o **DPO aprovou a continuidade da implementação**; auditoria,
+  RIPD e os rascunhos de parecer/consentimento/acordo (`docs/legal/`) estão em `main`. A integração **D-10**
+  fica **liberada para código**, sob as condições e salvaguardas abaixo (finalidade específica,
+  minimização por identidade federada, base legal por consentimento antes do cruzamento, segregação e
+  auditoria). *(Proposto em 2026-09-12 — decisão **D-11** do parecer.)*
+  **Implementação (2026-09-13):** iniciada a **identidade federada** — `Donor.ExternalId`/`Source` +
+  membership derivada da origem + canal de importação idempotente por `ExternalId` (fatia 1, #80). Restam
+  o give autenticado server-to-server (credencial por tenant) e o sinal de offboarding — dependem do
+  contrato **greenfield no lado do Formattio**.
 - **Contexto:** [parecer do terceiro setor](../prd/parecer-finance-terceiro-setor.md) (D-10/D-11) e o
   [plano de auditoria do Formattio](../prd/d10-formattio-audit-plan.md), que é o **1º passo** e alimenta este ADR.
 - **Relaciona-se a:** [ADR-0004](ADR-0004-standalone-auth.md) (auth standalone),
