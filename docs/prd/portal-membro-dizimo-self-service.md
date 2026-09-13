@@ -8,6 +8,15 @@
 > no portal (`/portal/{tenant}`) com dízimo/oferta pontual (PIX) e dízimo recorrente. Reusa
 > `DonationCheckoutService`/`RecurringBillingService`/`DonorMagicToken`. Testes `MemberPortalTests` (3) → 183 verdes.
 > Quando o Formattio entrar (#80), a origem federada marcará o mesmo `IsMember` — sem duplicar modelo.
+> **Atualização (2026-09-13) — recorrência indicada pelo membro + forma de pagamento:** o portal unificou
+> os fluxos numa só tela onde o **membro escolhe**: tipo (dízimo/oferta), valor, **recorrência** (seletor
+> Pontual × Mensal — só para dízimo; oferta é sempre pontual; default Mensal, pois espera-se dízimo
+> recorrente, mas é **opcional**) e **forma de pagamento** (PIX/boleto). Backend: `RecurringDonation.Method`
+> (+migração `RecurringDonationMethod` + DDL fallback); `CreatePledgeAsync`/`member/pledge` recebem o método;
+> o ciclo (`RunBillingCycleAsync`) gera PIX **ou** boleto conforme escolhido. **Regra reforçada
+> ([[fidellis-no-cobranca-dizimo-oferta]] / memória):** a instituição **não gera cobrança de dízimo/oferta** —
+> a tela do operador "Cobrança" foi convertida em **"Doação avulsa"** (só `doação`; trava no
+> `POST /api/finance/donations`). `RecurringBillingTests` +1 → **189 verdes**.
 > **Origem:** issue **#75**, diferida da **D-06 (Q2)**. Conecta-se ao epic **#80** (Formattio) e ao **ADR-0013**.
 > **Fluxo:** detalhar → **PO revisa/ajusta** → só então codar.
 > **Referências de código:** `DonorMagicToken`, portal do doador (`/api/public/{tenant}/magic-link` + `/me`

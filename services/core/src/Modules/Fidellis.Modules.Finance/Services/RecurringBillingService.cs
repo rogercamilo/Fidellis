@@ -23,10 +23,13 @@ public sealed class RecurringBillingService(
 {
     public async Task<RecurringDonation> CreatePledgeAsync(
         Guid organizationId, Guid donorId, decimal amount, int dayOfMonth, bool chargeToday = true,
-        string entryType = EntryTypes.Tithe, CancellationToken ct = default)
+        string entryType = EntryTypes.Tithe, string method = "pix", CancellationToken ct = default)
     {
         if (amount <= 0) throw new ArgumentException("O valor deve ser positivo.");
         var now = clock.UtcNow;
+
+        // Recorrência só por PIX ou boleto (cartão exigiria tokenização por ciclo).
+        var normalizedMethod = method?.Trim().ToLowerInvariant() is "boleto" ? "boleto" : "pix";
 
         var recurring = new RecurringDonation
         {
@@ -38,6 +41,7 @@ public sealed class RecurringBillingService(
             NextChargeAt = chargeToday ? now : NextChargeDate(dayOfMonth, now),
             // D-07: dízimo (membro) ou doação recorrente (apoiador não-membro).
             EntryType = entryType is EntryTypes.Donation ? EntryTypes.Donation : EntryTypes.Tithe,
+            Method = normalizedMethod,
         };
         db.RecurringDonations.Add(recurring);
 
@@ -81,7 +85,7 @@ public sealed class RecurringBillingService(
             {
                 OrganizationId = r.OrganizationId,
                 Amount = r.Amount,
-                Method = "pix",
+                Method = r.Method, // ciclo herda o método escolhido pelo membro (pix|boleto)
                 Status = "pending",
                 DonorId = r.DonorId,
                 DonorName = donor.Name,
@@ -93,7 +97,10 @@ public sealed class RecurringBillingService(
             db.Entries.Add(cycle);
 
             var label = settings?.LabelFor(r.EntryType) ?? "Contribuição";
-            await checkout.CreatePixChargeAsync(cycle, donor, $"{label} recorrente", ct);
+            if (r.Method == "boleto")
+                await checkout.CreateBoletoChargeAsync(cycle, donor, $"{label} recorrente", ct);
+            else
+                await checkout.CreatePixChargeAsync(cycle, donor, $"{label} recorrente", ct);
             cycle.ExpiresAt ??= cycle.DueAt; // se o PSP não devolveu expiração, usa a nossa
 
             r.LastDonationId = cycle.Id;

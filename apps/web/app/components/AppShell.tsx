@@ -21,7 +21,7 @@ const NAV: { label: string; roles?: string[]; items: { href: string; label: stri
     label: 'Entradas',
     roles: OVERSIGHT,
     items: [
-      { href: '/dashboard/cobranca', label: 'Cobrança' },
+      { href: '/dashboard/cobranca', label: 'Doação avulsa' },
       { href: '/dashboard/recorrencia', label: 'Recorrência' },
       { href: '/dashboard/campanhas', label: 'Campanhas' },
       { href: '/dashboard/caixa', label: 'Caixa' },

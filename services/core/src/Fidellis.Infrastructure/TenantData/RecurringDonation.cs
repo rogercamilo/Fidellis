@@ -15,6 +15,13 @@ public sealed class RecurringDonation : Entity
     public int DayOfMonth { get; set; } = 1;
 
     /// <summary>
+    /// Forma de pagamento escolhida pelo <b>membro</b> para os ciclos: <c>pix</c> (default) ou
+    /// <c>boleto</c>. Cada ciclo gerado herda este método. Cartão não se aplica à recorrência (exige
+    /// tokenização por cobrança).
+    /// </summary>
+    public string Method { get; set; } = "pix";
+
+    /// <summary>
     /// Tipo do compromisso recorrente (D-06/D-07): <c>tithe</c> (dízimo do membro, default) ou
     /// <c>donation</c> (doação recorrente do apoiador não-membro). Os ciclos herdam este tipo.
     /// </summary>

@@ -113,6 +113,29 @@ public class RecurringBillingTests
     }
 
     [Fact]
+    public async Task Member_chosen_boleto_method_is_stored_and_cycle_generates_a_boleto()
+    {
+        var id = Guid.NewGuid().ToString();
+        var tenant = Tenant();
+        var tdb = TDb(tenant, $"t_{id}");
+        var cdb = CDb($"c_{id}");
+        var donor = new Donor { Name = "Membro", Email = "m@x.org", Document = "12345678900", IsMember = true };
+        tdb.Donors.Add(donor);
+        await tdb.SaveChangesAsync();
+        var svc = Service(tdb, cdb, tenant, new FixedClock(T0));
+
+        // O membro indica boleto como forma de pagamento da recorrência.
+        var pledge = await svc.CreatePledgeAsync(Guid.NewGuid(), donor.Id, 80m, 10, chargeToday: true, method: "boleto");
+        Assert.Equal("boleto", pledge.Method);
+
+        await svc.RunBillingCycleAsync();
+        var cycle = await tdb.Entries.SingleAsync();
+        Assert.Equal("boleto", cycle.Method);          // ciclo herda o método escolhido
+        Assert.Equal("34191", cycle.BoletoLine);        // gerou boleto (não PIX)
+        Assert.Null(cycle.PixQrCode);
+    }
+
+    [Fact]
     public async Task Dunning_schedules_retry_on_first_failure()
     {
         var id = Guid.NewGuid().ToString();

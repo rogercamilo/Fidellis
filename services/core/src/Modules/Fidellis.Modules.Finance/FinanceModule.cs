@@ -96,10 +96,13 @@ public static class FinanceModule
             if (method == "card" && string.IsNullOrWhiteSpace(req.CardToken))
                 return Results.BadRequest(new { error = "cardToken é obrigatório para pagamento com cartão." });
 
+            // Regra de negócio: a instituição só gera cobrança de DOAÇÃO. Dízimo/oferta são do membro
+            // (portal/Formattio, por iniciativa dele) ou registrados como recebidos (caixa/manual) — nunca
+            // "cobrados" pelo operador. Por isso o tipo é forçado a `donation` aqui.
             var result = await checkout.CreateAsync(new CheckoutCommand(
                 req.OrganizationId, req.Amount, req.Donor.Name, req.Donor.Email ?? "", req.Donor.Document,
                 req.CampaignId, req.Description, IdempotencyKey: request.Headers["Idempotency-Key"].FirstOrDefault(),
-                Method: method, CardToken: req.CardToken, EntryType: req.EntryType), ct);
+                Method: method, CardToken: req.CardToken, EntryType: EntryTypes.Donation), ct);
 
             return Results.Created($"/api/finance/donations/{result.DonationId}", result);
         });
@@ -176,7 +179,7 @@ public static class FinanceModule
             }
 
             var r = await billing.CreatePledgeAsync(
-                req.OrganizationId, donor.Id, req.Amount, req.DayOfMonth, req.ChargeToday ?? true, req.EntryType, ct);
+                req.OrganizationId, donor.Id, req.Amount, req.DayOfMonth, req.ChargeToday ?? true, req.EntryType, ct: ct);
             return Results.Created($"/api/finance/recurring-donations/{r.Id}", ToRecurringDto(r));
         });
 
@@ -312,11 +315,14 @@ public static class FinanceModule
             if (req.Amount <= 0)
                 return Results.BadRequest(new { error = "amount deve ser positivo." });
 
+            // O membro indica a forma de pagamento da recorrência (PIX ou boleto; cartão exige tokenização por ciclo).
+            var pledgeMethod = (req.Method ?? "pix").Trim().ToLowerInvariant() is "boleto" ? "boleto" : "pix";
             var r = await billing.CreatePledgeAsync(
-                req.OrganizationId, member.Id, req.Amount, req.DayOfMonth, chargeToday: true, EntryTypes.Tithe, ct);
+                req.OrganizationId, member.Id, req.Amount, req.DayOfMonth, chargeToday: true,
+                entryType: EntryTypes.Tithe, method: pledgeMethod, ct: ct);
             await audit.RecordAsync("member.pledge", "recurring_donation", r.Id.ToString());
             return Results.Created($"/api/public/{tenant}/member/pledge/{r.Id}",
-                new { id = r.Id, amount = r.Amount, dayOfMonth = r.DayOfMonth, status = r.Status, nextChargeAt = r.NextChargeAt });
+                new { id = r.Id, amount = r.Amount, dayOfMonth = r.DayOfMonth, status = r.Status, nextChargeAt = r.NextChargeAt, method = r.Method });
         });
 
         // Receptor de webhook do Pagar.me — FORA da resolução de tenant por JWT.
@@ -480,7 +486,7 @@ public sealed record MemberGiveRequest(
     string Token, Guid OrganizationId, decimal Amount, string EntryType = EntryTypes.Offering, string Method = "pix");
 
 public sealed record MemberPledgeRequest(
-    string Token, Guid OrganizationId, decimal Amount, int DayOfMonth);
+    string Token, Guid OrganizationId, decimal Amount, int DayOfMonth, string Method = "pix");
 
 public sealed record RecurringDto(
     Guid Id,

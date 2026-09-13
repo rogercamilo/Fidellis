@@ -438,8 +438,8 @@ export async function memberGive(
 
 export async function memberPledge(
   tenant: string, token: string,
-  input: { organizationId: string; amount: number; dayOfMonth: number },
-): Promise<{ id: string; amount: number; dayOfMonth: number; status: string; nextChargeAt: string }> {
+  input: { organizationId: string; amount: number; dayOfMonth: number; method?: string },
+): Promise<{ id: string; amount: number; dayOfMonth: number; status: string; nextChargeAt: string; method: string }> {
   const res = await fetch(`${BFF_URL}/api/public/${tenant}/member/pledge`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -449,7 +449,7 @@ export async function memberPledge(
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(body.error ?? `Falha ao assinar dízimo (${res.status}).`);
   }
-  return res.json() as Promise<{ id: string; amount: number; dayOfMonth: number; status: string; nextChargeAt: string }>;
+  return res.json() as Promise<{ id: string; amount: number; dayOfMonth: number; status: string; nextChargeAt: string; method: string }>;
 }
 
 export async function publicOrganizations(tenant: string): Promise<PublicOrg[]> {
