@@ -10,8 +10,11 @@
   autenticado server-to-server** — `IntegrationCredential` (chave por tenant/origem, só hash) +
   `POST /api/finance/integration/{source}/key` (emissão) + canal `POST /api/public/{tenant}/integration/{give,pledge}`
   (header `X-Integration-Key`; dízimo/oferta de membro federado por `ExternalId`; "Formattio lança, não
-  armazena"). **Resta** o sinal de **offboarding** (`ativo`/`deletedAt`) → pausa/encerra a recorrência;
-  depende do **contrato greenfield no lado do Formattio** (expor a chamada/credencial + o sinal).
+  armazena"). (fatia 3) **offboarding** — `POST /api/public/{tenant}/integration/offboard` (autenticado):
+  pausa (reversível) ou encerra (`permanent`) as recorrências do membro **com aviso** (outbox);
+  financeiro já realizado preservado. **Lado Fidellis concluído.** O que resta é **externo/greenfield no
+  Formattio**: consumir estas APIs (gerar credencial no setup, chamar give/pledge na aba do portal,
+  emitir o sinal de offboarding a partir de `ativo`/`deletedAt`).
 - **Contexto:** [parecer do terceiro setor](../prd/parecer-finance-terceiro-setor.md) (D-10/D-11) e o
   [plano de auditoria do Formattio](../prd/d10-formattio-audit-plan.md), que é o **1º passo** e alimenta este ADR.
 - **Relaciona-se a:** [ADR-0004](ADR-0004-standalone-auth.md) (auth standalone),
