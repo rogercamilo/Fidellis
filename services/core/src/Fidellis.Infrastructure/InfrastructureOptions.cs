@@ -63,4 +63,12 @@ public sealed class InfrastructureOptions
 
     /// <summary>Bucket onde os recibos são arquivados.</summary>
     public string? StorageBucket { get; init; }
+
+    /// <summary>
+    /// Integração federada Formattio (#80, Opção A — Fidellis puxa): base da API do Formattio e o segredo
+    /// (Bearer) para o endpoint de sincronização de identidade. Vazios → o puller fica desligado.
+    /// </summary>
+    public string? FormattioBaseUrl { get; init; }
+
+    public string? FormattioPullSecret { get; init; }
 }

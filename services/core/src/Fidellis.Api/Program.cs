@@ -42,6 +42,8 @@ builder.Services.AddInfrastructure(new InfrastructureOptions
     StorageAccessKey = config["R2_ACCESS_KEY_ID"],
     StorageSecret = config["R2_SECRET_ACCESS_KEY"],
     StorageBucket = config["R2_BUCKET"],
+    FormattioBaseUrl = config["FORMATTIO_BASE_URL"],
+    FormattioPullSecret = config["FORMATTIO_PULL_SECRET"],
 });
 
 // Licença QuestPDF (Community): grátis p/ ONGs e empresas < US$1M/ano.
