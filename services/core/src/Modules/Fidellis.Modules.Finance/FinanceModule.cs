@@ -154,7 +154,9 @@ public static class FinanceModule
             return Results.Created($"/api/finance/recipients/{result.Id}", result);
         });
 
-        // ---- Recorrência (dízimo mensal) + dunning ----
+        // ---- Doação recorrente do apoiador (não-membro) + dunning ----
+        // Recorrência de DÍZIMO é indicada pelo próprio membro no portal (member/pledge); a instituição
+        // só monta doação recorrente de apoiador aqui (regra: operador não cobra dízimo/oferta).
 
         group.MapPost("/recurring-donations", async (
             CreateRecurringRequest req,
@@ -178,8 +180,10 @@ public static class FinanceModule
                 await db.SaveChangesAsync(ct);
             }
 
+            // Força doação: o operador só monta doação recorrente do apoiador; dízimo é do membro.
             var r = await billing.CreatePledgeAsync(
-                req.OrganizationId, donor.Id, req.Amount, req.DayOfMonth, req.ChargeToday ?? true, req.EntryType, ct: ct);
+                req.OrganizationId, donor.Id, req.Amount, req.DayOfMonth, req.ChargeToday ?? true,
+                entryType: EntryTypes.Donation, ct: ct);
             return Results.Created($"/api/finance/recurring-donations/{r.Id}", ToRecurringDto(r));
         });
 
