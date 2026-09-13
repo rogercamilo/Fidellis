@@ -8,7 +8,6 @@ import {
   actOnRecurring,
   createRecurring,
   listRecurring,
-  type EntryType,
   type LoginResult,
   type RecurringDonation,
 } from '../../lib/api';
@@ -20,7 +19,6 @@ export default function RecorrenciaPage() {
   const [organizationId, setOrganizationId] = useState('');
   const [amount, setAmount] = useState('');
   const [dayOfMonth, setDayOfMonth] = useState('5');
-  const [entryType, setEntryType] = useState<EntryType>('tithe');
   const [donorName, setDonorName] = useState('');
   const [donorEmail, setDonorEmail] = useState('');
   const [donorDocument, setDonorDocument] = useState('');
@@ -56,7 +54,7 @@ export default function RecorrenciaPage() {
         organizationId,
         amount: Number(amount),
         dayOfMonth: Number(dayOfMonth),
-        entryType,
+        entryType: 'donation', // operador só monta doação recorrente (apoiador); dízimo recorrente é do membro (portal)
         donor: { name: donorName, email: donorEmail || undefined, document: donorDocument },
       });
       setAmount('');
@@ -84,12 +82,12 @@ export default function RecorrenciaPage() {
   return (
     <>
       <PageHeader
-        title="Recorrência"
-        subtitle="Dízimos e apoios mensais — uma cobrança é gerada a cada ciclo; falhas entram na régua de lembretes (D+1, D+3, D+5)."
+        title="Doação recorrente"
+        subtitle="Apoio mensal do apoiador (não-membro) — uma cobrança é gerada a cada ciclo; falhas entram na régua (D+1, D+3, D+5). Dízimo recorrente é assinado pelo próprio membro no portal."
       />
 
       <div className="grid cols-2 rise rise-2" style={{ alignItems: 'start' }}>
-        <Panel title="Nova recorrência">
+        <Panel title="Nova doação recorrente">
           <form onSubmit={onSubmit}>
             <div className="field">
               <OrganizationPicker token={token} value={organizationId} onChange={setOrganizationId} />
@@ -105,24 +103,17 @@ export default function RecorrenciaPage() {
                 <input id="day" type="number" min="1" max="31" value={dayOfMonth}
                   onChange={(e) => setDayOfMonth(e.target.value)} required />
               </div>
-              <div className="field" style={{ width: 150 }}>
-                <label htmlFor="rtype">Tipo</label>
-                <select id="rtype" value={entryType} onChange={(e) => setEntryType(e.target.value as EntryType)}>
-                  <option value="tithe">Dízimo (membro)</option>
-                  <option value="donation">Doação (apoiador)</option>
-                </select>
-              </div>
             </div>
             <div className="field">
-              <label htmlFor="dname">Doador — nome</label>
+              <label htmlFor="dname">Apoiador — nome</label>
               <input id="dname" value={donorName} onChange={(e) => setDonorName(e.target.value)} required />
             </div>
             <div className="field">
-              <label htmlFor="ddoc">Doador — CPF/CNPJ</label>
+              <label htmlFor="ddoc">Apoiador — CPF/CNPJ</label>
               <input id="ddoc" value={donorDocument} onChange={(e) => setDonorDocument(e.target.value)} required />
             </div>
             <div className="field">
-              <label htmlFor="demail">Doador — e-mail (opcional)</label>
+              <label htmlFor="demail">Apoiador — e-mail (opcional)</label>
               <input id="demail" type="email" value={donorEmail} onChange={(e) => setDonorEmail(e.target.value)} />
             </div>
 

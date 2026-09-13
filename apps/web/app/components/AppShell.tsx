@@ -22,7 +22,7 @@ const NAV: { label: string; roles?: string[]; items: { href: string; label: stri
     roles: OVERSIGHT,
     items: [
       { href: '/dashboard/cobranca', label: 'Doação avulsa' },
-      { href: '/dashboard/recorrencia', label: 'Recorrência' },
+      { href: '/dashboard/recorrencia', label: 'Doação recorrente' },
       { href: '/dashboard/campanhas', label: 'Campanhas' },
       { href: '/dashboard/caixa', label: 'Caixa' },
       { href: '/dashboard/receber', label: 'Contas a receber' },
